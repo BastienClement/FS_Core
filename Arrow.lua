@@ -37,29 +37,34 @@ end
 
 function Arrow:OnEnable()
 	self:RegisterMessage("FS_MSG")
-	self.mode = "off"
+	self.visible = false
 end
 
-function Arrow:Show(mode)
+function Arrow:OnDisable()
+	self:Hide()
+end
+
+function Arrow:Show()
 	if self:IsVisible() then return end
-	self.mode = mode
 	self._tal = 0
-	self:OnUpdate()
-	self.ticker = C_Timer.NewTicker(1 / 30, function() self:OnUpdate() end)
+	self.visible = true
 	anchor:Show()
 	self:SendMessage("FS_ARROW_VISIBLE", self)
+	self.ticker = C_Timer.NewTicker(1 / 30, function() self:OnUpdate() end)
+	self:OnUpdate()
 end
 
 function Arrow:Hide()
 	if not self:IsVisible() then return end
 	self.mode = "off"
-	anchor:Hide()
+	self.visible = false
 	self.ticker:Cancel()
+	anchor:Hide()
 	self:SendMessage("FS_ARROW_HIDDEN", self)
 end
 
 function Arrow:IsVisible()
-	return self.mode ~= "off"
+	return self.visible
 end
 
 function Arrow:GetDistance()
@@ -67,6 +72,22 @@ function Arrow:GetDistance()
 		return Map:GetDistance(UnitPosition(self.unit))
 	elseif self.mode == "location" then
 		return Map:GetDistance(self.x, self.y)
+	elseif self.mode == "raidtarget" then
+		if not self.unit or GetRaidTargetIndex(self.unit) ~= self.raidtarget then
+			self.unit = nil
+			if IsInRaid() then
+				for i = 1, GetNumGroupMembers() do
+					local unit = "raid" .. i
+					if GetRaidTargetIndex(unit) == self.raidtarget then
+						self.unit = unit
+						self:UpdateUnit()
+						break
+					end
+				end
+			end
+		end
+		if not self.unit then return end
+		return Map:GetDistance(UnitPosition(self.unit))
 	end
 end
 
@@ -144,7 +165,7 @@ do
 		-- Arrow label
 		if self.options.label then
 			text:SetText(label_format:format(self.options.label, floor(distance)))
-		elseif self.mode == "unit" then
+		elseif self.mode == "unit" or self.mode == "raidtarget" then
 			text:SetText(unit_format:format(FS:Icon(GetRaidTargetIndex(self.unit)), self.unitclass, self.unitname, floor(distance)))
 		elseif self.mode == "location" then
 			text:SetText(location_format:format(floor(distance)))
@@ -153,17 +174,30 @@ do
 end
 
 function Arrow:PointToUnit(unit, options)
+	self.mode = "unit"
 	self.unit = unit
-	self.unitname = UnitName(unit)
-	self.unitclass = FS:GetClassColor(unit)
+	self:UpdateUnit()
 	self:SetOptions(options)
-	self:Show("unit")
+	self:Show()
 end
 
 function Arrow:PointToLocation(x, y, options)
+	self.mode = "location"
 	self.x, self.y = x, y
 	self:SetOptions(options)
-	self:Show("location")
+	self:Show()
+end
+
+function Arrow:PointToRaidTarget(index, options)
+	self.mode = "raidtarget"
+	self.raidtarget = index
+	self:SetOptions(options)
+	self:Show()
+end
+
+function Arrow:UpdateUnit()
+	self.unitname = UnitName(self.unit)
+	self.unitclass = FS:GetClassColor(self.unit)
 end
 
 function Arrow:SetOptions(options)
@@ -196,7 +230,9 @@ function Arrow:OnSlashCmd(arg1, arg2)
 		end
 	elseif UnitExists(arg1) then
 		self:PointToUnit(arg1)
-	elseif arg1 and arg2 then
+	elseif arg1 == "target" then
+		self:PointToRaidTarget(tonumber(arg2))
+	elseif tonumber(arg1) and tonumber(arg2) then
 		self:PointToLocation(tonumber(arg1), tonumber(arg2))
 	end
 end
@@ -207,11 +243,12 @@ function Arrow:FS_MSG(_, prefix, data, channel, sender)
 	local action = data.action or "nil"
 	if action == "show" then
 		if data.unit then
-			print("point to", data.unit)
 			self:PointToUnit(data.unit, data.options)
 		elseif data.location then
 			local x, y = unpack(data.location)
 			self:PointToLocation(x, y, data.options)
+		elseif data.raidtarget then
+			self:PointToRaidTarget(data.raidtarget, data.options)
 		end
 	elseif action == "hide" then
 		self:Hide()
