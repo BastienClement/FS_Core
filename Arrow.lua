@@ -174,6 +174,7 @@ do
 end
 
 function Arrow:PointToUnit(unit, options)
+	if self:IsVisible() then self:Hide() end
 	self.mode = "unit"
 	self.unit = unit
 	self:UpdateUnit()
@@ -182,6 +183,7 @@ function Arrow:PointToUnit(unit, options)
 end
 
 function Arrow:PointToLocation(x, y, options)
+	if self:IsVisible() then self:Hide() end
 	self.mode = "location"
 	self.x, self.y = x, y
 	self:SetOptions(options)
@@ -189,6 +191,7 @@ function Arrow:PointToLocation(x, y, options)
 end
 
 function Arrow:PointToRaidTarget(index, options)
+	if self:IsVisible() then self:Hide() end
 	self.mode = "raidtarget"
 	self.raidtarget = index
 	self:SetOptions(options)
@@ -218,7 +221,7 @@ function Arrow:SetOptions(options)
 	end
 	
 	-- Auto hide on arrival
-	options.auto_hide = options.auto_hide or true
+	options.auto_hide = options.auto_hide or false
 end
 
 function Arrow:OnSlashCmd(arg1, arg2)
