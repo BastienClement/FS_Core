@@ -40,22 +40,21 @@ function Arrow:OnEnable()
 	self.mode = "off"
 end
 
-function Arrow:Show()
-	if self.mode == "off" then
-		self:Print("Arrow module must be shown via PointTo[Unit|Location]() functions")
-		return
-	end
+function Arrow:Show(mode)
+	if self:IsVisible() then return end
+	self.mode = mode
+	self._tal = 0
 	self:OnUpdate()
 	self.ticker = C_Timer.NewTicker(1 / 30, function() self:OnUpdate() end)
 	anchor:Show()
-	self._tal = 0
 	self:SendMessage("FS_ARROW_VISIBLE", self)
 end
 
 function Arrow:Hide()
+	if not self:IsVisible() then return end
+	self.mode = "off"
 	anchor:Hide()
 	self.ticker:Cancel()
-	self.mode = "off"
 	self:SendMessage("FS_ARROW_HIDDEN", self)
 end
 
@@ -154,19 +153,17 @@ do
 end
 
 function Arrow:PointToUnit(unit, options)
-	self.mode = "unit"
 	self.unit = unit
 	self.unitname = UnitName(unit)
 	self.unitclass = FS:GetClassColor(unit)
 	self:SetOptions(options)
-	self:Show()
+	self:Show("unit")
 end
 
 function Arrow:PointToLocation(x, y, options)
-	self.mode = "location"
 	self.x, self.y = x, y
 	self:SetOptions(options)
-	self:Show()
+	self:Show("location")
 end
 
 function Arrow:SetOptions(options)
