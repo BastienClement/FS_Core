@@ -1,0 +1,5 @@
+externals:
+	LibStub: svn://svn.wowace.com/wow/libstub/mainline/trunk
+	CallbackHandler-1.0: svn://svn.wowace.com/wow/callbackhandler/mainline/trunk
+	Ace3: svn://svn.wowace.com/wow/ace3/mainline/trunk
+	LibGroupInSpecT-1.1: svn://svn.wowace.com/wow/libgroupinspect/mainline/trunk
