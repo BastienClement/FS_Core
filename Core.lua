@@ -51,7 +51,7 @@ do
 		wipe(guild_members)
 		for i = 1, GetNumGuildMembers() do
 			local name = self:NormalizeName(GetGuildRosterInfo(i))
-			guild_members[name] = true
+			if name then guild_members[name] = true end
 		end
 	end
 	
