@@ -37,8 +37,7 @@ function Network:OnCommReceived(prefix, text, channel, source)
 		local res, label, data = self:Deserialize(text)
 		if res then
 			self:SendMessage("FS_MSG", label, data or EMPTY_TABLE, channel, source)
-		else
-			self:SendMessage("FS_MSG_FAILED", label, channel, source)
+			self:SendMessage("FS_MSG_" .. label:upper(), data or EMPTY_TABLE, channel, source)
 		end
 	end
 end
