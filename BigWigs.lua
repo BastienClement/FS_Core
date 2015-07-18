@@ -46,6 +46,7 @@ local icons = setmetatable({}, {__index =
 })
 
 --------------------------------------------------------------------------------
+-- Module initialization
 
 function BW:OnEnable()
 	-- Force BigWigs loading
@@ -63,11 +64,13 @@ function BW:OnEnable()
 end
 
 function BW:ENCOUNTER_END()
-	self:CancelAll()
+	self:CancelAllActions()
+	self:CloseProximity()
 	BigWigs:SendMessage("BigWigs_StopBars", nil)
 end
 
 --------------------------------------------------------------------------------
+-- Action Scheduler
 
 do
 	local actions = {}
@@ -121,6 +124,7 @@ do
 end
 
 --------------------------------------------------------------------------------
+-- BigWigs bindings
 
 function BW:Message(key, msg, color)
 	BigWigs:SendMessage("BigWigs_Message", nil, key, msg, color)
@@ -180,7 +184,21 @@ do
 	end
 end
 
+-- Proximity
+function BW:Proximity(key, range, player, isReverse)
+	if type(key) == "number" then
+		BigWigs:SendMessage("BigWigs_ShowProximity", "fs", range, key, player, isReverse, spells[key], icons[key])
+	else
+		BigWigs:SendMessage("BigWigs_ShowProximity", "fs", range, nil, player, isReverse)
+	end
+end
+
+function BW:CloseProximity(key)
+	BigWigs:SendMessage("BigWigs_HideProximity", "fs")
+end
+
 --------------------------------------------------------------------------------
+-- Messaging API
 
 do
 	local function execute_action(action, ...)
