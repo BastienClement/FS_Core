@@ -157,7 +157,7 @@ do
 		-- Save the text for canceling
 		bar_text[key] = text
 		self:ScheduleAction(key, length, function()
-			bar_texts[key] = nil
+			bar_text[key] = nil
 		end)
 	end
 
