@@ -3,6 +3,9 @@ local _, FS = ...
 local Arrow = FS:RegisterModule("Arrow")
 local Map, Console
 
+--------------------------------------------------------------------------------
+-- Frames
+
 -- Anchor
 local anchor = CreateFrame("Button", "FSArrow", UIParent)
 anchor:Hide()
@@ -28,6 +31,9 @@ text:SetFont(STANDARD_TEXT_FONT, 20)
 text:SetShadowColor(0, 0, 0)
 text:SetShadowOffset(1, -2)
 text:SetPoint("TOP", arrow, "BOTTOM", 0, -7)
+
+--------------------------------------------------------------------------------
+-- Module initialization
 
 function Arrow:OnInitialize()
 	Map = FS:GetModule("Map")
@@ -67,6 +73,9 @@ function Arrow:IsVisible()
 	return self.visible
 end
 
+--------------------------------------------------------------------------------
+-- Display
+
 function Arrow:GetDirection()
 	if self.mode == "unit" then
 		return Map:GetPlayerDirection(UnitPosition(self.unit))
@@ -77,6 +86,7 @@ function Arrow:GetDirection()
 			self.unit = nil
 			if IsInRaid() then
 				for i = 1, GetNumGroupMembers() do
+					-- FIXME: raidtarget mode will not work in 5-players groups
 					local unit = "raid" .. i
 					if GetRaidTargetIndex(unit) == self.raidtarget then
 						self.unit = unit
@@ -109,7 +119,7 @@ do
 			return
 		end
 		
-		if distance < 3 then
+		if distance < self.options.near then
 			-- Transition Pointed -> Down
 			if not showDownArrow then
 				anchor:SetHeight(65)
@@ -119,7 +129,7 @@ do
 			
 			-- Hide on arrival
 			self._tal = self._tal + 1
-			if self._tal > 50 and self.options.auto_hide then
+			if self._tal > 50 and self.options.autohide then
 				self:Hide()
 				return
 			end
@@ -173,6 +183,9 @@ do
 	end
 end
 
+--------------------------------------------------------------------------------
+-- API
+
 function Arrow:PointToUnit(unit, options)
 	if self:IsVisible() then self:Hide() end
 	self.mode = "unit"
@@ -198,6 +211,7 @@ function Arrow:PointToRaidTarget(index, options)
 	self:Show()
 end
 
+-- Update name and class of the pointed unit
 function Arrow:UpdateUnit()
 	self.unitname = UnitName(self.unit)
 	self.unitclass = FS:GetClassColor(self.unit)
@@ -221,8 +235,18 @@ function Arrow:SetOptions(options)
 	end
 	
 	-- Auto hide on arrival
-	options.auto_hide = options.auto_hide or false
+	if options.autohide == nil then
+		options.autohide = false
+	end
+	
+	-- The "near" threshold
+	if options.near == nil then
+		options.near = 2
+	end
 end
+
+--------------------------------------------------------------------------------
+-- Slash command handler
 
 function Arrow:OnSlash(arg1, arg2)
 	if not arg1 then
@@ -240,11 +264,17 @@ function Arrow:OnSlash(arg1, arg2)
 	end
 end
 
+--------------------------------------------------------------------------------
+-- Network messages handler
+
 function Arrow:FS_MSG_ARROW(_, prefix, data, channel, sender)
 	-- Require the sender to be in the raid group
 	if not FS:UnitIsTrusted(sender) then return end
-	local action = data.action or "nil"
+	
+	local action = data.action
+	
 	if action == "show" then
+		-- Display the arrow
 		if data.unit then
 			self:PointToUnit(data.unit, data.options)
 		elseif data.location then
@@ -253,9 +283,12 @@ function Arrow:FS_MSG_ARROW(_, prefix, data, channel, sender)
 		elseif data.raidtarget then
 			self:PointToRaidTarget(data.raidtarget, data.options)
 		end
+	
 	elseif action == "hide" then
+		-- Hide the arrow
 		self:Hide()
 	else
-		self:Print("Unknown action: " .. action)
+		-- Unknown action
+		self:Print("Unknown action: " .. (action or "nil"))
 	end
 end
