@@ -56,7 +56,7 @@ function Arrow:Show()
 	self.visible = true
 	anchor:Show()
 	self:SendMessage("FS_ARROW_VISIBLE", self)
-	self.ticker = C_Timer.NewTicker(1 / 30, function() self:OnUpdate() end)
+	self.ticker = C_Timer.NewTicker(0.035, function() self:OnUpdate() end)
 	self:OnUpdate()
 end
 

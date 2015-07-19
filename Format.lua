@@ -21,12 +21,21 @@ function FS:FormatNumber(value, decimal, pattern)
 	return (pattern or "%s%s"):format(self:ShortenNumber(value, decimal))
 end
 
-function FS:GetClassColor(unit)
+function FS:GetClassColor(unit, components)
 	local target_class = select(2, UnitClass(unit))
 	if target_class then
-		return RAID_CLASS_COLORS[target_class].colorStr
+		if components then
+			local color = RAID_CLASS_COLORS[target_class]
+			return color.r, color.g, color.b
+		else
+			return RAID_CLASS_COLORS[target_class].colorStr
+		end
 	else
-		return "ffffffff"
+		if components then
+			return 1, 1, 1
+		else
+			return "ffffffff"
+		end
 	end
 end
 
