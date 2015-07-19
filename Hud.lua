@@ -20,12 +20,6 @@ function Hud:OnInitialize()
 	self.objects = {}
 	self.num_objs = 0
 	self.visible = false
-	
-	-- Projection settings
-	self.px = 0
-	self.py = 0
-	self.sin = 0
-	self.cos = 0
 end
 
 function Hud:OnEnable()
@@ -64,36 +58,39 @@ function Hud:Hide()
 	self:Clear()
 end
 
-function Hud:Project(x, y)
-	local dx = self.px - x
-	local dy = self.py - y
-	local rx = dx * self.cos + dy * self.sin
-	local ry = -dx * self.sin + dy * self.cos
-	return rx, ry
-end
-
-function Hud:OnUpdate()
-	-- Nothing to draw, auto-hide
-	if self.num_objs == 0 then
-		self:Hide()
-		return
+do
+	local px = 0
+	local py = 0
+	local sin_t = 0
+	local cos_t = 0
+	local zoom = 10
+	
+	function Hud:SetZoom(z)
+		zoom = z
 	end
 	
-	self.px, self.py = UnitPosition("player")
-	local t = GetPlayerFacing() + pi_2
-	self.cos = cos(t)
-	self.sin = sin(t)
-	
-	for obj in next, self.objects do
-		local x, y = obj:Position()
-		if not x then
-			obj:Remove()
-		else
-			if obj.Update then
-				obj:Update()
-			end
-			local rx, ry = self:Project(x, y)
-			obj.frame:SetPoint("CENTER", hud, "CENTER", rx * 10, ry * 10)
+	function Hud:Project(x, y)
+		local dx = px - x
+		local dy = py - y
+		local rx = dx * cos_t + dy * sin_t
+		local ry = -dx * sin_t + dy * cos_t
+		return rx * zoom, ry * zoom
+	end
+
+	function Hud:OnUpdate()
+		-- Nothing to draw, auto-hide
+		if self.num_objs == 0 then
+			self:Hide()
+			return
+		end
+		
+		px, py = UnitPosition("player")
+		local t = GetPlayerFacing() + pi_2
+		cos_t = cos(t)
+		sin_t = sin(t)
+		
+		for obj in next, self.objects do
+			obj:Update()
 		end
 	end
 end
@@ -139,7 +136,6 @@ local HudObject = {}
 function HudObject:Init() end
 function HudObject:Position() end
 
--- Alias to Hud:RemoveObject()
 function HudObject:Remove()
 	Hud:RemoveObject(self)
 end
@@ -155,6 +151,23 @@ end
 
 function HudObject:SetTexColor(r, g, b)
 	self.tex:SetVertexColor(r, g, b)
+end
+
+function HudObject:Update()
+	local x, y = self:Position()
+	if not x then
+		self:Remove()
+	else
+		if obj.OnUpdate then
+			obj:OnUpdate()
+		end
+		self:Draw(x, y)
+	end
+end
+
+function HudObject:Draw(x, y)
+	local rx, ry = Hud:Project(x, y)
+	obj.frame:SetPoint("CENTER", hud, "CENTER", rx, ry)
 end
 
 function Hud:CreateObject(proto)
@@ -241,11 +254,11 @@ do
 			return UnitPosition(unit)
 		end
 		
-		-- Track user raid target icon
+		-- Track user raid target icon and class color
 		local display_rt = nil
 		local display_class = nil
 		
-		function point:Update()
+		function point:OnUpdate()
 			local rt = GetRaidTargetIndex(unit)
 			if display_rt ~= rt then
 				if rt then
@@ -272,6 +285,11 @@ do
 		end
 		
 		return point
+	end
+	
+	-- Draw the player dot
+	function Hud:DrawPlayer()
+		self:DrawUnit("player")
 	end
 	
 	-- Draw all units of the raid
