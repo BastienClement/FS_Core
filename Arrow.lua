@@ -36,7 +36,7 @@ function Arrow:OnInitialize()
 end
 
 function Arrow:OnEnable()
-	self:RegisterMessage("FS_MSG")
+	self:RegisterMessage("FS_MSG_ARROW")
 	self.visible = false
 end
 
@@ -67,11 +67,11 @@ function Arrow:IsVisible()
 	return self.visible
 end
 
-function Arrow:GetDistance()
+function Arrow:GetDirection()
 	if self.mode == "unit" then
-		return Map:GetDistance(UnitPosition(self.unit))
+		return Map:GetPlayerDirection(UnitPosition(self.unit))
 	elseif self.mode == "location" then
-		return Map:GetDistance(self.x, self.y)
+		return Map:GetPlayerDirection(self.x, self.y)
 	elseif self.mode == "raidtarget" then
 		if not self.unit or GetRaidTargetIndex(self.unit) ~= self.raidtarget then
 			self.unit = nil
@@ -87,7 +87,7 @@ function Arrow:GetDistance()
 			end
 		end
 		if not self.unit then return end
-		return Map:GetDistance(UnitPosition(self.unit))
+		return Map:GetPlayerDirection(UnitPosition(self.unit))
 	end
 end
 
@@ -102,8 +102,8 @@ do
 	local label_format = "%s\n|cffffe359%d yd|r"
 	
 	function Arrow:OnUpdate(dt)
-		-- Fetch distance and direction
-		local distance, direction = self:GetDistance()
+		-- Fetch distance and angle
+		local distance, angle = self:GetDirection()
 		if not distance then
 			self:Hide()
 			return
@@ -148,7 +148,7 @@ do
 				self._tal = 0
 			end
 			
-			local cell = floor(direction / pi2 * 108 + 0.5) % 108
+			local cell = floor(angle / pi2 * 108 + 0.5) % 108
 			
 			if cell ~= currentCell then
 				currentCell = cell
@@ -224,7 +224,7 @@ function Arrow:SetOptions(options)
 	options.auto_hide = options.auto_hide or false
 end
 
-function Arrow:OnSlashCmd(arg1, arg2)
+function Arrow:OnSlash(arg1, arg2)
 	if not arg1 then
 		if self:IsVisible() then
 			self:Hide()
@@ -240,9 +240,9 @@ function Arrow:OnSlashCmd(arg1, arg2)
 	end
 end
 
-function Arrow:FS_MSG(_, prefix, data, channel, sender)
+function Arrow:FS_MSG_ARROW(_, prefix, data, channel, sender)
 	-- Require the sender to be in the raid group
-	if prefix ~= "Arrow" or not FS:UnitIsTrusted(sender) then return end
+	if not FS:UnitIsTrusted(sender) then return end
 	local action = data.action or "nil"
 	if action == "show" then
 		if data.unit then
