@@ -23,6 +23,7 @@ function Hud:OnInitialize()
 end
 
 function Hud:OnEnable()
+	self:RegisterEvent("GROUP_ROSTER_UPDATE")
 end
 
 function Hud:OnDisable()
@@ -31,15 +32,280 @@ function Hud:OnDisable()
 end
 
 --------------------------------------------------------------------------------
+-- Object frame pool
+
+do
+	local pool = {}
+	
+	local function normalize(frame, use_tex)
+		frame:SetFrameStrata("BACKGROUND")
+		frame:ClearAllPoints()
+		
+		frame.tex:SetAllPoints()
+		if use_tex then
+			frame.tex:Show()
+		else
+			frame.tex:Hide()
+		end
+		
+		frame:Show()
+		return frame
+	end
+	
+	-- Recycle an old frame or allocate a new one
+	function Hud:AllocObjFrame(use_tex)
+		if #pool > 0 then
+			return normalize(table.remove(pool), use_tex)
+		else
+			local frame = CreateFrame("Frame", nil, hud)
+			frame.tex = frame:CreateTexture(nil, "OVERLAY")
+			return normalize(frame, use_tex)
+		end
+	end
+	
+	-- Put the given frame back in the pool
+	function Hud:ReleaseObjFrame(frame)
+		frame:Hide()
+		table.insert(pool, tex)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Points
+
+do
+	local points = {}
+	local aliases = {}
+
+	-- Construct a point
+	function Hud:CreatePoint()
+		local point = { __is_point = true }
+		
+		point.aliases = {}
+		point.attached = {}
+		
+		point.frame = Hud:AllocObjFrame(true)
+		point.tex = point.frame.tex
+		
+		point.frame:SetSize(16, 16)
+		point.tex:SetTexture("Interface\\AddOns\\BigWigs\\Textures\\blip")
+		point.tex:SetVertexColor(1, 1, 1, 0)
+		
+		point.x = 0
+		point.y = 0
+		
+		-- Define the corresponding unit
+		function point:SetUnit(unit)
+			self.unit = unit
+		end
+		
+		-- Change the point color
+		function point:SetColor(...)
+			self.tex:SetVertexColor(...)
+		end
+		
+		-- Update the point position
+		function point:Update()
+			-- Fetch point position
+			local x, y = self:Position()
+			if not x then return end
+			
+			-- Project point
+			self.real_x, self.real_y = x, y
+			x, y = Hud:Project(x, y)
+			
+			-- Save
+			self.x = x
+			self.y = y
+			
+			-- Place the point
+			self.frame:SetPoint("CENTER", hud, "CENTER", x, y)
+			
+			-- Unit raid target icon and class color
+			if self.unit then
+				local rt = GetRaidTargetIndex(self.unit)
+				if self.unit_rt ~= rt then
+					if rt then
+						self.frame:SetSize(24, 24)
+						self.tex:SetTexture("Interface\\TARGETINGFRAME\\UI-RaidTargetingIcon_" .. rt .. ".blp")
+						self.tex:SetVertexColor(1, 1, 1)
+						self.unit_class = nil
+					elseif not rt then
+						self.frame:SetSize(16, 16)
+						self.tex:SetTexture("Interface\\AddOns\\BigWigs\\Textures\\blip")
+						self.tex:SetVertexColor(0.5, 0.5, 0.5)
+					end
+					self.unit_rt = rt
+				end
+				
+				local class = UnitClass(self.unit)
+				if not rt and self.unit_class ~= class then
+					self.tex:SetVertexColor(FS:GetClassColor(self.unit, true))
+					self.unit_class = class
+				end
+			end
+		end
+		
+		-- Attach an object to this point
+		-- The object will be :Remove()'ed when this point is removed.
+		function point:AttachObject(obj)
+			if not self.attached[obj] then
+				self.attached[obj] = true
+			end
+		end
+		
+		-- Remove the point and any attached objects
+		local removed = false
+		function point:Remove()
+			-- Ensure the function is not called two times
+			if removed then return end
+			removed = true
+			
+			-- Release frame
+			Hud:ReleaseObjFrame(self.frame)
+			
+			-- Point itself
+			points[self.name] = nil
+			
+			-- Any aliases
+			for _, alias in ipairs(self.aliases) do
+				-- Check that the alias is actually pointing to self
+				if aliases[alias] == self then
+					aliases[alias] = nil
+				end
+			end
+			
+			-- Remove attached objects
+			for obj in pairs(self.attached) do
+				obj:Remove()
+			end
+		end
+		
+		-- Detach an object
+		function point:DetachObject(obj)
+			-- Do not remove object once the point deletion process has started
+			if removed then return end
+			self.attached[obj] = nil
+		end
+		
+		-- Register the point with the HUD
+		function point:Register(...)
+			Hud:SetPoint(self, ...)
+		end
+		
+		return point
+	end
+	
+	-- Iterates over all points
+	function Hud:IteratePoints()
+		return pairs(points)
+	end
+	
+	-- Define a point
+	function Hud:SetPoint(point, name, ...)
+		-- Generate a random name if anonymous
+		if not name then
+			name = tostring(GetTime()) + tostring(math.random())
+		end
+		
+		if points[name] then return end
+		
+		point.name = name
+		points[name] = point
+		
+		if ... then
+			local als = { ... }
+			for _, alias in ipairs(als) do
+				aliases[alias] = point
+				table.insert(point.aliases, alias)
+			end
+		end
+		
+		return point
+	end
+	
+	-- Define a static point
+	function Hud:SetStaticPoint(x, y, ...)
+		local pt = self:CreatePoint()
+		function pt:Position() return x, y end
+		return self:SetPoint(pt, ...)
+	end
+	
+	-- Return a point
+	function Hud:GetPoint(name)
+		if name.__is_point then return name end
+		return points[name] or aliases[name]
+	end
+	
+	-- Find point position
+	function Hud:GetPointPosition(name)
+		local pt = self:GetPoint(name)
+		if pt then
+			return pt.real_x or 0, pt.real_y or 0
+		end
+	end
+	
+	-- Remove a point
+	function Hud:RemovePoint(name)
+		local pt = self:GetPoint(name)
+		if pt then
+			pt:Remove()
+		end
+	end
+end
+
+-- Automatically create points for raid units
+do
+	-- Player point
+	local player_pt = Hud:CreatePoint()
+	player_pt:SetUnit("player")
+	function player_pt:Position()
+		return UnitPosition("player")
+	end
+	player_pt:Register("player", UnitName("player"), UnitGUID("player"))
+	
+	-- Raid members points
+	local raid_pts = {}
+	function Hud:GROUP_ROSTER_UPDATE()
+		-- Do not update if encounter is in progress
+		if FS:EncounterInProgress() then return end
+		
+		-- Remove old raid points
+		for _, pt in pairs(raid_pts) do
+			pt:Remove()
+		end
+		wipe(raid_pts)
+		
+		-- Reconstruct
+		if IsInRaid() then
+			for i = 1, GetNumGroupMembers() do
+				local unit = "raid" .. i
+				-- Player unit is always present
+				if not UnitIsUnit(unit, "player") then
+					local pt = Hud:CreatePoint()
+					pt:SetUnit(unit)
+					function pt:Position()
+						return UnitPosition(unit)
+					end
+					pt:Register(unit, UnitName(unit), UnitGUID(unit))
+				end
+			end
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
 -- Visibility and updates
 
-function Hud:Show()
+function Hud:Show(force)
 	if self.visible then return end
 	self:Print("activating HUD display")
 	self.visible = true
+	self.force = force
 	hud:SetAllPoints()
 	hud:Show()
 	self.ticker = C_Timer.NewTicker(0.035, function() self:OnUpdate() end)
+	self:GROUP_ROSTER_UPDATE()
 	self:OnUpdate()
 end
 
@@ -73,52 +339,26 @@ do
 
 	function Hud:OnUpdate()
 		-- Nothing to draw, auto-hide
-		if self.num_objs == 0 then
+		if not self.force and self.num_objs == 0 then
 			self:Hide()
 			return
 		end
 		
+		-- Fetch player position and facing for projection
 		px, py = UnitPosition("player")
 		local t = GetPlayerFacing() + pi_2
 		cos_t = cos(t)
 		sin_t = sin(t)
 		
+		-- Update all points
+		for name, obj in self:IteratePoints() do
+			obj:Update()
+		end
+		
+		-- Update all objects
 		for obj in next, self.objects do
 			obj:Update()
 		end
-	end
-end
-
---------------------------------------------------------------------------------
--- Object frame pool
-
-do
-	local pool = {}
-	
-	local function normalize(frame)
-		frame:SetFrameStrata("BACKGROUND")
-		frame:ClearAllPoints()
-		
-		frame.tex:SetAllPoints()
-		frame.tex:Hide()
-		
-		frame:Show()
-		return frame
-	end
-	
-	function Hud:AllocObjFrame()
-		if #pool > 0 then
-			return normalize(table.remove(pool))
-		else
-			local frame = CreateFrame("Frame", nil, hud)
-			frame.tex = frame:CreateTexture(nil, "OVERLAY")
-			return normalize(frame)
-		end
-	end
-	
-	function Hud:ReleaseObjFrame(frame)
-		frame:Hide()
-		table.insert(pool, tex)
 	end
 end
 
@@ -127,62 +367,43 @@ end
 
 local HudObject = {}
 
-function HudObject:Init() end
-function HudObject:Position() end
-
 function HudObject:Remove()
 	Hud:RemoveObject(self)
 end
 
-function HudObject:SetSize(w, h)
-	self.frame:SetSize(w, h)
+function HudObject:UsePoint(name)
+	local pt = Hud:GetPoint(name)
+	if pt then
+		table.insert(self.attached, pt)
+		pt:AttachObject(self)
+	end
+	return pt
 end
 
-function HudObject:SetTex(path)
-	self.tex:SetTexture(path)
-	self.tex:Show()
-end
-
-function HudObject:SetTexColor(...)
+function HudObject:SetColor(...)
 	self.tex:SetVertexColor(...)
 end
 
-function HudObject:Update()
-	if self.OnUpdate then
-		self:OnUpdate()
-	end
-	self:Draw()
-end
-
-function HudObject:Draw()
-	local x, y = self:Position()
-	if not x then
-		self:Remove()
-		return
-	end
-	self.frame:SetPoint("CENTER", hud, "CENTER", Hud:Project(x, y))
-end
-
-function Hud:CreateObject(proto)
-	return setmetatable(proto or {}, { __index = HudObject })
+function Hud:CreateObject(proto, ...)
+	return self:AddObject(setmetatable(proto or {}, { __index = HudObject }), ...)
 end
 
 --------------------------------------------------------------------------------
 -- Scene management
 
 -- Add a new object to the scene
-function Hud:AddObject(obj)
+function Hud:AddObject(obj, use_tex)
 	if self.objects[obj] then return obj end
 	if obj._destroyed then error("Cannot add a destroyed object") end
 	
 	self.objects[obj] = true
 	self.num_objs = self.num_objs + 1
 	
-	obj.frame = Hud:AllocObjFrame()
+	obj.frame = Hud:AllocObjFrame(use_tex)
 	obj.tex = obj.frame.tex
+	obj.attached = {}
 	
-	obj:Init()
-	Hud:Show()
+	C_Timer.After(0, function() Hud:Show() end)
 	return obj
 end
 
@@ -190,6 +411,10 @@ end
 function Hud:RemoveObject(obj)
 	if not self.objects[obj] then return end
 	obj._destroyed = true
+	
+	for i, pt in ipairs(obj.attached) do
+		pt:DetachObject(obj)
+	end
 	
 	self.objects[obj] = nil
 	self.num_objs = self.num_objs - 1
@@ -208,31 +433,6 @@ end
 --------------------------------------------------------------------------------
 -- API
 
--- Point
-do
-	local gray = { 0.5, 0.5, 0.5 }
-	
-	function Hud:DrawPoint(x, y, color)
-		local p = self:CreateObject({
-			x = x or 0,
-			y = y or 0,
-			color = color or gray
-		})
-		
-		function p:Init()
-			self:SetSize(16, 16)
-			self:SetTex("Interface\\AddOns\\BigWigs\\Textures\\blip")
-			self:SetTexColor(unpack(self.color))
-		end
-		
-		function p:Position()
-			return self.x, self.y
-		end
-		
-		return self:AddObject(p)
-	end
-end
-
 -- Line
 do
 	local gray = { 0.5, 0.5, 0.5 }
@@ -240,25 +440,21 @@ do
 	local TAXIROUTE_LINEFACTOR = 32 / 30
 	local TAXIROUTE_LINEFACTOR_2 = TAXIROUTE_LINEFACTOR / 2
 
-	function Hud:DrawLine(sx, sy, ex, ey, width, color)
-		local l = self:CreateObject({
-			sx = sx or 0,
-			sy = sy or 0,
-			ex = ex or 0,
-			ey = ey or 0,
+	function Hud:DrawLine(from, to, width, color)
+		local line = self:CreateObject({
 			width = width or 32,
 			color = color or gray
-		})
+		}, true)
 		
-		function l:Init()
-			--self:SetTex("Interface\\TaxiFrame\\UI-Taxi-Line")
-			self:SetTex("Interface\\AddOns\\FS_Core\\media\\line")
-			self:SetTexColor(unpack(self.color))
-		end
+		from = line:UsePoint(from)
+		to = line:UsePoint(to)
 		
-		function l:Draw()
-			local sx, sy = Hud:Project(self.sx, self.sy)
-			local ex, ey = Hud:Project(self.ex, self.ey)
+		line.tex:SetTexture("Interface\\AddOns\\FS_Core\\media\\line")
+		line.tex:SetVertexColor(unpack(line.color))
+		
+		function line:Update()
+			local sx, sy = from.x, from.y
+			local ex, ey = to.x, to.y
 			
 			-- Determine dimensions and center point of line
 			local dx, dy = ex - sx, ey - sy
@@ -308,72 +504,6 @@ do
 			self.tex:SetTexCoord(TLx, TLy, BLx, BLy, TRx, TRy, BRx, BRy)
 		end
 		
-		return self:AddObject(l)
-	end
-end
-
--- Units
-do
-	-- Currently drawn units
-	local active_units = {}
-	
-	-- Draw a specific unit
-	function Hud:DrawUnit(unit)
-		local guid = UnitGUID(unit)
-		if active_units[guid] then return end
-		
-		local point = self:DrawPoint(0, 0, { FS:GetClassColor(unit, true) })
-		active_units[guid] = point
-		
-		-- Overload the Point.Position function
-		function point:Position()
-			return UnitPosition(unit)
-		end
-		
-		-- Track user raid target icon and class color
-		local display_rt = -1
-		local display_class = nil
-		
-		function point:OnUpdate()
-			local rt = GetRaidTargetIndex(unit)
-			if display_rt ~= rt then
-				if rt then
-					point:SetSize(24, 24)
-					point:SetTex("Interface\\TARGETINGFRAME\\UI-RaidTargetingIcon_" .. rt .. ".blp")
-					point:SetTexColor(1, 1, 1)
-					display_class = nil
-				elseif not rt then
-					point:SetSize(16, 16)
-					point:SetTex("Interface\\AddOns\\BigWigs\\Textures\\blip")
-				end
-				display_rt = rt
-			end
-			
-			local class = UnitClass(unit)
-			if not rt and display_class ~= class then
-				point:SetTexColor(FS:GetClassColor(unit, true))
-				display_class = class
-			end
-		end
-		
-		function point:OnRemove()
-			active_units[guid] = nil
-		end
-		
-		return point
-	end
-	
-	-- Draw the player dot
-	function Hud:DrawPlayer()
-		self:DrawUnit("player")
-	end
-	
-	-- Draw all units of the raid
-	function Hud:DrawAllUnits()
-		if IsInRaid() then
-			for i = 1, GetNumGroupMembers() do
-				self:DrawUnit("raid" .. i)
-			end
-		end
+		return line
 	end
 end

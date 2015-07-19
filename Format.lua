@@ -26,13 +26,13 @@ function FS:GetClassColor(unit, components)
 	if target_class then
 		if components then
 			local color = RAID_CLASS_COLORS[target_class]
-			return color.r, color.g, color.b
+			return color.r, color.g, color.b, 1
 		else
 			return RAID_CLASS_COLORS[target_class].colorStr
 		end
 	else
 		if components then
-			return 1, 1, 1
+			return 1, 1, 1, 1
 		else
 			return "ffffffff"
 		end
