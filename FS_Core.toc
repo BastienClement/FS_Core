@@ -1,7 +1,7 @@
 ## Interface: 60200
 ## Title: |cff64b4ffFrom Scratch|r Core
-## SavedVariables: FSSettings
-## OptionalDeps: LibStub, CallbackHandler-1.0, Ace3, LibGroupInSpecT-1.1, BigWigs
+## SavedVariables: FSDB
+## OptionalDeps: LibStub, CallbackHandler-1.0, Ace3, LibGroupInSpecT-1.1, LibGraph-2.0, BigWigs
 
 #@no-lib-strip@
 LibStub\LibStub.lua
@@ -21,13 +21,16 @@ Ace3\AceComm-3.0\AceComm-3.0.xml
 Ace3\AceTab-3.0\AceTab-3.0.xml
 Ace3\AceSerializer-3.0\AceSerializer-3.0.xml
 LibGroupInSpecT-1.1\LibGroupInSpecT-1.1.lua
+LibGraph-2.0\LibGraph-2.0\LibGraph-2.0.lua
 #@end-no-lib-strip@
 
 Core.lua
 
+Format.lua
 Network.lua
+Console.lua
+
+Map.lua
 Arrow.lua
 BigWigs.lua
-Console.lua
-Format.lua
-Map.lua
+Hud.lua
