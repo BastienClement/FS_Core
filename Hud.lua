@@ -42,6 +42,7 @@ do
 		frame:ClearAllPoints()
 		
 		frame.tex:SetAllPoints()
+		frame.tex:SetDrawLayer("ARTWORK")
 		if use_tex then
 			frame.tex:Show()
 		else
@@ -58,7 +59,7 @@ do
 			return normalize(table.remove(pool), use_tex)
 		else
 			local frame = CreateFrame("Frame", nil, hud)
-			frame.tex = frame:CreateTexture(nil, "OVERLAY")
+			frame.tex = frame:CreateTexture(nil, "ARTWORK")
 			return normalize(frame, use_tex)
 		end
 	end
@@ -78,11 +79,28 @@ do
 	local aliases = {}
 
 	-- Construct a point
-	function Hud:CreatePoint()
+	function Hud:CreatePoint(name, ...)
+		-- Generate a random name if anonymous
+		if not name then
+			name = tostring(GetTime()) + tostring(math.random())
+		end
+		
+		if points[name] then return points[name] end
+		
 		local point = { __is_point = true }
 		
+		point.name = name
+		points[name] = point
+		
 		point.aliases = {}
-		point.attached = {}
+		
+		if ... then
+			local als = { ... }
+			for _, alias in ipairs(als) do
+				aliases[alias] = pointd
+				table.insert(point.aliases, alias)
+			end
+		end
 		
 		point.frame = Hud:AllocObjFrame(true)
 		point.tex = point.frame.tex
@@ -90,9 +108,12 @@ do
 		point.frame:SetSize(16, 16)
 		point.tex:SetTexture("Interface\\AddOns\\BigWigs\\Textures\\blip")
 		point.tex:SetVertexColor(1, 1, 1, 0)
+		point.tex:SetDrawLayer("OVERLAY")
 		
 		point.x = 0
 		point.y = 0
+		
+		point.attached = {}
 		
 		-- Define the corresponding unit
 		function point:SetUnit(unit)
@@ -100,8 +121,8 @@ do
 		end
 		
 		-- Change the point color
-		function point:SetColor(...)
-			self.tex:SetVertexColor(...)
+		function point:SetColor(r, g, b, a)
+			self.tex:SetVertexColor(r, g, b, a or 1)
 		end
 		
 		-- Update the point position
@@ -188,47 +209,19 @@ do
 			self.attached[obj] = nil
 		end
 		
-		-- Register the point with the HUD
-		function point:Register(...)
-			Hud:SetPoint(self, ...)
-		end
-		
 		return point
+	end
+	
+	-- Create a static point
+	function Hud:CreateStaticPoint(x, y, ...)
+		local pt = self:CreatePoint(...)
+		function pt:Position() return x, y end
+		return pt
 	end
 	
 	-- Iterates over all points
 	function Hud:IteratePoints()
 		return pairs(points)
-	end
-	
-	-- Define a point
-	function Hud:SetPoint(point, name, ...)
-		-- Generate a random name if anonymous
-		if not name then
-			name = tostring(GetTime()) + tostring(math.random())
-		end
-		
-		if points[name] then return end
-		
-		point.name = name
-		points[name] = point
-		
-		if ... then
-			local als = { ... }
-			for _, alias in ipairs(als) do
-				aliases[alias] = point
-				table.insert(point.aliases, alias)
-			end
-		end
-		
-		return point
-	end
-	
-	-- Define a static point
-	function Hud:SetStaticPoint(x, y, ...)
-		local pt = self:CreatePoint()
-		function pt:Position() return x, y end
-		return self:SetPoint(pt, ...)
 	end
 	
 	-- Return a point
@@ -242,6 +235,8 @@ do
 		local pt = self:GetPoint(name)
 		if pt then
 			return pt.real_x or 0, pt.real_y or 0
+		else
+			return 0, 0
 		end
 	end
 	
@@ -257,18 +252,20 @@ end
 -- Automatically create points for raid units
 do
 	-- Player point
-	local player_pt = Hud:CreatePoint()
+	local player_pt = Hud:CreatePoint("player", UnitName("player"), UnitGUID("player"))
 	player_pt:SetUnit("player")
+	player_pt.frame:SetFrameStrata("HIGH")
 	function player_pt:Position()
 		return UnitPosition("player")
 	end
-	player_pt:Register("player", UnitName("player"), UnitGUID("player"))
 	
 	-- Raid members points
 	local raid_pts = {}
+	local first_done = false
 	function Hud:GROUP_ROSTER_UPDATE()
 		-- Do not update if encounter is in progress
-		if FS:EncounterInProgress() then return end
+		if first_done and FS:EncounterInProgress() then return end
+		first_done = true
 		
 		-- Remove old raid points
 		for _, pt in pairs(raid_pts) do
@@ -282,12 +279,12 @@ do
 				local unit = "raid" .. i
 				-- Player unit is always present
 				if not UnitIsUnit(unit, "player") then
-					local pt = Hud:CreatePoint()
+					local pt = Hud:CreatePoint(unit, UnitName(unit), UnitGUID(unit))
 					pt:SetUnit(unit)
 					function pt:Position()
 						return UnitPosition(unit)
 					end
-					pt:Register(unit, UnitName(unit), UnitGUID(unit))
+					raid_pts[unit] = pt
 				end
 			end
 		end
@@ -435,22 +432,14 @@ end
 
 -- Line
 do
-	local gray = { 0.5, 0.5, 0.5 }
-	
-	local TAXIROUTE_LINEFACTOR = 32 / 30
-	local TAXIROUTE_LINEFACTOR_2 = TAXIROUTE_LINEFACTOR / 2
-
-	function Hud:DrawLine(from, to, width, color)
-		local line = self:CreateObject({
-			width = width or 32,
-			color = color or gray
-		}, true)
+	function Hud:DrawLine(from, to, width)
+		local line = self:CreateObject({ width = width or 32 }, true)
 		
 		from = line:UsePoint(from)
 		to = line:UsePoint(to)
 		
 		line.tex:SetTexture("Interface\\AddOns\\FS_Core\\media\\line")
-		line.tex:SetVertexColor(unpack(line.color))
+		line.tex:SetVertexColor(0.5, 0.5, 0.5, 1)
 		
 		function line:Update()
 			local sx, sy = from.x, from.y
@@ -485,14 +474,14 @@ do
 			-- Calculate bounding box size and texture coordinates
 			local Bwid, Bhgt, BLx, BLy, TLx, TLy, TRx, TRy, BRx, BRy
 			if dy >= 0 then
-				Bwid = ((l * c) - (w * s)) * TAXIROUTE_LINEFACTOR_2
-				Bhgt = ((w * c) - (l * s)) * TAXIROUTE_LINEFACTOR_2
+				Bwid = ((l * c) - (w * s)) / 2
+				Bhgt = ((w * c) - (l * s)) / 2
 				BLx, BLy, BRy = (w / l) * sc, s * s, (l / w) * sc
 				BRx, TLx, TLy, TRx = 1 - BLy, BLy, 1 - BRy, 1 - BLx
 				TRy = BRx;
 			else
-				Bwid = ((l * c) + (w * s)) * TAXIROUTE_LINEFACTOR_2
-				Bhgt = ((w * c) + (l * s)) * TAXIROUTE_LINEFACTOR_2
+				Bwid = ((l * c) + (w * s)) / 2
+				Bhgt = ((w * c) + (l * s)) / 2
 				BLx, BLy, BRx = s * s, -(l / w) * sc, 1 + (w / l) * sc
 				BRy, TLx, TLy, TRy = BLx, 1 - BRx, 1 - BLx, 1 - BLy
 				TRx = TLy
@@ -506,4 +495,24 @@ do
 		
 		return line
 	end
+end
+
+function Hud:DrawCircle(center, radius)
+	
+end
+
+function Hud:DrawAoE(center, radius)
+	local aoe = self:CreateObject({ radius = radius or 10 }, true)
+	
+	center = aoe:UsePoint(center)
+	
+	line.tex:SetTexture("Interface\\AddOns\\FS_Core\\media\\line")
+	line.tex:SetVertexColor(0.5, 0.5, 0.5, 1)
+end
+
+function FS_TEST()
+	local x, y = UnitPosition("player")
+	local pt = Hud:CreateStaticPoint(x, y, "foo")
+	pt:SetColor(0.5, 0.5, 0.5)
+	Hud:DrawLine("player", pt, 52)
 end
