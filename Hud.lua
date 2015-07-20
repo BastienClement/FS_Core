@@ -150,6 +150,15 @@ do
 					return
 				end
 				
+				local name = UnitName(self.unit)
+				local guid = UnitGUID(self.unit)
+				
+				if aliases[name] ~= self or aliases[guid] ~= self then
+					aliases[name] = self
+					aliases[guid] = self
+					self.aliases = { name, guid }
+				end
+				
 				if UnitIsDeadOrGhost(self.unit) then
 					if not self.unit_ghost then
 						self.tex:SetVertexColor(1, 1, 1, 0)
@@ -287,13 +296,16 @@ do
 		return UnitPosition("player")
 	end
 	
+	local prepared = false
+	function Hud:PrepareRaidPoints()
+		if not prepared then
+			prepared = true
+			Hud:GROUP_ROSTER_UPDATE()
+		end
+	end
+	
 	-- Raid members points
-	local first_done = false
 	function Hud:GROUP_ROSTER_UPDATE()
-		-- Do not update if encounter is in progress
-		if first_done and FS:EncounterInProgress() then return end
-		first_done = true
-		
 		-- Reconstruct
 		for _, unit in FS:IterateGroup() do
 			if not Hud:GetPoint(unit) and not UnitIsUnit(unit, "player") then
@@ -317,8 +329,8 @@ function Hud:Show(force)
 	self.force = force
 	hud:SetAllPoints()
 	hud:Show()
+	self:PrepareRaidPoints()
 	self.ticker = C_Timer.NewTicker(0.035, function() self:OnUpdate() end)
-	self:GROUP_ROSTER_UPDATE()
 	self:OnUpdate()
 end
 
@@ -461,6 +473,7 @@ end
 -- Line
 do
 	function Hud:DrawLine(from, to, width)
+		self:PrepareRaidPoints()
 		local line = self:CreateObject({ width = width or 32 }, true)
 		
 		from = line:UsePoint(from)
@@ -527,6 +540,7 @@ end
 
 -- Circle
 function Hud:DrawCircle(center, radius, tex)
+	self:PrepareRaidPoints()
 	local circle = self:CreateObject({}, true)
 	
 	center = circle:UsePoint(center)
@@ -534,6 +548,14 @@ function Hud:DrawCircle(center, radius, tex)
 	circle.tex:SetTexture(tex or radius < 15 and "Interface\\AddOns\\FS_Core\\media\\radius_lg" or "Interface\\AddOns\\FS_Core\\media\\radius")
 	circle.tex:SetBlendMode("ADD")
 	circle.tex:SetVertexColor(0.8, 0.8, 0.8, 0.5)
+	
+	function circle:PlayerInside(unit)
+		local cx, cy = Hud:GetPointPosition(center)
+		local px, py = UnitPosition(unit)
+		local dx, dy = cx - px, cy - py
+		local d = (dx * dx + dy * dy) ^ 0.5
+		return d < radius
+	end
 	
 	function circle:PlayersInside()
 		local cx, cy = Hud:GetPointPosition(center)
@@ -574,11 +596,13 @@ end
 
 -- Area of Effect
 function Hud:DrawArea(center, radius)
+	self:PrepareRaidPoints()
 	return self:DrawCircle(center, radius, "Interface\\AddOns\\FS_Core\\media\\fadecircle")
 end
 
 -- Timer
 function Hud:DrawTimer(center, radius, duration)
+	self:PrepareRaidPoints()
 	local timer = self:DrawCircle(center, radius, "Interface\\AddOns\\FS_Core\\media\\timer")
 	
 	-- Timer informations
