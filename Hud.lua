@@ -150,15 +150,6 @@ do
 					return
 				end
 				
-				local name = UnitName(self.unit)
-				local guid = UnitGUID(self.unit)
-				
-				if aliases[name] ~= self or aliases[guid] ~= self then
-					aliases[name] = self
-					aliases[guid] = self
-					self.aliases = { name, guid }
-				end
-				
 				if UnitIsDeadOrGhost(self.unit) then
 					if not self.unit_ghost then
 						self.tex:SetVertexColor(1, 1, 1, 0)
@@ -189,6 +180,26 @@ do
 				if not rt and self.unit_class ~= class then
 					self.tex:SetVertexColor(FS:GetClassColor(self.unit, true))
 					self.unit_class = class
+				end
+			end
+		end
+		
+		function point:RefreshUnit()
+			if self.unit then
+				local name = UnitName(self.unit)
+				local guid = UnitGUID(self.unit)
+				
+				if aliases[name] ~= self or aliases[guid] ~= self then
+					for _, alias in ipairs(self.aliases) do
+						-- Check that the alias is actually pointing to self
+						if aliases[alias] == self then
+							aliases[alias] = nil
+						end
+					end
+					
+					aliases[name] = self
+					aliases[guid] = self
+					self.aliases = { name, guid }
 				end
 			end
 		end
@@ -296,26 +307,31 @@ do
 		return UnitPosition("player")
 	end
 	
-	local prepared = false
-	function Hud:PrepareRaidPoints()
-		if not prepared then
-			prepared = true
-			Hud:GROUP_ROSTER_UPDATE()
+	function Hud:RefreshRaidPoints()
+		for _, unit in FS:IterateGroup() do
+			local pt = self:GetPoint(unit)
+			if pt and pt.unit == unit then
+				pt:RefreshUnit()
+			else
+				if pt then pt:Remove() end
+				self:CreateRaidPoint(unit)
+			end
+		end
+	end
+	
+	function Hud:CreateRaidPoint(unit)
+		if not self:GetPoint(unit) and not UnitIsUnit(unit, "player") then
+			local pt = self:CreatePoint(unit, UnitName(unit), UnitGUID(unit))
+			pt:SetUnit(unit)
+			function pt:Position()
+				return UnitPosition(unit)
+			end
 		end
 	end
 	
 	-- Raid members points
 	function Hud:GROUP_ROSTER_UPDATE()
-		-- Reconstruct
-		for _, unit in FS:IterateGroup() do
-			if not Hud:GetPoint(unit) and not UnitIsUnit(unit, "player") then
-				local pt = Hud:CreatePoint(unit, UnitName(unit), UnitGUID(unit))
-				pt:SetUnit(unit)
-				function pt:Position()
-					return UnitPosition(unit)
-				end
-			end
-		end
+		self:RefreshRaidPoints()
 	end
 end
 
@@ -329,7 +345,7 @@ function Hud:Show(force)
 	self.force = force
 	hud:SetAllPoints()
 	hud:Show()
-	self:PrepareRaidPoints()
+	self:RefreshRaidPoints()
 	self.ticker = C_Timer.NewTicker(0.035, function() self:OnUpdate() end)
 	self:OnUpdate()
 end
@@ -422,6 +438,7 @@ function HudObject:GetColor()
 end
 
 function Hud:CreateObject(proto, ...)
+	self:RefreshRaidPoints()
 	return self:AddObject(setmetatable(proto or {}, { __index = HudObject }), ...)
 end
 
@@ -473,7 +490,6 @@ end
 -- Line
 do
 	function Hud:DrawLine(from, to, width)
-		self:PrepareRaidPoints()
 		local line = self:CreateObject({ width = width or 32 }, true)
 		
 		from = line:UsePoint(from)
@@ -540,7 +556,6 @@ end
 
 -- Circle
 function Hud:DrawCircle(center, radius, tex)
-	self:PrepareRaidPoints()
 	local circle = self:CreateObject({}, true)
 	
 	center = circle:UsePoint(center)
@@ -596,13 +611,11 @@ end
 
 -- Area of Effect
 function Hud:DrawArea(center, radius)
-	self:PrepareRaidPoints()
 	return self:DrawCircle(center, radius, "Interface\\AddOns\\FS_Core\\media\\fadecircle")
 end
 
 -- Timer
 function Hud:DrawTimer(center, radius, duration)
-	self:PrepareRaidPoints()
 	local timer = self:DrawCircle(center, radius, "Interface\\AddOns\\FS_Core\\media\\timer")
 	
 	-- Timer informations
