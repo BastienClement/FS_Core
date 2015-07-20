@@ -128,6 +128,12 @@ do
 		
 		-- Update the point position
 		function point:Update()
+			-- Ensure unit still exists
+			if self.unit and not UnitExists(self.unit) then
+				self:Remove()
+				return
+			end
+				
 			-- Fetch point position
 			local x, y = self:Position()
 			if not x then return end
@@ -145,11 +151,6 @@ do
 			
 			-- Unit raid target icon and class color
 			if self.unit then
-				if not UnitExists(self.unit) then
-					self:Remove()
-					return
-				end
-				
 				if UnitIsDeadOrGhost(self.unit) then
 					if not self.unit_ghost then
 						self.tex:SetVertexColor(1, 1, 1, 0)
@@ -171,20 +172,29 @@ do
 		
 		function point:RefreshUnit()
 			if self.unit then
-				local name = UnitName(self.unit)
 				local guid = UnitGUID(self.unit)
-				
-				if aliases[name] ~= self or aliases[guid] ~= self then
-					for _, alias in ipairs(self.aliases) do
-						-- Check that the alias is actually pointing to self
-						if aliases[alias] == self then
-							aliases[alias] = nil
+				if guid ~= self.name then
+					for _, unit in FS:IterateGroup() do
+						if UnitGUID(unit) == self.name then
+							for _, alias in ipairs(self.aliases) do
+								-- Check that the alias is actually pointing to self
+								if aliases[alias] == self then
+									aliases[alias] = nil
+								end
+							end
+							
+							self.unit = unit
+							local name = UnitName(self.unit)
+							
+							aliases[name] = self
+							aliases[self.unit] = self
+							
+							self.aliases = { name, self.unit }
+							return
 						end
 					end
-					
-					aliases[name] = self
-					aliases[guid] = self
-					self.aliases = { name, guid }
+					self:Remove()
+					return
 				end
 			end
 		end
@@ -285,7 +295,7 @@ end
 -- Automatically create points for raid units
 do
 	-- Player point
-	local player_pt = Hud:CreatePoint("player", UnitName("player"), UnitGUID("player"))
+	local player_pt = Hud:CreatePoint(UnitGUID("player"), "player", UnitName("player"))
 	player_pt:SetUnit("player")
 	player_pt.frame:SetFrameStrata("HIGH")
 	function player_pt:Position()
@@ -293,11 +303,13 @@ do
 	end
 	
 	function Hud:RefreshRaidPoints()
+		for n, pt in self:IteratePoints() do
+			pt:RefreshUnit()
+		end
+		
 		for _, unit in FS:IterateGroup() do
 			local pt = self:GetPoint(unit)
-			if pt and pt.unit == unit then
-				pt:RefreshUnit()
-			else
+			if not pt or pt.unit ~= unit then
 				if pt then pt:Remove() end
 				self:CreateRaidPoint(unit)
 			end
@@ -306,10 +318,10 @@ do
 	
 	function Hud:CreateRaidPoint(unit)
 		if not self:GetPoint(unit) and not UnitIsUnit(unit, "player") then
-			local pt = self:CreatePoint(unit, UnitName(unit), UnitGUID(unit))
+			local pt = self:CreatePoint(UnitGUID(unit), UnitName(unit), unit)
 			pt:SetUnit(unit)
 			function pt:Position()
-				return UnitPosition(unit)
+				return UnitPosition(self.unit)
 			end
 		end
 	end
@@ -366,6 +378,15 @@ do
 		local ry = -dx * sin_t + dy * cos_t
 		return rx * zoom, ry * zoom
 	end
+	
+	local function obj_update(obj)
+		if not pcall(obj.Update, obj) then
+			obj._err_count = (obj._err_count or 0) + 1
+			if obj._err_count > 5 then
+				obj:Remove()
+			end
+		end
+	end
 
 	function Hud:OnUpdate()
 		-- Nothing to draw, auto-hide
@@ -382,16 +403,12 @@ do
 		
 		-- Update all points
 		for name, obj in self:IteratePoints() do
-			if not pcall(obj.Update, obj) then
-				obj:Remove()
-			end
+			obj_update(obj)
 		end
 		
 		-- Update all objects
 		for obj in next, self.objects do
-			if not pcall(obj.Update, obj) then
-				obj:Remove()
-			end
+			obj_update(obj)
 		end
 	end
 end
