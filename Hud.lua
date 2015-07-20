@@ -369,12 +369,16 @@ do
 		
 		-- Update all points
 		for name, obj in self:IteratePoints() do
-			obj:Update()
+			if not pcall(obj.Update, obj) then
+				obj:Remove()
+			end
 		end
 		
 		-- Update all objects
 		for obj in next, self.objects do
-			obj:Update()
+			if not pcall(obj.Update, obj) then
+				obj:Remove()
+			end
 		end
 	end
 end
