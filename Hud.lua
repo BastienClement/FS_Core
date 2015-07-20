@@ -253,6 +253,7 @@ do
 	
 	-- Return a point
 	function Hud:GetPoint(name)
+		if not name then return end
 		if name.__is_point then return name end
 		return points[name] or aliases[name]
 	end
@@ -530,7 +531,7 @@ function Hud:DrawCircle(center, radius, tex)
 	circle.tex:SetBlendMode("ADD")
 	circle.tex:SetVertexColor(0.8, 0.8, 0.8, 0.5)
 	
-	function circle:InsidePlayers()
+	function circle:PlayersInside()
 		local cx, cy = Hud:GetPointPosition(center)
 		local players = {}
 		for _, unit in FS:IterateGroup() do
@@ -543,6 +544,9 @@ function Hud:DrawCircle(center, radius, tex)
 		end
 		return players
 	end
+	
+	-- Alias
+	circle.InsidePlayers = circle.PlayersInside
 	
 	function circle:Update()
 		if self.OnUpdate then
