@@ -24,6 +24,7 @@ end
 
 function Hud:OnEnable()
 	self:RegisterEvent("GROUP_ROSTER_UPDATE")
+	self:RegisterEvent("PLAYER_LOGIN")
 end
 
 function Hud:OnDisable()
@@ -115,6 +116,7 @@ do
 		point.y = 0
 		
 		point.attached = {}
+		point.num_attached = 0
 		
 		-- Define the corresponding unit
 		function point:SetUnit(unit)
@@ -204,6 +206,7 @@ do
 		function point:AttachObject(obj)
 			if not self.attached[obj] then
 				self.attached[obj] = true
+				point.num_attached = point.num_attached + 1
 			end
 		end
 		
@@ -238,7 +241,10 @@ do
 		function point:DetachObject(obj)
 			-- Do not remove object once the point deletion process has started
 			if removed then return end
-			self.attached[obj] = nil
+			if self.attached[obj] then
+				self.attached[obj] = nil
+				point.num_attached = point.num_attached - 1
+			end
 		end
 		
 		return point
@@ -294,14 +300,17 @@ end
 
 -- Automatically create points for raid units
 do
-	-- Player point
-	local player_pt = Hud:CreatePoint(UnitGUID("player"), "player", UnitName("player"))
-	player_pt:SetUnit("player")
-	player_pt.frame:SetFrameStrata("HIGH")
-	function player_pt:Position()
-		return UnitPosition("player")
+	local function create_raid_point(unit)
+		if not Hud:GetPoint(unit) and not UnitIsUnit(unit, "player") then
+			local pt = Hud:CreatePoint(UnitGUID(unit), UnitName(unit), unit)
+			pt:SetUnit(unit)
+			function pt:Position()
+				return UnitPosition(self.unit)
+			end
+		end
 	end
 	
+	-- Refresh all raid members points
 	function Hud:RefreshRaidPoints()
 		for n, pt in self:IteratePoints() do
 			pt:RefreshUnit()
@@ -311,19 +320,22 @@ do
 			local pt = self:GetPoint(unit)
 			if not pt or pt.unit ~= unit then
 				if pt then pt:Remove() end
-				self:CreateRaidPoint(unit)
+				create_raid_point(unit)
 			end
 		end
 	end
 	
-	function Hud:CreateRaidPoint(unit)
-		if not self:GetPoint(unit) and not UnitIsUnit(unit, "player") then
-			local pt = self:CreatePoint(UnitGUID(unit), UnitName(unit), unit)
-			pt:SetUnit(unit)
-			function pt:Position()
-				return UnitPosition(self.unit)
-			end
+	-- Units initialization
+	function Hud:PLAYER_LOGIN()
+		-- Player point
+		local player_pt = Hud:CreatePoint(UnitGUID("player"), "player", UnitName("player"))
+		player_pt:SetUnit("player")
+		player_pt.frame:SetFrameStrata("HIGH")
+		function player_pt:Position()
+			return UnitPosition("player")
 		end
+		
+		Hud:RefreshRaidPoints()
 	end
 	
 	-- Raid members points
@@ -492,7 +504,7 @@ end
 -- Line
 do
 	function Hud:DrawLine(from, to, width)
-		local line = self:CreateObject({ width = width or 32 }, true)
+		local line = self:CreateObject({ width = width or 64 }, true)
 		
 		from = line:UsePoint(from)
 		to = line:UsePoint(to)
