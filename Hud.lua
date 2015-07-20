@@ -43,6 +43,7 @@ do
 		
 		frame.tex:SetAllPoints()
 		frame.tex:SetDrawLayer("ARTWORK")
+		frame.tex:SetBlendMode("BLEND")
 		if use_tex then
 			frame.tex:Show()
 		else
@@ -97,7 +98,7 @@ do
 		if ... then
 			local als = { ... }
 			for _, alias in ipairs(als) do
-				aliases[alias] = pointd
+				aliases[alias] = point
 				table.insert(point.aliases, alias)
 			end
 		end
@@ -106,7 +107,7 @@ do
 		point.tex = point.frame.tex
 		
 		point.frame:SetSize(16, 16)
-		point.tex:SetTexture("Interface\\AddOns\\BigWigs\\Textures\\blip")
+		point.tex:SetTexture("Interface\\AddOns\\FS_Core\\media\\blip")
 		point.tex:SetVertexColor(1, 1, 1, 0)
 		point.tex:SetDrawLayer("OVERLAY")
 		
@@ -144,17 +145,33 @@ do
 			
 			-- Unit raid target icon and class color
 			if self.unit then
+				if not UnitExists(self.unit) then
+					self:Remove()
+					return
+				end
+				
+				if UnitIsDeadOrGhost(self.unit) then
+					if not self.unit_ghost then
+						self.tex:SetVertexColor(1, 1, 1, 0)
+						self.unit_ghost = true
+					end
+					return
+				elseif self.unit_ghost then
+					self.unit_ghost = false
+					self.unit_class = nil
+				end
+				
 				local rt = GetRaidTargetIndex(self.unit)
 				if self.unit_rt ~= rt then
 					if rt then
 						self.frame:SetSize(24, 24)
 						self.tex:SetTexture("Interface\\TARGETINGFRAME\\UI-RaidTargetingIcon_" .. rt .. ".blp")
-						self.tex:SetVertexColor(1, 1, 1)
+						self.tex:SetVertexColor(1, 1, 1, 1)
 						self.unit_class = nil
 					elseif not rt then
 						self.frame:SetSize(16, 16)
-						self.tex:SetTexture("Interface\\AddOns\\BigWigs\\Textures\\blip")
-						self.tex:SetVertexColor(0.5, 0.5, 0.5)
+						self.tex:SetTexture("Interface\\AddOns\\FS_Core\\media\\blip")
+						self.tex:SetVertexColor(0.5, 0.5, 0.5, 1)
 					end
 					self.unit_rt = rt
 				end
@@ -260,31 +277,19 @@ do
 	end
 	
 	-- Raid members points
-	local raid_pts = {}
 	local first_done = false
 	function Hud:GROUP_ROSTER_UPDATE()
 		-- Do not update if encounter is in progress
 		if first_done and FS:EncounterInProgress() then return end
 		first_done = true
 		
-		-- Remove old raid points
-		for _, pt in pairs(raid_pts) do
-			pt:Remove()
-		end
-		wipe(raid_pts)
-		
 		-- Reconstruct
-		if IsInRaid() then
-			for i = 1, GetNumGroupMembers() do
-				local unit = "raid" .. i
-				-- Player unit is always present
-				if not UnitIsUnit(unit, "player") then
-					local pt = Hud:CreatePoint(unit, UnitName(unit), UnitGUID(unit))
-					pt:SetUnit(unit)
-					function pt:Position()
-						return UnitPosition(unit)
-					end
-					raid_pts[unit] = pt
+		for _, unit in FS:IterateGroup() do
+			if not Hud:GetPoint(unit) and not UnitIsUnit(unit, "player") then
+				local pt = Hud:CreatePoint(unit, UnitName(unit), UnitGUID(unit))
+				pt:SetUnit(unit)
+				function pt:Position()
+					return UnitPosition(unit)
 				end
 			end
 		end
@@ -296,7 +301,7 @@ end
 
 function Hud:Show(force)
 	if self.visible then return end
-	self:Print("activating HUD display")
+	--self:Print("activating HUD display")
 	self.visible = true
 	self.force = force
 	hud:SetAllPoints()
@@ -308,7 +313,7 @@ end
 
 function Hud:Hide()
 	if not self.visible then return end
-	self:Print("disabling HUD display")
+	--self:Print("disabling HUD display")
 	self.visible = false
 	self.ticker:Cancel()
 	hud:Hide()
@@ -324,6 +329,10 @@ do
 	
 	function Hud:SetZoom(z)
 		zoom = z
+	end
+	
+	function Hud:GetZoom()
+		return zoom
 	end
 	
 	function Hud:Project(x, y)
@@ -379,6 +388,10 @@ end
 
 function HudObject:SetColor(...)
 	self.tex:SetVertexColor(...)
+end
+
+function HudObject:GetColor()
+	return self.tex:GetVertexColor()
 end
 
 function Hud:CreateObject(proto, ...)
@@ -440,6 +453,7 @@ do
 		
 		line.tex:SetTexture("Interface\\AddOns\\FS_Core\\media\\line")
 		line.tex:SetVertexColor(0.5, 0.5, 0.5, 1)
+		line.tex:SetBlendMode("ADD")
 		
 		function line:Update()
 			local sx, sy = from.x, from.y
@@ -487,7 +501,6 @@ do
 				TRx = TLy
 			end
 			
-			self.frame:ClearAllPoints()
 			self.frame:SetPoint("BOTTOMLEFT", hud, "CENTER", cx - Bwid, cy - Bhgt)
 			self.frame:SetPoint("TOPRIGHT",   hud, "CENTER", cx + Bwid, cy + Bhgt)
 			self.tex:SetTexCoord(TLx, TLy, BLx, BLy, TRx, TRy, BRx, BRy)
@@ -497,22 +510,84 @@ do
 	end
 end
 
-function Hud:DrawCircle(center, radius)
+-- Circle
+function Hud:DrawCircle(center, radius, tex)
+	local circle = self:CreateObject({}, true)
 	
+	center = circle:UsePoint(center)
+	
+	circle.tex:SetTexture(tex or radius < 15 and "Interface\\AddOns\\FS_Core\\media\\radius_lg" or "Interface\\AddOns\\FS_Core\\media\\radius")
+	circle.tex:SetBlendMode("ADD")
+	circle.tex:SetVertexColor(0.8, 0.8, 0.8, 0.5)
+	
+	function circle:InsidePlayers()
+		local cx, cy = Hud:GetPointPosition(center)
+		local players = {}
+		for _, unit in FS:IterateGroup() do
+			local px, py = UnitPosition(unit)
+			local dx, dy = cx - px, cy - py
+			local d = (dx * dx + dy * dy) ^ 0.5
+			if d < radius then
+				players[#players + 1] = unit
+			end
+		end
+		return players
+	end
+	
+	function circle:Update()
+		if self.OnUpdate then
+			self:OnUpdate()
+		end
+		
+		local size = radius * 2 * Hud:GetZoom()
+		
+		if self.Rotate then
+			-- Rotation require a multiplier on size
+			size = size * (2 ^ 0.5)
+			self.tex:SetRotation(self:Rotate())
+		end
+		
+		self.frame:SetSize(size, size)
+		self.frame:SetPoint("CENTER", hud, "CENTER", center.x, center.y)
+	end
+	
+	return circle
 end
 
-function Hud:DrawAoE(center, radius)
-	local aoe = self:CreateObject({ radius = radius or 10 }, true)
-	
-	center = aoe:UsePoint(center)
-	
-	line.tex:SetTexture("Interface\\AddOns\\FS_Core\\media\\line")
-	line.tex:SetVertexColor(0.5, 0.5, 0.5, 1)
+-- Area of Effect
+function Hud:DrawArea(center, radius)
+	return self:DrawCircle(center, radius, "Interface\\AddOns\\FS_Core\\media\\fadecircle")
 end
 
-function FS_TEST()
-	local x, y = UnitPosition("player")
-	local pt = Hud:CreateStaticPoint(x, y, "foo")
-	pt:SetColor(0.5, 0.5, 0.5)
-	Hud:DrawLine("player", pt, 52)
+-- Timer
+function Hud:DrawTimer(center, radius, duration)
+	local timer = self:DrawCircle(center, radius, "Interface\\AddOns\\FS_Core\\media\\timer")
+	
+	-- Timer informations
+	local start = GetTime()
+	timer.pct = 0
+	
+	local done = false
+	
+	function timer:OnUpdate()
+		local dt = GetTime() - start
+		if dt < duration then
+			self.pct = dt / duration
+		else
+			self.pct = 1
+		end
+		
+		if self.pct == 1 and not done then
+			done = true
+			if self.Done then
+				self:Done()
+			end
+		end
+	end
+	
+	function timer:Rotate()
+		return math.pi * 2 * self.pct
+	end
+	
+	return timer
 end
