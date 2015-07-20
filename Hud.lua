@@ -236,6 +236,16 @@ do
 		return pt
 	end
 	
+	-- Create a shadow point
+	function Hud:CreateShadowPoint(pt, ...)
+		local ref = self:GetPoint(pt)
+		if not ref then return end
+		local shadow = self:CreatePoint(...)
+		ref:AttachObject(shadow)
+		function shadow:Position() return ref:Position() end
+		return shadow
+	end
+	
 	-- Iterates over all points
 	function Hud:IteratePoints()
 		return pairs(points)
