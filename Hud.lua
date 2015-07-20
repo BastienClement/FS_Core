@@ -161,23 +161,8 @@ do
 					self.unit_class = nil
 				end
 				
-				local rt = GetRaidTargetIndex(self.unit)
-				if self.unit_rt ~= rt then
-					if rt then
-						self.frame:SetSize(24, 24)
-						self.tex:SetTexture("Interface\\TARGETINGFRAME\\UI-RaidTargetingIcon_" .. rt .. ".blp")
-						self.tex:SetVertexColor(1, 1, 1, 1)
-						self.unit_class = nil
-					elseif not rt then
-						self.frame:SetSize(16, 16)
-						self.tex:SetTexture("Interface\\AddOns\\FS_Core\\media\\blip")
-						self.tex:SetVertexColor(0.5, 0.5, 0.5, 1)
-					end
-					self.unit_rt = rt
-				end
-				
 				local class = UnitClass(self.unit)
-				if not rt and self.unit_class ~= class then
+				if not self.unit_ghost and self.unit_class ~= class then
 					self.tex:SetVertexColor(FS:GetClassColor(self.unit, true))
 					self.unit_class = class
 				end
