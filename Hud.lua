@@ -538,7 +538,7 @@ function Hud:RemoveObject(obj)
 	Hud:UpdateShowAllPoints()
 end
 	
--- Iterates over all points
+-- Iterates over all objects
 function Hud:IterateObjects()
 	return pairs(self.objects)
 end
