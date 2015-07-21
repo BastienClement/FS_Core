@@ -25,7 +25,7 @@ end
 
 function Hud:OnEnable()
 	self:RegisterEvent("GROUP_ROSTER_UPDATE", "RefreshRaidPoints")
-	self:RegisterEvent("PLAYER_LOGIN")
+	self:RegisterEvent("PLAYER_ENTERING_WORLD")
 	self:RegisterEvent("ENCOUNTER_END", "Clear")
 end
 
@@ -263,6 +263,11 @@ do
 			for obj in pairs(self.attached) do
 				obj:Remove()
 			end
+			
+			-- Remove handler
+			if self.OnRemove then
+				self:OnRemove()
+			end
 		end
 		
 		-- Detach an object
@@ -299,6 +304,7 @@ do
 		local shadow = self:CreatePoint(...)
 		ref:AttachObject(shadow)
 		function shadow:Position() return ref:Position() end
+		function shadow:OnRemove() return ref:DetachObject(self) end
 		return shadow
 	end
 	
@@ -360,14 +366,17 @@ do
 	end
 	
 	-- Units initialization
-	function Hud:PLAYER_LOGIN()
+	local player_pt
+	function Hud:PLAYER_ENTERING_WORLD()
 		-- Player point
-		local player_pt = Hud:CreatePoint(UnitGUID("player"), "player", UnitName("player"))
-		player_pt:SetUnit("player")
-		player_pt:AlwaysVisible(true)
-		player_pt.frame:SetFrameStrata("HIGH")
-		function player_pt:Position()
-			return UnitPosition("player")
+		if not player_pt then
+			player_pt = Hud:CreatePoint(UnitGUID("player"), "player", UnitName("player"))
+			player_pt:SetUnit("player")
+			player_pt:AlwaysVisible(true)
+			player_pt.frame:SetFrameStrata("HIGH")
+			function player_pt:Position()
+				return UnitPosition("player")
+			end
 		end
 		
 		Hud:RefreshRaidPoints()
