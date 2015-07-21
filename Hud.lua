@@ -551,7 +551,15 @@ end
 
 -- Clear the whole scene
 function Hud:Clear()
-	for obj in next, self.objects do
+	-- Remove all points unrelated to raid units
+	for name, point in self:IteratePoints() do
+		if not point.unit then
+			point:Remove()
+		end
+	end
+	
+	-- Remove all objects
+	for obj in self:IterateObjects() do
 		obj:Remove()
 	end
 end
