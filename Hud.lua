@@ -24,6 +24,7 @@ end
 function Hud:OnEnable()
 	self:RegisterEvent("GROUP_ROSTER_UPDATE", "RefreshRaidPoints")
 	self:RegisterEvent("PLAYER_LOGIN")
+	self:RegisterEvent("ENCOUNTER_END", "Clear")
 end
 
 function Hud:OnDisable()
