@@ -342,7 +342,7 @@ do
 	local function create_raid_point(unit)
 		if not Hud:GetPoint(unit) and not UnitIsUnit(unit, "player") then
 			local unit_name = UnitName(unit)
-			if unit_name and unit_name ~= "Unknown" then
+			if unit_name and unit_name ~= UNKNOWNOBJECT then
 				local pt = Hud:CreatePoint(UnitGUID(unit), unit_name, unit)
 				pt:SetUnit(unit)
 				function pt:Position()
@@ -356,7 +356,7 @@ do
 	local player_pt
 	function Hud:RefreshRaidPoints()
 		-- Player point
-		if not player_pt and UnitName("player") ~= "Unknown" then
+		if not player_pt and UnitName("player") ~= UNKNOWNOBJECT then
 			player_pt = Hud:CreatePoint(UnitGUID("player"), "player", UnitName("player"))
 			player_pt:SetUnit("player")
 			player_pt:AlwaysVisible(true)
