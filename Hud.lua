@@ -25,7 +25,6 @@ end
 
 function Hud:OnEnable()
 	self:RegisterEvent("GROUP_ROSTER_UPDATE", "RefreshRaidPoints")
-	self:RegisterEvent("PLAYER_ENTERING_WORLD")
 	self:RegisterEvent("ENCOUNTER_END", "Clear")
 end
 
@@ -342,16 +341,31 @@ do
 	-- Create point for a specific unit
 	local function create_raid_point(unit)
 		if not Hud:GetPoint(unit) and not UnitIsUnit(unit, "player") then
-			local pt = Hud:CreatePoint(UnitGUID(unit), UnitName(unit), unit)
-			pt:SetUnit(unit)
-			function pt:Position()
-				return UnitPosition(self.unit)
+			local unit_name = UnitName(unit)
+			if unit_name and unit_name ~= "Unknown" then
+				local pt = Hud:CreatePoint(UnitGUID(unit), unit_name, unit)
+				pt:SetUnit(unit)
+				function pt:Position()
+					return UnitPosition(self.unit)
+				end
 			end
 		end
 	end
 	
 	-- Refresh all raid members points
+	local player_pt
 	function Hud:RefreshRaidPoints()
+		-- Player point
+		if not player_pt and UnitName("player") ~= "Unknown" then
+			player_pt = Hud:CreatePoint(UnitGUID("player"), "player", UnitName("player"))
+			player_pt:SetUnit("player")
+			player_pt:AlwaysVisible(true)
+			player_pt.frame:SetFrameStrata("HIGH")
+			function player_pt:Position()
+				return UnitPosition("player")
+			end
+		end
+		
 		for n, pt in self:IteratePoints() do
 			pt:RefreshUnit()
 		end
@@ -363,23 +377,6 @@ do
 				create_raid_point(unit)
 			end
 		end
-	end
-	
-	-- Units initialization
-	local player_pt
-	function Hud:PLAYER_ENTERING_WORLD()
-		-- Player point
-		if not player_pt then
-			player_pt = Hud:CreatePoint(UnitGUID("player"), "player", UnitName("player"))
-			player_pt:SetUnit("player")
-			player_pt:AlwaysVisible(true)
-			player_pt.frame:SetFrameStrata("HIGH")
-			function player_pt:Position()
-				return UnitPosition("player")
-			end
-		end
-		
-		Hud:RefreshRaidPoints()
 	end
 end
 
