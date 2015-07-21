@@ -1,5 +1,6 @@
 local _, FS = ...
 local Hud = FS:RegisterModule("Hud")
+local Map
 
 local sin, cos = math.sin, math.cos
 local pi_2 = math.pi / 2
@@ -17,6 +18,7 @@ end
 -- Module initialization
 
 function Hud:OnInitialize()
+	Map = FS:GetModule("Map")
 	self.objects = {}
 	self.num_objs = 0
 end
@@ -277,11 +279,7 @@ do
 		function point:UnitDistance(unit)
 			local x, y = UnitPosition(unit)
 			if not x then return end
-			
-			local dx = self.world_x - x
-			local dy = self.world_y - y
-			
-			return (dx * dx + dy * dy) ^ 0.5
+			return Map:GetDistance(self.world_x, self.world_y, x, y)
 		end
 		
 		return point
@@ -634,7 +632,7 @@ function Hud:DrawCircle(center, radius, tex)
 	circle.tex:SetVertexColor(0.8, 0.8, 0.8, 0.5)
 	
 	-- Check if a given unit is inside the circle
-	function circle:UnitInside(unit)
+	function circle:UnitIsInside(unit)
 		return not UnitIsDeadOrGhost(unit) and center:UnitDistance(unit) < radius
 	end
 	
@@ -643,7 +641,7 @@ function Hud:DrawCircle(center, radius, tex)
 		local cx, cy = Hud:GetPointPosition(center)
 		local players = {}
 		for _, unit in FS:IterateGroup() do
-			if self:UnitInside(unit) then
+			if self:UnitIsInside(unit) then
 				players[#players + 1] = unit
 			end
 		end
