@@ -19,11 +19,10 @@ end
 function Hud:OnInitialize()
 	self.objects = {}
 	self.num_objs = 0
-	self.visible = false
 end
 
 function Hud:OnEnable()
-	self:RegisterEvent("GROUP_ROSTER_UPDATE")
+	self:RegisterEvent("GROUP_ROSTER_UPDATE", "RefreshRaidPoints")
 	self:RegisterEvent("PLAYER_LOGIN")
 end
 
@@ -114,18 +113,27 @@ do
 		
 		point.x = 0
 		point.y = 0
+		point.world_x = 0
+		point.world_y = 0
 		
 		point.attached = {}
 		point.num_attached = 0
+		point.hidden = false
 		
 		-- Define the corresponding unit
 		function point:SetUnit(unit)
 			self.unit = unit
+			self:RefreshUnit()
 		end
 		
 		-- Change the point color
 		function point:SetColor(r, g, b, a)
 			self.tex:SetVertexColor(r, g, b, a or 1)
+		end
+		
+		-- Define the always_visible flag
+		function point:AlwaysVisible(state)
+			self.always_visible = state
 		end
 		
 		-- Update the point position
@@ -140,8 +148,11 @@ do
 			local x, y = self:Position()
 			if not x then return end
 			
+			-- Set world x and y coordinates
+			self.world_x = x
+			self.world_y = y
+			
 			-- Project point
-			self.real_x, self.real_y = x, y
 			x, y = Hud:Project(x, y)
 			
 			-- Save
@@ -149,7 +160,20 @@ do
 			self.y = y
 			
 			-- Place the point
-			self.frame:SetPoint("CENTER", hud, "CENTER", x, y)
+			if self.num_attached > 0
+			or self.always_visible
+			or Hud.show_all_points
+			or Hud.force then
+				if self.hidden then
+					self.hidden = false
+					self.frame:Show()
+				end
+				self.frame:SetPoint("CENTER", hud, "CENTER", x, y)
+			elseif not self.hidden then
+				self.hidden = true
+				self.frame:Hide()
+				return
+			end
 			
 			-- Unit raid target icon and class color
 			if self.unit then
@@ -172,6 +196,7 @@ do
 			end
 		end
 		
+		-- Ensure the unit association of this point is correct
 		function point:RefreshUnit()
 			if self.unit then
 				local guid = UnitGUID(self.unit)
@@ -247,6 +272,17 @@ do
 			end
 		end
 		
+		-- Unit distance to this point
+		function point:UnitDistance(unit)
+			local x, y = UnitPosition(unit)
+			if not x then return end
+			
+			local dx = self.world_x - x
+			local dy = self.world_y - y
+			
+			return (dx * dx + dy * dy) ^ 0.5
+		end
+		
 		return point
 	end
 	
@@ -283,9 +319,7 @@ do
 	function Hud:GetPointPosition(name)
 		local pt = self:GetPoint(name)
 		if pt then
-			return pt.real_x or 0, pt.real_y or 0
-		else
-			return 0, 0
+			return pt.world_x, pt.world_y
 		end
 	end
 	
@@ -300,6 +334,7 @@ end
 
 -- Automatically create points for raid units
 do
+	-- Create point for a specific unit
 	local function create_raid_point(unit)
 		if not Hud:GetPoint(unit) and not UnitIsUnit(unit, "player") then
 			local pt = Hud:CreatePoint(UnitGUID(unit), UnitName(unit), unit)
@@ -330,17 +365,13 @@ do
 		-- Player point
 		local player_pt = Hud:CreatePoint(UnitGUID("player"), "player", UnitName("player"))
 		player_pt:SetUnit("player")
+		player_pt:AlwaysVisible(true)
 		player_pt.frame:SetFrameStrata("HIGH")
 		function player_pt:Position()
 			return UnitPosition("player")
 		end
 		
 		Hud:RefreshRaidPoints()
-	end
-	
-	-- Raid members points
-	function Hud:GROUP_ROSTER_UPDATE()
-		self:RefreshRaidPoints()
 	end
 end
 
@@ -391,6 +422,16 @@ do
 		return rx * zoom, ry * zoom
 	end
 	
+	function Hud:UpdateShowAllPoints()
+		for obj in Hud:IterateObjects() do
+			if obj.show_all_points then
+				self.show_all_points = true
+				return
+			end
+		end
+		self.show_all_points = false
+	end
+	
 	local function obj_update(obj)
 		if not pcall(obj.Update, obj) then
 			obj._err_count = (obj._err_count or 0) + 1
@@ -419,7 +460,7 @@ do
 		end
 		
 		-- Update all objects
-		for obj in next, self.objects do
+		for obj in Hud:IterateObjects() do
 			obj_update(obj)
 		end
 	end
@@ -449,6 +490,11 @@ end
 
 function HudObject:GetColor()
 	return self.tex:GetVertexColor()
+end
+
+function HudObject:ShowAllPoints(state)
+	self.show_all_points = state
+	Hud:UpdateShowAllPoints()
 end
 
 function Hud:CreateObject(proto, ...)
@@ -489,6 +535,12 @@ function Hud:RemoveObject(obj)
 	
 	if obj.OnRemove then obj:OnRemove() end
 	Hud:ReleaseObjFrame(obj.frame)
+	Hud:UpdateShowAllPoints()
+end
+	
+-- Iterates over all points
+function Hud:IterateObjects()
+	return pairs(self.objects)
 end
 
 -- Clear the whole scene
@@ -508,6 +560,7 @@ do
 		
 		from = line:UsePoint(from)
 		to = line:UsePoint(to)
+		if not from or not to then return end
 		
 		line.tex:SetTexture("Interface\\AddOns\\FS_Core\\media\\line")
 		line.tex:SetVertexColor(0.5, 0.5, 0.5, 1)
@@ -573,35 +626,28 @@ function Hud:DrawCircle(center, radius, tex)
 	local circle = self:CreateObject({}, true)
 	
 	center = circle:UsePoint(center)
+	if not center then return end
 	
 	circle.tex:SetTexture(tex or radius < 15 and "Interface\\AddOns\\FS_Core\\media\\radius_lg" or "Interface\\AddOns\\FS_Core\\media\\radius")
 	circle.tex:SetBlendMode("ADD")
 	circle.tex:SetVertexColor(0.8, 0.8, 0.8, 0.5)
 	
-	function circle:PlayerInside(unit)
-		local cx, cy = Hud:GetPointPosition(center)
-		local px, py = UnitPosition(unit)
-		local dx, dy = cx - px, cy - py
-		local d = (dx * dx + dy * dy) ^ 0.5
-		return d < radius
+	-- Check if a given unit is inside the circle
+	function circle:UnitInside(unit)
+		return not UnitIsDeadOrGhost(unit) and center:UnitDistance(unit) < radius
 	end
 	
-	function circle:PlayersInside()
+	-- Get the list of units inside the circle
+	function circle:UnitsInside()
 		local cx, cy = Hud:GetPointPosition(center)
 		local players = {}
 		for _, unit in FS:IterateGroup() do
-			local px, py = UnitPosition(unit)
-			local dx, dy = cx - px, cy - py
-			local d = (dx * dx + dy * dy) ^ 0.5
-			if d < radius then
+			if self:UnitInside(unit) then
 				players[#players + 1] = unit
 			end
 		end
 		return players
 	end
-	
-	-- Alias
-	circle.InsidePlayers = circle.PlayersInside
 	
 	function circle:Update()
 		if self.OnUpdate then
@@ -631,6 +677,7 @@ end
 -- Timer
 function Hud:DrawTimer(center, radius, duration)
 	local timer = self:DrawCircle(center, radius, "Interface\\AddOns\\FS_Core\\media\\timer")
+	if not timer then return end
 	
 	-- Timer informations
 	local start = GetTime()
