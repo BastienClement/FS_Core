@@ -298,6 +298,7 @@ do
 	
 	-- Create a shadow point
 	function Hud:CreateShadowPoint(pt, ...)
+		self:RefreshRaidPoints()
 		local ref = self:GetPoint(pt)
 		if not ref then return end
 		local shadow = self:CreatePoint(...)
