@@ -57,7 +57,9 @@ do
 
 	function Core:IterateGroup()
 		return function(_, last)
-			if not IsInRaid() and not IsInGroup() then return end
+			if not IsInRaid() and not IsInGroup() then
+				if not last then return 1, "player" end
+			end
 			local num = (last or 0) + 1
 			if num <= GetNumGroupMembers() then
 				local unit = IsInRaid() and ("raid" .. num) or ("party" .. num)
