@@ -1,7 +1,7 @@
 ## Interface: 60200
 ## Title: |cff64b4ffFrom Scratch|r Core
 ## SavedVariables: FSDB
-## OptionalDeps: LibStub, CallbackHandler-1.0, Ace3, LibGroupInSpecT-1.1, LibGraph-2.0, BigWigs
+## OptionalDeps: LibStub, CallbackHandler-1.0, Ace3, LibGroupInSpecT-1.1, BigWigs
 
 #@no-lib-strip@
 LibStub\LibStub.lua
