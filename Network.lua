@@ -23,7 +23,12 @@ local broadcast_channels = {
 function Network:Send(label, data, channel)
 	local target
 	if not channel then
-		channel = "RAID"
+		if IsInRaid() or IsInGroup() then
+			channel = "RAID"
+		else
+			channel = "WHISPER"
+			target = UnitName("player")
+		end
 	elseif not broadcast_channels[channel] then
 		target = channel
 		channel = "WHISPER"
