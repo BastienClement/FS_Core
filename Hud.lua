@@ -602,7 +602,7 @@ end
 function HudObject:UsePoint(name)
 	local pt = Hud:GetPoint(name)
 	if not pt then
-		Hud:Printf("Failed to find a point required by a new object ('%s')", name)
+		Hud:Printf("Failed to find a point required by a new object ('%s')", name or "nil")
 		return
 	end
 	table.insert(self.attached, pt)
