@@ -276,6 +276,9 @@ do
 		-- Remove the point and any attached objects
 		local removed = false
 		function point:Remove()
+			-- Impossible to remove player point
+			if self.unit == "player" then return end
+			
 			-- Ensure the function is not called two times
 			if removed then return end
 			removed = true
