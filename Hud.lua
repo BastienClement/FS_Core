@@ -48,6 +48,7 @@ do
 	
 	local function normalize(frame, use_tex)
 		frame:SetFrameStrata("BACKGROUND")
+		frame:SetAlpha(1)
 		frame:ClearAllPoints()
 		
 		frame.tex:SetAllPoints()
@@ -142,11 +143,13 @@ do
 		function point:SetUnit(unit)
 			self.unit = unit
 			self:RefreshUnit()
+			return self
 		end
 		
 		-- Change the point color
 		function point:SetColor(r, g, b, a)
 			self.tex:SetVertexColor(r, g, b, a or 1)
+			return self
 		end
 		
 		-- Define the always_visible flag
@@ -154,6 +157,7 @@ do
 		-- are currently present
 		function point:AlwaysVisible(state)
 			self.always_visible = state
+			return self
 		end
 		
 		-- Update the point position and properties
@@ -290,9 +294,24 @@ do
 				end
 			end
 			
+			
 			-- Remove attached objects
+			local do_ghost = false
 			for obj in pairs(self.attached) do
+				if obj.fade then do_ghost = true end
 				obj:Remove()
+			end
+			
+			if do_ghost then
+				local ghost_start = GetTime()
+				local ticker
+				ticker = C_Timer.NewTicker(0.033, function()
+					point.x, point.y = Hud:Project(point.world_x, point.world_y)
+					if GetTime() - ghost_start > 0.5 then
+						ticker:Cancel()
+						ticker = nil
+					end
+				end)
 			end
 			
 			-- Remove handler
@@ -592,6 +611,7 @@ end
 -- Set the obejct color
 function HudObject:SetColor(...)
 	self.tex:SetVertexColor(...)
+	return self
 end
 
 -- Get the object color
@@ -605,6 +625,14 @@ end
 function HudObject:ShowAllPoints(state)
 	self.show_all_points = state
 	Hud:UpdateShowAllPoints()
+	return self
+end
+
+-- Set fade flag
+-- If this flag is set, the object will be animated with a fade-in-out
+function HudObject:Fade(state)
+	self.fade = state
+	return self
 end
 
 -- Factory function
@@ -630,6 +658,24 @@ function Hud:AddObject(obj, use_tex)
 	obj.frame = Hud:AllocObjFrame(use_tex)
 	obj.tex = obj.frame.tex
 	obj.attached = {}
+	obj.fade = true
+	
+	C_Timer.After(0, function()
+		if obj.fade then
+			local created = GetTime()
+			obj.frame:SetAlpha(0)
+			obj.fade_in = C_Timer.NewTicker(0.01, function()
+				local pct = (GetTime() - created) / 0.25
+				if pct > 1 then
+					obj.frame:SetAlpha(1)
+					obj.fade_in:Cancel()
+					obj.fade_in = nil
+				else
+					obj.frame:SetAlpha(pct)
+				end
+			end)
+		end
+	end)
 	
 	-- Show() may cause some weird side effects, call it on tick later
 	C_Timer.After(0, function() Hud:Show() end)
@@ -639,8 +685,7 @@ end
 
 -- Remove an object from the scene
 function Hud:RemoveObject(obj)
-
-	if not self.objects[obj] then return end
+	if not self.objects[obj] or obj._destroyed then return end
 	obj._destroyed = true
 	
 	-- Detach this object from every points it was attached to
@@ -648,14 +693,39 @@ function Hud:RemoveObject(obj)
 		pt:DetachObject(obj)
 	end
 	
-	self.objects[obj] = nil
-	self.num_objs = self.num_objs - 1
+	local function do_remove()
+		Hud.objects[obj] = nil
+		Hud.num_objs = Hud.num_objs - 1
+		
+		-- Release the wrapper frame of this object
+		Hud:ReleaseObjFrame(obj.frame)
+	end
 	
 	-- Call the remove handler if defined
 	if obj.OnRemove then obj:OnRemove() end
 	
-	-- Release the wrapper frame of this object
-	Hud:ReleaseObjFrame(obj.frame)
+	-- Fade out animation
+	if obj.fade then
+		if obj.fade_in then
+			obj.fade_in:Cancel()
+		end
+		
+		local start = GetTime()
+		local ticker
+		ticker = C_Timer.NewTicker(0.01, function()
+			local pct = (GetTime() - start) / 0.25
+			if pct > 1 then
+				obj.frame:SetAlpha(0)
+				ticker:Cancel()
+				ticker = nil
+				do_remove()
+			else
+				obj.frame:SetAlpha(1 - pct)
+			end
+		end)
+	else
+		do_remove()
+	end
 	
 	-- Check if we still need to show all points
 	if obj.show_all_points then
