@@ -822,7 +822,13 @@ end
 
 -- Target reticle
 function Hud:DrawTarget(center, radius)
-	return self:DrawCircle(center, radius, "Interface\\AddOns\\FS_Core\\media\\alert_circle")
+	local target = self:DrawCircle(center, radius, "Interface\\AddOns\\FS_Core\\media\\alert_circle")
+	
+	function target:Rotate()
+		return GetTime()
+	end
+	
+	return target
 end
 
 -- Timer
