@@ -667,7 +667,7 @@ function Hud:AddObject(obj, use_tex)
 			local created = GetTime()
 			obj.frame:SetAlpha(0)
 			obj.fade_in = C_Timer.NewTicker(0.01, function()
-				local pct = (GetTime() - created) / 0.25
+				local pct = (GetTime() - created) / 0.20
 				if pct > 1 then
 					obj.frame:SetAlpha(1)
 					obj.fade_in:Cancel()
@@ -715,7 +715,7 @@ function Hud:RemoveObject(obj)
 		local start = GetTime()
 		local ticker
 		ticker = C_Timer.NewTicker(0.01, function()
-			local pct = (GetTime() - start) / 0.25
+			local pct = (GetTime() - start) / 0.20
 			if pct > 1 then
 				obj.frame:SetAlpha(0)
 				ticker:Cancel()
