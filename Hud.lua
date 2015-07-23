@@ -399,6 +399,8 @@ do
 		-- with cross-realm units. Try again without the server name.
 		if not pt and name:find("-") then
 			return self:GetPoint(name:match("[^-]+"))
+		elseif not pt and name ~= "player" and UnitIsUnit(name, "player") then
+			return self:GetPoint("player")
 		else
 			return pt
 		end
