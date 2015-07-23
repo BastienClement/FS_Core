@@ -639,6 +639,7 @@ end
 
 -- Remove an object from the scene
 function Hud:RemoveObject(obj)
+
 	if not self.objects[obj] then return end
 	obj._destroyed = true
 	
@@ -816,7 +817,12 @@ Hud.DrawRadius = Hud.DrawCircle
 
 -- Area of Effect
 function Hud:DrawArea(center, radius)
-	return self:DrawCircle(center, radius, "Interface\\AddOns\\FS_Core\\media\\fadecircle")
+	return self:DrawCircle(center, radius, "Interface\\AddOns\\FS_Core\\media\\radar_circle")
+end
+
+-- Target reticle
+function Hud:DrawTarget(center, radius)
+	return self:DrawCircle(center, radius, "Interface\\AddOns\\FS_Core\\media\\alert_circle")
 end
 
 -- Timer
@@ -830,8 +836,8 @@ function Hud:DrawTimer(center, radius, duration)
 	
 	local done = false
 	
+	-- Hook the Update() function directly to let the OnUpdate() hook available for user code
 	local circle_update = timer.Update
-	
 	function timer:Update()
 		local dt = GetTime() - start
 		if dt < duration then
