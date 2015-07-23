@@ -2,6 +2,7 @@ local _, FS = ...
 local Hud = FS:RegisterModule("Hud")
 local Map
 
+-- Math aliases
 local sin, cos = math.sin, math.cos
 local pi_2 = math.pi / 2
 
@@ -19,12 +20,18 @@ end
 
 function Hud:OnInitialize()
 	Map = FS:GetModule("Map")
+	
+	-- Object currently drawn on the HUD
 	self.objects = {}
 	self.num_objs = 0
 end
 
 function Hud:OnEnable()
+	-- Refresh raid points if the group roster changes
 	self:RegisterEvent("GROUP_ROSTER_UPDATE", "RefreshRaidPoints")
+	
+	-- Clear the HUD on ENCOUNTER_END
+	-- This prevents bogus modules or encounters to keep the HUD open
 	self:RegisterEvent("ENCOUNTER_END", "Clear")
 end
 
@@ -88,7 +95,13 @@ do
 			name = tostring(GetTime()) + tostring(math.random())
 		end
 		
-		if points[name] then return points[name] end
+		-- If the point is already defined, return the old one
+		-- This behaviour is intended to be exceptional, a point should not
+		-- be created multiple times under normal circumstances
+		if points[name] then
+			self:Printf("Detected name conflict on point creation ('%s')", name)
+			return points[name]
+		end
 		
 		local point = { __is_point = true }
 		
@@ -97,6 +110,7 @@ do
 		
 		point.aliases = {}
 		
+		-- Register aliases
 		if ... then
 			local als = { ... }
 			for _, alias in ipairs(als) do
@@ -120,9 +134,11 @@ do
 		
 		point.attached = {}
 		point.num_attached = 0
-		point.hidden = false
 		
 		-- Define the corresponding unit
+		-- Unit points must be named as the GUID of its owner
+		-- The HUD will ensure that the name and raidN aliases stay correct
+		-- even if the roster is modified
 		function point:SetUnit(unit)
 			self.unit = unit
 			self:RefreshUnit()
@@ -134,11 +150,13 @@ do
 		end
 		
 		-- Define the always_visible flag
+		-- An always_visible point is shown event if no show_all_points objects
+		-- are currently present
 		function point:AlwaysVisible(state)
 			self.always_visible = state
 		end
 		
-		-- Update the point position
+		-- Update the point position and properties
 		function point:Update()
 			-- Ensure unit still exists
 			if self.unit and not UnitExists(self.unit) then
@@ -157,28 +175,32 @@ do
 			-- Project point
 			x, y = Hud:Project(x, y)
 			
-			-- Save
+			-- Save screen coordinates
 			self.x = x
 			self.y = y
 			
-			-- Place the point
-			if self.num_attached > 0
-			or self.always_visible
-			or Hud.show_all_points
-			or Hud.force then
+			-- Decide if the point is visible or not
+			if self.num_attached > 0 -- If the point has an attached object
+			or self.always_visible   -- If the point is always_visible
+			or Hud.show_all_points   -- If at least one object requests all points to be visible
+			or Hud.force then        -- If the HUD is in forced mode
 				if self.hidden then
+					-- Show the point if currently hidden
 					self.hidden = false
 					self.frame:Show()
 				end
+				-- Place the point
 				self.frame:SetPoint("CENTER", hud, "CENTER", x, y)
 			elseif not self.hidden then
+				-- Hide the wrapper frame to keep point color intact
 				self.hidden = true
 				self.frame:Hide()
 				return
 			end
 			
-			-- Unit raid target icon and class color
+			-- Unit point specifics
 			if self.unit then
+				-- Hide the point if the unit is dead
 				if UnitIsDeadOrGhost(self.unit) then
 					if not self.unit_ghost then
 						self.tex:SetVertexColor(1, 1, 1, 0)
@@ -187,9 +209,12 @@ do
 					return
 				elseif self.unit_ghost then
 					self.unit_ghost = false
+					
+					-- Reset the unit class, this will cause the color to be reset 
 					self.unit_class = nil
 				end
 				
+				-- Ensure the point color reflect the unit class
 				local class = UnitClass(self.unit)
 				if not self.unit_ghost and self.unit_class ~= class then
 					self.tex:SetVertexColor(FS:GetClassColor(self.unit, true))
@@ -201,10 +226,13 @@ do
 		-- Ensure the unit association of this point is correct
 		function point:RefreshUnit()
 			if self.unit then
+				-- Check that "raidX" is still the same player
 				local guid = UnitGUID(self.unit)
 				if guid ~= self.name then
+					-- Attempt to find the new raid unit corresponding to the player
 					for _, unit in FS:IterateGroup() do
 						if UnitGUID(unit) == self.name then
+							-- Remove aliases
 							for _, alias in ipairs(self.aliases) do
 								-- Check that the alias is actually pointing to self
 								if aliases[alias] == self then
@@ -212,16 +240,20 @@ do
 								end
 							end
 							
+							-- Update the unit id
 							self.unit = unit
-							local name = UnitName(self.unit)
 							
+							-- Reset aliases
+							local name = UnitName(self.unit)
 							aliases[name] = self
 							aliases[self.unit] = self
-							
 							self.aliases = { name, self.unit }
 							return
 						end
 					end
+					
+					-- This player is no longer in the raid
+					-- Remove the point
 					self:Remove()
 					return
 				end
@@ -229,7 +261,7 @@ do
 		end
 		
 		-- Attach an object to this point
-		-- The object will be :Remove()'ed when this point is removed.
+		-- The object will be :Remove()'ed when this point is removed
 		function point:AttachObject(obj)
 			if not self.attached[obj] then
 				self.attached[obj] = true
@@ -298,13 +330,30 @@ do
 	
 	-- Create a shadow point
 	function Hud:CreateShadowPoint(pt, ...)
+		-- Shadow points are actually half object
+		-- Since we usually attach them to unit point, refresh them now
 		self:RefreshRaidPoints()
+		
+		-- Fetch the reference point
 		local ref = self:GetPoint(pt)
-		if not ref then return end
+		if not ref then
+			self:Printf("Shadow point creation failed: unable to get the reference point ('%s')", pt)
+			return
+		end
+		
 		local shadow = self:CreatePoint(...)
-		ref:AttachObject(shadow)
+		
+		-- Mirror reference point
 		function shadow:Position() return ref:Position() end
+		
+		-- Consider the shadow point as an object attached to the reference point
+		-- This will cause the shadow point to be removed if the reference point is removed
+		ref:AttachObject(shadow)
+		
+		-- Detach the shadow point from the reference point on removal
+		-- This prevent a memory leak by keeping the object alive
 		function shadow:OnRemove() return ref:DetachObject(self) end
+		
 		return shadow
 	end
 	
@@ -315,12 +364,28 @@ do
 	
 	-- Return a point
 	function Hud:GetPoint(name)
-		if not name then return end
+		-- Y U NO HAZ NAME ?
+		if not name then
+			self:Print("Attempted to get a point with a nil name")
+			return
+		end
+		
+		-- We actually got a point, return it
 		if name.__is_point then return name end
-		return points[name] or aliases[name]
+		
+		-- Fetch by name or alias
+		local pt = points[name] or aliases[name]
+		
+		-- No point found, but the name has a "-" in it. This may be the case
+		-- with cross-realm units. Try again without the server name.
+		if not pt and name:find("-") then
+			return self:GetPoint(name:match("[^-]+"))
+		else
+			return pt
+		end
 	end
 	
-	-- Find point position
+	-- Find point world position
 	function Hud:GetPointPosition(name)
 		local pt = self:GetPoint(name)
 		if pt then
@@ -343,6 +408,7 @@ do
 	local function create_raid_point(unit)
 		if not Hud:GetPoint(unit) and not UnitIsUnit(unit, "player") then
 			local unit_name = UnitName(unit)
+			-- Ensure unit name is currently available
 			if unit_name and unit_name ~= UNKNOWNOBJECT then
 				local pt = Hud:CreatePoint(UnitGUID(unit), unit_name, unit)
 				pt:SetUnit(unit)
@@ -356,24 +422,31 @@ do
 	-- Refresh all raid members points
 	local player_pt
 	function Hud:RefreshRaidPoints()
-		-- Player point
+		-- Create the player point if not already done
 		if not player_pt and UnitName("player") ~= UNKNOWNOBJECT then
 			player_pt = Hud:CreatePoint(UnitGUID("player"), "player", UnitName("player"))
 			player_pt:SetUnit("player")
-			player_pt:AlwaysVisible(true)
-			player_pt.frame:SetFrameStrata("HIGH")
 			function player_pt:Position()
 				return UnitPosition("player")
 			end
+		
+			-- The player point is always visible
+			player_pt:AlwaysVisible(true)
+			
+			-- The player point should be drawn over everything else
+			player_pt.frame:SetFrameStrata("HIGH")
 		end
 		
+		-- Refresh units of all raid points
 		for n, pt in self:IteratePoints() do
 			pt:RefreshUnit()
 		end
 		
+		-- Find unit currently available without associated raid points
 		for _, unit in FS:IterateGroup() do
 			local pt = self:GetPoint(unit)
 			if not pt or pt.unit ~= unit then
+				-- We got a point, but that is a bad one
 				if pt then pt:Remove() end
 				create_raid_point(unit)
 			end
@@ -386,60 +459,81 @@ end
 
 function Hud:Show(force)
 	if self.visible then return end
-	--self:Print("activating HUD display")
+	
 	self.visible = true
 	self.force = force
+	
+	-- Refresh raid points just in case
+	self:RefreshRaidPoints()
+	
+	-- Create the update ticker
+	-- TODO: use 0.035 for low CPU mode, but using the game framerate feel much better
+	self.ticker = C_Timer.NewTicker(0.01, function() self:OnUpdate() end)
+	
+	-- Delay the first update a bit to prevent side effects on Show() call
+	C_Timer.After(0, function() self:OnUpdate() end)
+	
+	-- Display the master frame
 	hud:SetAllPoints()
 	hud:Show()
-	self:RefreshRaidPoints()
-	self.ticker = C_Timer.NewTicker(0.035, function() self:OnUpdate() end)
-	self:OnUpdate()
 end
 
 function Hud:Hide()
 	if not self.visible then return end
-	--self:Print("disabling HUD display")
+	
+	-- This the master frame
 	self.visible = false
-	self.ticker:Cancel()
 	hud:Hide()
+	
+	-- Stop the update ticker
+	self.ticker:Cancel()
+	
+	-- Clear all points on hide
 	self:Clear()
 end
 
 do
+	-- Variables used for point projection
+	-- Player position
 	local px = 0
 	local py = 0
+	
+	-- Sine and cosine of player facing angle
 	local sin_t = 0
 	local cos_t = 0
+	
+	-- Zoom factor
 	local zoom = 10
 	
+	-- Set the zoom factor, 1yd is equal to this value in pixels
 	function Hud:SetZoom(z)
 		zoom = z
 	end
 	
+	-- Get the HUD zoom factor
 	function Hud:GetZoom()
 		return zoom
 	end
 	
+	-- Project a world point on the screen
 	function Hud:Project(x, y)
+		-- Delta relative to player position
 		local dx = px - x
 		local dy = py - y
+		
+		-- Rotate according to player facing direction
 		local rx = dx * cos_t + dy * sin_t
 		local ry = -dx * sin_t + dy * cos_t
+		
+		-- Multiply by zoom factor
 		return rx * zoom, ry * zoom
 	end
 	
-	function Hud:UpdateShowAllPoints()
-		for obj in Hud:IterateObjects() do
-			if obj.show_all_points then
-				self.show_all_points = true
-				return
-			end
-		end
-		self.show_all_points = false
-	end
-	
+	-- Safety helper to update points and objects
 	local function obj_update(obj)
+		-- Use pcall to prevent an external error to freeze the HUD
 		if not pcall(obj.Update, obj) then
+			-- If more than 5 failures are caused by this object, remove it
 			obj._err_count = (obj._err_count or 0) + 1
 			if obj._err_count > 5 then
 				obj:Remove()
@@ -447,6 +541,7 @@ do
 		end
 	end
 
+	-- Update the HUD
 	function Hud:OnUpdate()
 		-- Nothing to draw, auto-hide
 		if not self.force and self.num_objs == 0 then
@@ -477,34 +572,47 @@ end
 
 local HudObject = {}
 
+-- Remove the object by calling Hud:RemoveObject
 function HudObject:Remove()
 	Hud:RemoveObject(self)
 end
 
+-- Helper function to get a point and register the object with it
 function HudObject:UsePoint(name)
 	local pt = Hud:GetPoint(name)
-	if pt then
-		table.insert(self.attached, pt)
-		pt:AttachObject(self)
+	if not pt then
+		Hud:Printf("Failed to find a point required by a new object ('%s')", name)
+		return
 	end
+	table.insert(self.attached, pt)
+	pt:AttachObject(self)
 	return pt
 end
 
+-- Set the obejct color
 function HudObject:SetColor(...)
 	self.tex:SetVertexColor(...)
 end
 
+-- Get the object color
 function HudObject:GetColor()
 	return self.tex:GetVertexColor()
 end
 
+-- Set the show_all_points flag of this object
+-- If at least one such object is currently defined, all unit points will
+-- be shown even if no objects are attached to them
 function HudObject:ShowAllPoints(state)
 	self.show_all_points = state
 	Hud:UpdateShowAllPoints()
 end
 
+-- Factory function
 function Hud:CreateObject(proto, ...)
+	-- Object usually require raid points to be available
 	self:RefreshRaidPoints()
+	
+	-- Create and register the object
 	return self:AddObject(setmetatable(proto or {}, { __index = HudObject }), ...)
 end
 
@@ -523,7 +631,9 @@ function Hud:AddObject(obj, use_tex)
 	obj.tex = obj.frame.tex
 	obj.attached = {}
 	
+	-- Show() may cause some weird side effects, call it on tick later
 	C_Timer.After(0, function() Hud:Show() end)
+	
 	return obj
 end
 
@@ -532,6 +642,7 @@ function Hud:RemoveObject(obj)
 	if not self.objects[obj] then return end
 	obj._destroyed = true
 	
+	-- Detach this object from every points it was attached to
 	for i, pt in ipairs(obj.attached) do
 		pt:DetachObject(obj)
 	end
@@ -539,9 +650,16 @@ function Hud:RemoveObject(obj)
 	self.objects[obj] = nil
 	self.num_objs = self.num_objs - 1
 	
+	-- Call the remove handler if defined
 	if obj.OnRemove then obj:OnRemove() end
+	
+	-- Release the wrapper frame of this object
 	Hud:ReleaseObjFrame(obj.frame)
-	Hud:UpdateShowAllPoints()
+	
+	-- Check if we still need to show all points
+	if obj.show_all_points then
+		Hud:UpdateShowAllPoints()
+	end
 end
 	
 -- Iterates over all objects
@@ -549,9 +667,21 @@ function Hud:IterateObjects()
 	return pairs(self.objects)
 end
 
+-- Check if at least one show_all_points object is present in the scene
+function Hud:UpdateShowAllPoints()
+	for obj in Hud:IterateObjects() do
+		if obj.show_all_points then
+			self.show_all_points = true
+			return
+		end
+	end
+	self.show_all_points = false
+end
+
 -- Clear the whole scene
 function Hud:Clear()
 	-- Remove all points unrelated to raid units
+	-- This prevent bogus modules to keep invisible points on the scene forever
 	for name, point in self:IteratePoints() do
 		if not point.unit then
 			point:Remove()
@@ -664,9 +794,7 @@ function Hud:DrawCircle(center, radius, tex)
 	end
 	
 	function circle:Update()
-		if self.OnUpdate then
-			self:OnUpdate()
-		end
+		if self.OnUpdate then self:OnUpdate() end
 		
 		local size = radius * 2 * Hud:GetZoom()
 		
@@ -682,6 +810,9 @@ function Hud:DrawCircle(center, radius, tex)
 	
 	return circle
 end
+
+-- DrawRadius is actually a better name for DrawCircle
+Hud.DrawRadius = Hud.DrawCircle
 
 -- Area of Effect
 function Hud:DrawArea(center, radius)
@@ -699,7 +830,9 @@ function Hud:DrawTimer(center, radius, duration)
 	
 	local done = false
 	
-	function timer:OnUpdate()
+	local circle_update = timer.Update
+	
+	function timer:Update()
 		local dt = GetTime() - start
 		if dt < duration then
 			self.pct = dt / duration
@@ -713,6 +846,8 @@ function Hud:DrawTimer(center, radius, duration)
 				self:Done()
 			end
 		end
+		
+		circle_update(timer)
 	end
 	
 	function timer:Rotate()
