@@ -404,7 +404,7 @@ do
 			-- No point found, but the name has a "-" in it. This may be the case
 			-- with cross-realm units. Try again without the server name.
 			return self:GetPoint(name:match("[^-]+"))
-		elseif (name.lower and name:lower() ~= "player") and UnitIsUnit(name, "player") then
+		elseif name ~= "player" and UnitIsUnit(name, "player") then
 			-- Requested the player point but using a raidN unitid
 			return self:GetPoint("player")
 		end
