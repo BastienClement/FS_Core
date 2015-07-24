@@ -398,15 +398,25 @@ do
 		-- Fetch by name or alias
 		local pt = points[name] or aliases[name]
 		
-		-- No point found, but the name has a "-" in it. This may be the case
-		-- with cross-realm units. Try again without the server name.
-		if not pt and name:find("-") then
+		if pt then
+			return pt
+		elseif name:find("-") then
+			-- No point found, but the name has a "-" in it. This may be the case
+			-- with cross-realm units. Try again without the server name.
 			return self:GetPoint(name:match("[^-]+"))
 		elseif not pt and name ~= "player" and UnitIsUnit(name, "player") then
+			-- Requested the player point but using a raidN unitid
 			return self:GetPoint("player")
 		else
-			return pt
+			-- Attempt to lookup by GUID
+			local guid = UnitGUID(name)
+			if guid then
+				return Hud:GetPoint(guid)
+			end
 		end
+		
+		-- No point matches
+		-- Returning nothing
 	end
 	
 	-- Find point world position
