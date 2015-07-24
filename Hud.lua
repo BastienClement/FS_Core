@@ -494,6 +494,9 @@ function Hud:Show(force)
 	-- Refresh raid points just in case
 	self:RefreshRaidPoints()
 	
+	-- Update show all points setting
+	self:UpdateShowAllPoints()
+	
 	-- Create the update ticker
 	-- TODO: use 0.035 for low CPU mode, but using the game framerate feel much better
 	self.ticker = C_Timer.NewTicker(0.01, function() self:OnUpdate() end)
