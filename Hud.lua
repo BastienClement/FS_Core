@@ -472,7 +472,7 @@ do
 		
 		-- Find unit currently available without associated raid points
 		for _, unit in FS:IterateGroup() do
-			local pt = self:GetPoint(unit)
+			local pt = self:GetPoint(UnitGUID(unit))
 			if not pt or pt.unit ~= unit then
 				-- We got a point, but that is a bad one
 				if pt then pt:Remove() end
