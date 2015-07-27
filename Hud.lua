@@ -54,6 +54,8 @@ do
 		frame.tex:SetAllPoints()
 		frame.tex:SetDrawLayer("ARTWORK")
 		frame.tex:SetBlendMode("BLEND")
+		frame.tex:SetTexCoord(0, 1, 0, 1)
+		
 		if use_tex then
 			frame.tex:Show()
 		else
@@ -78,7 +80,7 @@ do
 	-- Put the given frame back in the pool
 	function Hud:ReleaseObjFrame(frame)
 		frame:Hide()
-		table.insert(pool, tex)
+		table.insert(pool, frame)
 	end
 end
 
