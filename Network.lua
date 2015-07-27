@@ -9,39 +9,51 @@ local EMPTY_TABLE = {}
 -- Register the addon messaging channel
 function Network:OnInitialize()
 	self:RegisterComm("FS")
+	self:RegisterComm("FSCTRL")
+	self:RegisterComm("FSCTRL")
+	self.versions = {}
 end
 
--- Valid channels
-local broadcast_channels = {
-	["BATTLEGROUND"] = true,
-	["GUILD"] = true,
-	["OFFICER"] = true,
-	["RAID"] = true
-}
+-- Broadcast version on enable
+function Network:OnEnable()
+	C_Timer.After(5, function()
+		self:BroadcastVersion()
+	end)
+end
 
--- Send message to players
-function Network:Send(label, data, channel, multicast)
-	local target
-	
-	-- Multicast given and channel is nil
-	if type(channel) == "table" then
-		multicast = channel
-		channel = nil
-	end
-	
-	if not channel then
-		if IsInRaid() or IsInGroup() then
-			channel = "RAID"
-		else
-			channel = "WHISPER"
-			target = UnitName("player")
+do
+	-- Valid channels
+	local broadcast_channels = {
+		["BATTLEGROUND"] = true,
+		["GUILD"] = true,
+		["OFFICER"] = true,
+		["RAID"] = true
+	}
+
+	-- Send message to players
+	function Network:Send(label, data, channel, multicast)
+		local target
+		
+		-- Multicast given and channel is nil
+		if type(channel) == "table" then
+			multicast = channel
+			channel = nil
 		end
-	elseif not broadcast_channels[channel] then
-		target = channel
-		channel = "WHISPER"
+		
+		if not channel then
+			if IsInRaid() or IsInGroup() then
+				channel = "RAID"
+			else
+				channel = "WHISPER"
+				target = UnitName("player")
+			end
+		elseif not broadcast_channels[channel] then
+			target = channel
+			channel = "WHISPER"
+		end
+		
+		self:SendCommMessage("FS", self:Serialize(label, data, multicast), channel, target)
 	end
-	
-	self:SendCommMessage("FS", self:Serialize(label, data, multicast), channel, target)
 end
 
 -- Receive message from player
@@ -62,10 +74,37 @@ function Network:OnCommReceived(prefix, text, channel, source)
 			self:SendMessage("FS_MSG", label, data or EMPTY_TABLE, channel, source)
 			self:SendMessage("FS_MSG_" .. label:upper(), data or EMPTY_TABLE, channel, source)
 		end
+	elseif prefix == "FSCTRL" then
+		local action, data = text:match("([^ ]+) (.*)")
+		if action == "version" then
+			self.versions[source] = data
+		elseif action == "version_query" then
+			self:BroadcastVersion()
+		end
 	end
 end
 
 -- Alias Send in the global object
 function FS:Send(...)
 	return Network:Send(...)
+end
+
+-- Send control message
+function Network:SendCtrl(action, data, channel, target)
+	self:SendCommMessage("FSCTRL", action .. " " .. (data or ""), channel)
+end
+
+-- Broadcast FS Core version
+function Network:BroadcastVersion()
+	local dev_version = "@project" .. "-version@"
+	local version = (FS.version == dev_version) and "dev" or FS.version
+	
+	self:SendCtrl("version", version, "GUILD")
+	self:SendCtrl("version", version, "RAID")
+end
+
+-- Request an upgrade of other players versions
+function Network:RequestVersions()
+	self:SendCtrl("version_query", nil, "GUILD")
+	self:SendCtrl("version_query", nil, "RAID")
 end
