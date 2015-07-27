@@ -852,7 +852,7 @@ end
 
 -- Circle
 function Hud:DrawCircle(center, radius, tex)
-	local circle = self:CreateObject({}, true)
+	local circle = self:CreateObject({ radius = radius }, true)
 	
 	center = circle:UsePoint(center)
 	if not center then return end
@@ -863,7 +863,7 @@ function Hud:DrawCircle(center, radius, tex)
 	
 	-- Check if a given unit is inside the circle
 	function circle:UnitIsInside(unit)
-		return not UnitIsDeadOrGhost(unit) and center:UnitDistance(unit) < radius
+		return not UnitIsDeadOrGhost(unit) and center:UnitDistance(unit) < self.radius
 	end
 	
 	-- Get the list of units inside the circle
@@ -883,7 +883,7 @@ function Hud:DrawCircle(center, radius, tex)
 	function circle:Update()
 		if self.OnUpdate then self:OnUpdate() end
 		
-		local size = radius * 2 * Hud:GetZoom()
+		local size = self.radius * 2 * Hud:GetZoom()
 		
 		if self.Rotate then
 			-- Rotation require a multiplier on size
