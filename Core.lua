@@ -7,7 +7,6 @@ LibStub("AceConsole-3.0"):Embed(FS)
 FS:SetDefaultModuleLibraries("AceEvent-3.0", "AceConsole-3.0")
 
 FS.version = "@project-version@"
-FS.version_time = "@project-timestamp@"
 
 function Core:OnInitialize()
 	-- Initialization
