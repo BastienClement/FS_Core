@@ -867,12 +867,14 @@ function Hud:DrawCircle(center, radius, tex)
 	end
 	
 	-- Get the list of units inside the circle
-	function circle:UnitsInside()
+	function circle:UnitsInside(filter)
 		local cx, cy = Hud:GetPointPosition(center)
 		local players = {}
 		for _, unit in FS:IterateGroup() do
-			if self:UnitIsInside(unit) then
-				players[#players + 1] = unit
+			if type(filter) ~= "function" or filter(unit) then
+				if self:UnitIsInside(unit) then
+					players[#players + 1] = unit
+				end
 			end
 		end
 		return players
