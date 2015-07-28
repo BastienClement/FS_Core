@@ -9,7 +9,7 @@ FS:SetDefaultModuleLibraries("AceEvent-3.0", "AceConsole-3.0")
 FS.version = "@project-version@"
 
 function Core:OnInitialize()
-	-- Initialization
+	self.db = LibStub("AceDB-3.0"):New("FSDB", nil, true)
 end
 
 function Core:OnEnable()
