@@ -96,9 +96,7 @@ end
 
 -- Broadcast FS Core version
 function Network:BroadcastVersion()
-	local dev_version = "@project" .. "-version@"
-	local version = (FS.version == dev_version) and "dev" or FS.version
-	
+	local version =  FS.version
 	self:SendCtrl("version", version, "GUILD")
 	self:SendCtrl("version", version, "RAID")
 end

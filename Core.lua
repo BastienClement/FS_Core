@@ -6,7 +6,12 @@ LibStub("AceConsole-3.0"):Embed(FS)
 
 FS:SetDefaultModuleLibraries("AceEvent-3.0", "AceConsole-3.0")
 
-FS.version = "@project-version@"
+-- Version
+do
+	local version_str = "@project-version@"
+	local dev_version = "@project" .. "-version@"
+	FS.version = version_str == dev_version and "dev" or version_str
+end
 
 function Core:OnInitialize()
 	self.db = LibStub("AceDB-3.0"):New("FSDB", nil, true)
