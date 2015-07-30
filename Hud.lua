@@ -16,14 +16,189 @@ do
 end
 
 --------------------------------------------------------------------------------
+-- Hud config
+
+local hud_defaults = {
+	profile = {
+		enable = true,
+		fps = 120,
+		alpha = 1,
+		scale = 10,
+		offset_x = 0,
+		offset_y = 0
+	}
+}
+
+local hud_config = {
+	title = {
+		type = "description",
+		name = "|cff64b4ffHead-up display (HUD)",
+		fontSize = "large",
+		order = 0
+	},
+	desc = {
+		type = "description",
+		name = "Visual radar-like display over the whole screen used to show various boss abilities area of effect.\n",
+		fontSize = "medium",
+		order = 1
+	},
+	enable = {
+		type = "toggle",
+		name = "Enable",
+		width = "full",
+		get = function()
+			return Hud.settings.enable
+		end,
+		set = function(_, value)
+			Hud.settings.enable = value
+			if value then
+				Hud:Enable()
+				if Hud.num_objs > 0 then
+					Hud:Show()
+				end
+			else
+				Hud:Disable()
+			end
+		end,
+		order = 5
+	},
+	spacing_9 = {
+		type = "description",
+		name = "\n",
+		order = 9
+	},
+	offset_x = {
+		type = "range",
+		name = "Offset X",
+		min = -10000, max = 10000,
+		softMin = -960, softMax = 960,
+		bigStep = 1,
+		get = function()
+			return Hud.settings.offset_x
+		end,
+		set = function(_, value)
+			Hud.settings.offset_x = value
+			hud:SetPoint("CENTER", UIParent, "CENTER", value, Hud.settings.offset_y)
+		end,
+		order = 20
+	},
+	offset_y = {
+		type = "range",
+		name = "Offset Y",
+		min = -10000, max = 10000,
+		softMin = -540, softMax = 540,
+		bigStep = 1,
+		get = function()
+			return Hud.settings.offset_y
+		end,
+		set = function(_, value)
+			Hud.settings.offset_y = value
+			hud:SetPoint("CENTER", UIParent, "CENTER", Hud.settings.offset_x, value)
+		end,
+		order = 21
+	},
+	fps = {
+		type = "range",
+		name = "Refresh rate",
+		desc = "Number of refresh per seconds. Reducing this value can greatly reduce CPU usage. It will never be faster than your in-game FPS.",
+		min = 10,
+		max = 120,
+		bigStep = 5,
+		get = function()
+			return Hud.settings.fps
+		end,
+		set = function(_, value)
+			Hud.settings.fps = value
+		end,
+		order = 30
+	},
+	scale = {
+		type = "range",
+		name = "Scale",
+		desc = "Number of pixels corresponding to 1 yard. You should keep the default 10 px/yd in most cases.",
+		min = 2,
+		max = 50,
+		bigStep = 1,
+		get = function()
+			return Hud.settings.scale
+		end,
+		set = function(_, value)
+			Hud.settings.scale = value
+			Hud:SetZoom(value)
+		end,
+		order = 35
+	},
+	spacing_89 = {
+		type = "description",
+		name = "\n\n",
+		order = 89
+	},
+	test = {
+		type = "execute",
+		name = "Test",
+		func = function()
+			local x, y = UnitPosition("player")
+			
+			local s1 = Hud:CreateStaticPoint(x+15, y+15):SetColor(0.8, 0, 0.8, 1)
+			local s2 = Hud:CreateStaticPoint(x+30, y):SetColor(0, 0.8, 0.8, 1)
+			local s3 = Hud:CreateShadowPoint("player"):SetColor(0.8, 0.8, 0, 1)
+
+			local a1 = Hud:DrawArea(s1, 15)
+			local a2 = Hud:DrawTarget(s2, 10):Fade(false)
+			local a3 = Hud:DrawTimer(s3, 15, 10):SetColor(0.8, 0.8, 0, 0.5)
+			local a4 = Hud:DrawRadius(s3, 25)
+			
+			function a2:OnUpdate()
+				self:SetColor(abs(sin(GetTime())), abs(sin(GetTime() / 2)), abs(sin(GetTime() / 3)), 0.8)
+			end
+			
+			function a3:Done()
+				a3:Remove()
+				a4:Remove()
+			end
+			
+			Hud:DrawLine("player", s1, 128)
+			Hud:DrawLine("player", s2)
+			Hud:DrawLine(s1, s2, 256)
+
+			function a1:OnUpdate()
+			   self.radius = 25 + math.sin(GetTime() * 5)
+			end
+		end,
+		order = 100,
+	},
+	clear = {
+		type = "execute",
+		name = "Clear",
+		func = function()
+			Hud:Clear()
+		end,
+		order = 101,
+	},
+}
+
+--------------------------------------------------------------------------------
 -- Module initialization
 
 function Hud:OnInitialize()
 	Map = FS:GetModule("Map")
 	
+	-- Create config database
+	self.db = FS.db:RegisterNamespace("HUD", hud_defaults)
+	self.settings = self.db.profile
+	
+	-- Config enable state
+	self:SetEnabledState(self.settings.enable)
+	
+	-- Set HUD global alpha
+	hud:SetAlpha(self.settings.alpha)
+	self:SetZoom(self.settings.scale)
+	
 	-- Object currently drawn on the HUD
 	self.objects = {}
 	self.num_objs = 0
+	
+	FS:GetModule("Config"):Register("Head-up display", hud_config)
 end
 
 function Hud:OnEnable()
@@ -488,7 +663,7 @@ end
 -- Visibility and updates
 
 function Hud:Show(force)
-	if self.visible then return end
+	if self.visible or not self:IsEnabled() then return end
 	
 	self.visible = true
 	self.force = force
@@ -501,13 +676,14 @@ function Hud:Show(force)
 	
 	-- Create the update ticker
 	-- TODO: use 0.035 for low CPU mode, but using the game framerate feel much better
-	self.ticker = C_Timer.NewTicker(0.01, function() self:OnUpdate() end)
+	self.ticker = C_Timer.NewTicker(1 / self.settings.fps, function() self:OnUpdate() end)
 	
 	-- Delay the first update a bit to prevent side effects on Show() call
 	C_Timer.After(0, function() self:OnUpdate() end)
 	
 	-- Display the master frame
-	hud:SetAllPoints()
+	hud:SetSize(UIParent:GetSize())
+	hud:SetPoint("CENTER", UIParent, "CENTER", self.settings.offset_x, self.settings.offset_y)
 	hud:Show()
 end
 
@@ -783,71 +959,69 @@ end
 -- API
 
 -- Line
-do
-	function Hud:DrawLine(from, to, width)
-		local line = self:CreateObject({ width = width or 64 }, true)
+function Hud:DrawLine(from, to, width)
+	local line = self:CreateObject({ width = width or 64 }, true)
+	
+	from = line:UsePoint(from)
+	to = line:UsePoint(to)
+	if not from or not to then return end
+	
+	line.tex:SetTexture("Interface\\AddOns\\FS_Core\\media\\line")
+	line.tex:SetVertexColor(0.5, 0.5, 0.5, 1)
+	line.tex:SetBlendMode("ADD")
+	
+	function line:Update()
+		local sx, sy = from.x, from.y
+		local ex, ey = to.x, to.y
 		
-		from = line:UsePoint(from)
-		to = line:UsePoint(to)
-		if not from or not to then return end
+		-- Determine dimensions and center point of line
+		local dx, dy = ex - sx, ey - sy
+		local cx, cy = (sx + ex) / 2, (sy + ey) / 2
+		local w = self.width
 		
-		line.tex:SetTexture("Interface\\AddOns\\FS_Core\\media\\line")
-		line.tex:SetVertexColor(0.5, 0.5, 0.5, 1)
-		line.tex:SetBlendMode("ADD")
-		
-		function line:Update()
-			local sx, sy = from.x, from.y
-			local ex, ey = to.x, to.y
-			
-			-- Determine dimensions and center point of line
-			local dx, dy = ex - sx, ey - sy
-			local cx, cy = (sx + ex) / 2, (sy + ey) / 2
-			local w = self.width
-			
-			-- Normalize direction if necessary
-			if dx < 0 then
-				dx, dy = -dx, -dy;
-			end
-			
-			-- Calculate actual length of line
-			local l = (dx * dx + dy * dy) ^ 0.5
-			
-			-- Quick escape if it's zero length
-			if l == 0 then
-				self.frame:ClearAllPoints()
-				self.frame:SetPoint("BOTTOMLEFT", hud, "CENTER", cx, cy)
-				self.frame:SetPoint("TOPRIGHT",   hud, "CENTER", cx, cy)
-				self.tex:SetTexCoord(0,0,0,0,0,0,0,0)
-				return
-			end
-			
-			-- Sin and Cosine of rotation, and combination (for later)
-			local s, c = -dy / l, dx / l
-			local sc = s * c
-			
-			-- Calculate bounding box size and texture coordinates
-			local Bwid, Bhgt, BLx, BLy, TLx, TLy, TRx, TRy, BRx, BRy
-			if dy >= 0 then
-				Bwid = ((l * c) - (w * s)) / 2
-				Bhgt = ((w * c) - (l * s)) / 2
-				BLx, BLy, BRy = (w / l) * sc, s * s, (l / w) * sc
-				BRx, TLx, TLy, TRx = 1 - BLy, BLy, 1 - BRy, 1 - BLx
-				TRy = BRx;
-			else
-				Bwid = ((l * c) + (w * s)) / 2
-				Bhgt = ((w * c) + (l * s)) / 2
-				BLx, BLy, BRx = s * s, -(l / w) * sc, 1 + (w / l) * sc
-				BRy, TLx, TLy, TRy = BLx, 1 - BRx, 1 - BLx, 1 - BLy
-				TRx = TLy
-			end
-			
-			self.frame:SetPoint("BOTTOMLEFT", hud, "CENTER", cx - Bwid, cy - Bhgt)
-			self.frame:SetPoint("TOPRIGHT",   hud, "CENTER", cx + Bwid, cy + Bhgt)
-			self.tex:SetTexCoord(TLx, TLy, BLx, BLy, TRx, TRy, BRx, BRy)
+		-- Normalize direction if necessary
+		if dx < 0 then
+			dx, dy = -dx, -dy;
 		end
 		
-		return line
+		-- Calculate actual length of line
+		local l = (dx * dx + dy * dy) ^ 0.5
+		
+		-- Quick escape if it's zero length
+		if l == 0 then
+			self.frame:ClearAllPoints()
+			self.frame:SetPoint("BOTTOMLEFT", hud, "CENTER", cx, cy)
+			self.frame:SetPoint("TOPRIGHT",   hud, "CENTER", cx, cy)
+			self.tex:SetTexCoord(0,0,0,0,0,0,0,0)
+			return
+		end
+		
+		-- Sin and Cosine of rotation, and combination (for later)
+		local s, c = -dy / l, dx / l
+		local sc = s * c
+		
+		-- Calculate bounding box size and texture coordinates
+		local Bwid, Bhgt, BLx, BLy, TLx, TLy, TRx, TRy, BRx, BRy
+		if dy >= 0 then
+			Bwid = ((l * c) - (w * s)) / 2
+			Bhgt = ((w * c) - (l * s)) / 2
+			BLx, BLy, BRy = (w / l) * sc, s * s, (l / w) * sc
+			BRx, TLx, TLy, TRx = 1 - BLy, BLy, 1 - BRy, 1 - BLx
+			TRy = BRx;
+		else
+			Bwid = ((l * c) + (w * s)) / 2
+			Bhgt = ((w * c) + (l * s)) / 2
+			BLx, BLy, BRx = s * s, -(l / w) * sc, 1 + (w / l) * sc
+			BRy, TLx, TLy, TRy = BLx, 1 - BRx, 1 - BLx, 1 - BLy
+			TRx = TLy
+		end
+		
+		self.frame:SetPoint("BOTTOMLEFT", hud, "CENTER", cx - Bwid, cy - Bhgt)
+		self.frame:SetPoint("TOPRIGHT",   hud, "CENTER", cx + Bwid, cy + Bhgt)
+		self.tex:SetTexCoord(TLx, TLy, BLx, BLy, TRx, TRy, BRx, BRy)
 	end
+	
+	return line
 end
 
 -- Circle
@@ -909,6 +1083,7 @@ end
 -- Target reticle
 function Hud:DrawTarget(center, radius)
 	local target = self:DrawCircle(center, radius, "Interface\\AddOns\\FS_Core\\media\\alert_circle")
+	if not target then return end
 	
 	function target:Rotate()
 		return GetTime()
