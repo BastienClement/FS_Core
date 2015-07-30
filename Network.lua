@@ -6,12 +6,65 @@ LibStub("AceSerializer-3.0"):Embed(Network)
 
 local EMPTY_TABLE = {}
 
+-- GUI for versions informations
+local version_gui = {
+	title = {
+		type = "description",
+		name = "|cff64b4ffVersions",
+		fontSize = "large",
+		order = 0,
+	},
+	desc = {
+		type = "description",
+		name = "This tab allows you to see guild and raid members version of FS Core.\n",
+		fontSize = "medium",
+		order = 1,
+	},
+	update_btn = {
+		type = "execute",
+		name = "Refresh",
+		desc = "Refresh the version list with latest informations",
+		order = 2,
+		func = function()
+			-- Dummy function to trigger Ace3 config dialog refresh
+		end
+	},
+	request_btn = {
+		type = "execute",
+		name = "Request version broadcast",
+		desc = "Request guild and raid members to broadcast their FS Core version",
+		order = 3,
+		func = function()
+			Network:RequestVersions()
+		end
+	},
+	last_updated = {
+		type = "description",
+		name = "Last updated: never",
+		order = 5
+	},
+	padding_1 = {
+		type = "description",
+		name = "",
+		order = 6
+	},
+	versions = {
+		type = "group",
+		inline = true,
+		name = "Versions",
+		order = 7,
+		args = {}
+	}
+}
+
 -- Register the addon messaging channel
 function Network:OnInitialize()
 	self:RegisterComm("FS")
 	self:RegisterComm("FSCTRL")
 	self:RegisterComm("FSCTRL")
 	self.versions = {}
+	
+	FS:GetModule("Config"):Register("Versions", version_gui)
 end
 
 -- Broadcast version on enable
@@ -78,6 +131,11 @@ function Network:OnCommReceived(prefix, text, channel, source)
 		local action, data = text:match("([^ ]+) (.*)")
 		if action == "version" then
 			self.versions[source] = data
+			version_gui.last_updated.name = "Last updated: " .. date()
+			version_gui.versions.args[source] = {
+				type = "description",
+				name = source .. "  -  " .. data
+			}
 		elseif action == "version_query" then
 			self:BroadcastVersion()
 		end
@@ -102,7 +160,16 @@ function Network:BroadcastVersion()
 end
 
 -- Request an upgrade of other players versions
-function Network:RequestVersions()
-	self:SendCtrl("version_query", nil, "GUILD")
-	self:SendCtrl("version_query", nil, "RAID")
+do
+	local request_cooldown = 0
+	function Network:RequestVersions()
+		local now = GetTime()
+		if now < request_cooldown then
+			self:Printf("Cannot request version broadcast right now, try again in %s seconds", math.ceil(request_cooldown - now))
+			return
+		end
+		request_cooldown = now + 30
+		self:SendCtrl("version_query", nil, "GUILD")
+		self:SendCtrl("version_query", nil, "RAID")
+	end
 end
