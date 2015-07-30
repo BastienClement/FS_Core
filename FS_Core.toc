@@ -29,6 +29,7 @@ Core.lua
 Format.lua
 Network.lua
 Console.lua
+Config.lua
 
 Map.lua
 Arrow.lua

@@ -1,6 +1,8 @@
 local _, FS = ...
 local Console = FS:RegisterModule("Console")
 
+local AceConfigDialog = LibStub("AceConfigDialog-3.0")
+
 Console.commands = {}
 
 function Console:OnEnable()
@@ -19,8 +21,9 @@ function Console:OnSlash(cmd)
 	-- Extract subcmd from cmd line
 	local subcmd, n = self:GetArgs(cmd)
 	if not subcmd then
-		self:Print("Usage: /fs <cmd> <args>")
-		self:PrintAvailableCommands()
+		AceConfigDialog:Open("FS Core")
+		--self:Print("Usage: /fs <cmd> <args>")
+		--self:PrintAvailableCommands()
 		return
 	end
 	
