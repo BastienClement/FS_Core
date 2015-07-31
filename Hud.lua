@@ -786,11 +786,6 @@ end
 
 local HudObject = {}
 
--- Remove the object by calling Hud:RemoveObject
-function HudObject:Remove()
-	Hud:RemoveObject(self)
-end
-
 -- Helper function to get a point and register the object with it
 function HudObject:UsePoint(name)
 	local pt = Hud:GetPoint(name)
@@ -838,31 +833,89 @@ function HudObject:Fade(state)
 	return self
 end
 
+-- Set a key for this object
+function HudObject:Register(key, replace)
+	if not key then return end
+	
+	-- If replace, remove objects with the same key
+	if replace then
+		Hud:RemoveObject(key)
+	end
+	
+	-- Define the key for this object
+	Hud.objects[self] = key
+	
+	return self
+end
+
+-- Remove the object by calling Hud:RemoveObject
+function HudObject:Remove()
+	-- Object itself given
+	if not Hud.objects[self] or self._destroyed then return end
+	self._destroyed = true
+	
+	-- Detach this object from every points it was attached to
+	for i, pt in ipairs(self.attached) do
+		pt:DetachObject(self)
+	end
+	
+	local function do_remove()
+		Hud.objects[self] = nil
+		Hud.num_objs = Hud.num_objs - 1
+		
+		-- Release the wrapper frame of this object
+		Hud:ReleaseObjFrame(self.frame)
+	end
+	
+	-- Call the remove handler if defined
+	if self.OnRemove then self:OnRemove() end
+	
+	-- Fade out animation
+	if self.fade then
+		if self.fade_in then
+			self.fade_in:Cancel()
+		end
+		
+		local start = GetTime()
+		local ticker
+		ticker = C_Timer.NewTicker(0.01, function()
+			local pct = (GetTime() - start) / 0.20
+			if pct > 1 then
+				self.frame:SetAlpha(0)
+				ticker:Cancel()
+				ticker = nil
+				do_remove()
+			else
+				self.frame:SetAlpha(1 - pct)
+			end
+		end)
+	else
+		do_remove()
+	end
+	
+	-- Check if we still need to show all points
+	if self.show_all_points then
+		Hud:UpdateShowAllPoints()
+	end
+end
+
 -- Factory function
-function Hud:CreateObject(proto, ...)
+function Hud:CreateObject(proto, use_tex)
 	-- Object usually require raid points to be available
 	self:RefreshRaidPoints()
 	
-	-- Create and register the object
-	return self:AddObject(setmetatable(proto or {}, { __index = HudObject }), ...)
-end
-
---------------------------------------------------------------------------------
--- Scene management
-
--- Add a new object to the scene
-function Hud:AddObject(obj, use_tex)
-	if self.objects[obj] then return obj end
-	if obj._destroyed then error("Cannot add a destroyed object") end
+	local obj = setmetatable(proto or {}, { __index = HudObject })
+	obj.__object = true
 	
 	self.objects[obj] = true
 	self.num_objs = self.num_objs + 1
 	
-	obj.frame = Hud:AllocObjFrame(use_tex)
+	obj.frame = self:AllocObjFrame(use_tex)
 	obj.tex = obj.frame.tex
 	obj.attached = {}
 	obj.fade = true
 	
+	-- Fade in if not disabled
 	C_Timer.After(0, function()
 		if obj.fade then
 			local created = GetTime()
@@ -886,53 +939,20 @@ function Hud:AddObject(obj, use_tex)
 	return obj
 end
 
+--------------------------------------------------------------------------------
+-- Scene management
+
 -- Remove an object from the scene
-function Hud:RemoveObject(obj)
-	if not self.objects[obj] or obj._destroyed then return end
-	obj._destroyed = true
-	
-	-- Detach this object from every points it was attached to
-	for i, pt in ipairs(obj.attached) do
-		pt:DetachObject(obj)
-	end
-	
-	local function do_remove()
-		Hud.objects[obj] = nil
-		Hud.num_objs = Hud.num_objs - 1
-		
-		-- Release the wrapper frame of this object
-		Hud:ReleaseObjFrame(obj.frame)
-	end
-	
-	-- Call the remove handler if defined
-	if obj.OnRemove then obj:OnRemove() end
-	
-	-- Fade out animation
-	if obj.fade then
-		if obj.fade_in then
-			obj.fade_in:Cancel()
-		end
-		
-		local start = GetTime()
-		local ticker
-		ticker = C_Timer.NewTicker(0.01, function()
-			local pct = (GetTime() - start) / 0.20
-			if pct > 1 then
-				obj.frame:SetAlpha(0)
-				ticker:Cancel()
-				ticker = nil
-				do_remove()
-			else
-				obj.frame:SetAlpha(1 - pct)
-			end
-		end)
+function Hud:RemoveObject(key)
+	if key.__object then
+		key:Remove()
+		return
 	else
-		do_remove()
-	end
-	
-	-- Check if we still need to show all points
-	if obj.show_all_points then
-		Hud:UpdateShowAllPoints()
+		for o, k in self:IterateObjects() do
+			if k == key then
+				o:Remove()
+			end
+		end
 	end
 end
 	
