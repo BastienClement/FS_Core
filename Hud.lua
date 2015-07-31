@@ -541,9 +541,12 @@ do
 		end
 		
 		local shadow = self:CreatePoint(...)
+		shadow.ref = ref
 		
 		-- Mirror reference point
-		function shadow:Position() return ref:Position() end
+		function shadow:Position()
+			return ref:Position()
+		end
 		
 		-- Consider the shadow point as an object attached to the reference point
 		-- This will cause the shadow point to be removed if the reference point is removed
@@ -551,7 +554,9 @@ do
 		
 		-- Detach the shadow point from the reference point on removal
 		-- This prevent a memory leak by keeping the object alive
-		function shadow:OnRemove() return ref:DetachObject(self) end
+		function shadow:OnRemove()
+			return ref:DetachObject(self)
+		end
 		
 		return shadow
 	end
