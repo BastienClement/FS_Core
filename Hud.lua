@@ -818,6 +818,10 @@ end
 -- If at least one such object is currently defined, all unit points will
 -- be shown even if no objects are attached to them
 function HudObject:ShowAllPoints(state)
+	if state == nil then
+		return self.show_all_points
+	end
+	
 	self.show_all_points = state
 	Hud:UpdateShowAllPoints()
 	return self
@@ -826,6 +830,10 @@ end
 -- Set fade flag
 -- If this flag is set, the object will be animated with a fade-in-out
 function HudObject:Fade(state)
+	if state == nil then
+		return self.fade
+	end
+	
 	self.fade = state
 	return self
 end
