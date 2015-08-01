@@ -50,7 +50,7 @@ local icons = setmetatable({}, {__index =
 
 function BW:OnEnable()
 	-- Force BigWigs loading
-	C_Timer.After(2, function()
+	C_Timer.After(15, function()
 		LoadAddOn("BigWigs_Core")
 		if BigWigs then
 			BigWigs:Enable()
