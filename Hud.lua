@@ -3,7 +3,7 @@ local Hud = FS:RegisterModule("Hud")
 local Map
 
 -- Math aliases
-local sin, cos = math.sin, math.cos
+local sin, cos, atan2, abs = math.sin, math.cos, math.atan2, math.abs
 local pi_2 = math.pi / 2
 
 --------------------------------------------------------------------------------
@@ -25,7 +25,10 @@ local hud_defaults = {
 		alpha = 1,
 		scale = 10,
 		offset_x = 0,
-		offset_y = 0
+		offset_y = 0,
+		smoothing = true,
+		smoothing_click = false,
+		fade = true
 	}
 }
 
@@ -128,9 +131,53 @@ local hud_config = {
 		end,
 		order = 35
 	},
-	spacing_89 = {
+	spacing_59 = {
 		type = "description",
 		name = "\n\n",
+		order = 59
+	},
+	smooth = {
+		type = "toggle",
+		name = "Enable rotation smoothing",
+		desc = "Enable smooth rotation when your character abruptly changes orientation",
+		get = function()
+			return Hud.settings.smoothing
+		end,
+		set = function(_, value)
+			Hud.settings.smoothing = value
+		end,
+		order = 60
+	},
+	smooth_click = {
+		type = "toggle",
+		name = "Smooth right-click rotation",
+		desc = "Smooth rotation even when done manually by right-clicking on the game world",
+		get = function()
+			return Hud.settings.smoothing_click
+		end,
+		set = function(_, value)
+			Hud.settings.smoothing_click = value
+		end,
+		disabled = function()
+			return not Hud.settings.smoothing
+		end,
+		order = 61
+	},
+	fade = {
+		type = "toggle",
+		name = "Enable fade-in-out animations",
+		desc = "Enable animations on objects creation and removal",
+		get = function()
+			return Hud.settings.fade
+		end,
+		set = function(_, value)
+			Hud.settings.fade = value
+		end,
+		order = 62
+	},
+	spacing_89 = {
+		type = "description",
+		name = "\n",
 		order = 89
 	},
 	test = {
@@ -200,6 +247,11 @@ function Hud:OnInitialize()
 	-- Object currently drawn on the HUD
 	self.objects = {}
 	self.num_objs = 0
+	
+	-- Track right click on the game world and disable rotation smoothing
+	self.right_click = false
+	hooksecurefunc(_G, "TurnOrActionStart", function() self.right_click = true end)
+	hooksecurefunc(_G, "TurnOrActionStop", function() self.right_click = false end)
 	
 	FS:GetModule("Config"):Register("Head-up display", hud_config)
 end
@@ -500,7 +552,7 @@ do
 		-- Since we usually attach them to unit point, refresh them now
 		self:RefreshRaidPoints()
 		
-		-- Fetch the reference point
+		-- Get the reference point
 		local ref = self:GetPoint(pt)
 		if not ref then
 			self:Printf("Shadow point creation failed: unable to get the reference point ('%s')", pt)
@@ -638,6 +690,9 @@ function Hud:Show(force)
 	-- Update show all points setting
 	self:UpdateShowAllPoints()
 	
+	-- Reset the rotation smoothing feature
+	self:ResetRotationSmoothing()
+	
 	-- Create the update ticker
 	-- TODO: use 0.035 for low CPU mode, but using the game framerate feel much better
 	self.ticker = C_Timer.NewTicker(1 / self.settings.fps, function() self:OnUpdate() end)
@@ -672,8 +727,9 @@ do
 	local py = 0
 	
 	-- Sine and cosine of player facing angle
-	local sin_t = 0
-	local cos_t = 0
+	local a, last_a = 0, 0
+	local sin_a = 0
+	local cos_a = 0
 	
 	-- Zoom factor
 	local zoom = 10
@@ -688,6 +744,11 @@ do
 		return zoom
 	end
 	
+	-- Reset the last rotation angle to prevent rotation smoothing on show
+	function Hud:ResetRotationSmoothing()
+		last_a = GetPlayerFacing() + pi_2
+	end
+	
 	-- Project a world point on the screen
 	function Hud:Project(x, y)
 		-- Delta relative to player position
@@ -695,8 +756,8 @@ do
 		local dy = py - y
 		
 		-- Rotate according to player facing direction
-		local rx = dx * cos_t + dy * sin_t
-		local ry = -dx * sin_t + dy * cos_t
+		local rx = dx * cos_a + dy * sin_a
+		local ry = -dx * sin_a+ dy * cos_a
 		
 		-- Multiply by zoom factor
 		return rx * zoom, ry * zoom
@@ -724,9 +785,19 @@ do
 		
 		-- Fetch player position and facing for projection
 		px, py = UnitPosition("player")
-		local t = GetPlayerFacing() + pi_2
-		cos_t = cos(t)
-		sin_t = sin(t)
+		a = GetPlayerFacing() + pi_2
+		
+		local ea
+		if self.settings.smoothing and (not self.right_click or self.settings.smoothing_click) then
+			local da = atan2(sin(a - last_a), cos(a - last_a))
+			ea = (abs(da) < 0.1) and a or (last_a + (da / 3))
+		else
+			ea = a
+		end
+		
+		last_a = ea
+		cos_a = cos(ea)
+		sin_a = sin(ea)
 		
 		-- Update all points
 		for name, obj in self:IteratePoints() do
@@ -787,6 +858,9 @@ function HudObject:Fade(state)
 	if state == nil then
 		return self.fade
 	end
+	
+	-- Prevent setting the fade flags if globally disabled
+	if not Hud.settings.fade then return self end
 	
 	self.fade = state
 	return self
@@ -872,7 +946,7 @@ function Hud:CreateObject(proto, use_tex)
 	obj.frame = self:AllocObjFrame(use_tex)
 	obj.tex = obj.frame.tex
 	obj.attached = {}
-	obj.fade = true
+	obj.fade = Hud.settings.fade
 	
 	-- Fade in if not disabled
 	C_Timer.After(0, function()
