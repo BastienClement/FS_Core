@@ -595,14 +595,6 @@ do
 		-- Returning nothing
 	end
 	
-	-- Find point world position
-	function Hud:GetPointPosition(name)
-		local pt = self:GetPoint(name)
-		if pt then
-			return pt.world_x, pt.world_y
-		end
-	end
-	
 	-- Remove a point
 	function Hud:RemovePoint(name)
 		local pt = self:GetPoint(name)
