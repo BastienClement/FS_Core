@@ -152,7 +152,7 @@ local hud_config = {
 				self:SetColor(abs(sin(GetTime())), abs(sin(GetTime() / 2)), abs(sin(GetTime() / 3)), 0.8)
 			end
 			
-			function a3:Done()
+			function a3:OnDone()
 				a3:Remove()
 				a4:Remove()
 			end
@@ -1106,8 +1106,8 @@ function Hud:DrawTimer(center, radius, duration)
 		
 		if self.pct == 1 and not done then
 			done = true
-			if self.Done then
-				self:Done()
+			if self.OnDone then
+				self:OnDone()
 			end
 		end
 		
