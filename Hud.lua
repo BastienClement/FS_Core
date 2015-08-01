@@ -27,7 +27,7 @@ local hud_defaults = {
 		offset_x = 0,
 		offset_y = 0,
 		smoothing = true,
-		smoothing_click = false,
+		smoothing_click = true,
 		fade = true
 	}
 }
