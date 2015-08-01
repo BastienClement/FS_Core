@@ -190,9 +190,12 @@ function Hud:OnInitialize()
 	-- Config enable state
 	self:SetEnabledState(self.settings.enable)
 	
-	-- Set HUD global alpha
+	-- Set HUD global settings
 	hud:SetAlpha(self.settings.alpha)
 	self:SetZoom(self.settings.scale)
+	
+	-- Points
+	self.points = {}
 	
 	-- Object currently drawn on the HUD
 	self.objects = {}
@@ -263,11 +266,8 @@ end
 -- Points
 
 do
-	local points = {}
-	local aliases = {}
-
 	-- Construct a point
-	function Hud:CreatePoint(name, ...)
+	function Hud:CreatePoint(name)
 		-- Generate a random name if anonymous
 		if not name then
 			name = tostring(GetTime()) + tostring(math.random())
@@ -276,26 +276,15 @@ do
 		-- If the point is already defined, return the old one
 		-- This behaviour is intended to be exceptional, a point should not
 		-- be created multiple times under normal circumstances
-		if points[name] then
+		if self.points[name] then
 			self:Printf("Detected name conflict on point creation ('%s')", name)
-			return points[name]
+			return self.points[name]
 		end
 		
-		local point = { __is_point = true }
+		local point = { __point = true }
 		
 		point.name = name
-		points[name] = point
-		
-		point.aliases = {}
-		
-		-- Register aliases
-		if ... then
-			local als = { ... }
-			for _, alias in ipairs(als) do
-				aliases[alias] = point
-				table.insert(point.aliases, alias)
-			end
-		end
+		self.points[name] = point
 		
 		point.frame = Hud:AllocObjFrame(true)
 		point.tex = point.frame.tex
@@ -313,10 +302,7 @@ do
 		point.attached = {}
 		point.num_attached = 0
 		
-		-- Define the corresponding unit
-		-- Unit points must be named as the GUID of its owner
-		-- The HUD will ensure that the name and raidN aliases stay correct
-		-- even if the roster is modified
+		-- Define the corresponding unit for this point
 		function point:SetUnit(unit)
 			self.unit = unit
 			self:RefreshUnit()
@@ -413,22 +399,8 @@ do
 					-- Attempt to find the new raid unit corresponding to the player
 					for _, unit in FS:IterateGroup() do
 						if UnitGUID(unit) == self.name then
-							-- Remove aliases
-							for _, alias in ipairs(self.aliases) do
-								-- Check that the alias is actually pointing to self
-								if aliases[alias] == self then
-									aliases[alias] = nil
-								end
-							end
-							
 							-- Update the unit id
 							self.unit = unit
-							
-							-- Reset aliases
-							local name = UnitName(self.unit)
-							aliases[name] = self
-							aliases[self.unit] = self
-							self.aliases = { name, self.unit }
 							return
 						end
 					end
@@ -436,7 +408,6 @@ do
 					-- This player is no longer in the raid
 					-- Remove the point
 					self:Remove()
-					return
 				end
 			end
 		end
@@ -464,16 +435,7 @@ do
 			Hud:ReleaseObjFrame(self.frame)
 			
 			-- Point itself
-			points[self.name] = nil
-			
-			-- Any aliases
-			for _, alias in ipairs(self.aliases) do
-				-- Check that the alias is actually pointing to self
-				if aliases[alias] == self then
-					aliases[alias] = nil
-				end
-			end
-			
+			Hud.points[self.name] = nil
 			
 			-- Remove attached objects
 			local do_ghost = false
@@ -515,6 +477,11 @@ do
 			local x, y = UnitPosition(unit)
 			if not x then return end
 			return Map:GetDistance(self.world_x, self.world_y, x, y)
+		end
+		
+		-- Return the cached world position for this point
+		function point:FastPosition()
+			return self.world_x, self.world_y
 		end
 		
 		return point
@@ -563,7 +530,7 @@ do
 	
 	-- Iterates over all points
 	function Hud:IteratePoints()
-		return pairs(points)
+		return pairs(self.points)
 	end
 	
 	-- Return a point
@@ -575,20 +542,20 @@ do
 		end
 		
 		-- We actually got a point, return it
-		if name.__is_point then return name end
+		if name.__point then return name end
 		
-		-- Fetch by name or alias
-		local pt = points[name] or aliases[name]
+		-- Fetch by name
+		local pt = self.points[name]
 		
 		if pt then
 			return pt
-		elseif name:find("-") then
-			-- No point found, but the name has a "-" in it. This may be the case
+		elseif UnitExists(name) then
+			-- Requested a unit point, lookup by GUID
+			return self:GetPoint(UnitGUID(name))
+		elseif select(2, name:gsub("%-", "", 2)) == 1 then
+			-- No point found, but the name has one "-" in it. This may be the case
 			-- with cross-realm units. Try again without the server name.
-			return self:GetPoint(name:match("[^-]+"))
-		elseif name ~= "player" and UnitIsUnit(name, "player") then
-			-- Requested the player point but using a raidN unitid
-			return self:GetPoint("player")
+			return self:GetPoint(name:match("^[^-]+"))
 		end
 		
 		-- No point matches
@@ -1067,7 +1034,6 @@ function Hud:DrawCircle(center, radius, tex)
 	
 	-- Get the list of units inside the circle
 	function circle:UnitsInside(filter)
-		local cx, cy = Hud:GetPointPosition(center)
 		local players = {}
 		for _, unit in FS:IterateGroup() do
 			if type(filter) ~= "function" or filter(unit) then
