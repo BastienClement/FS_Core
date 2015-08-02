@@ -1267,5 +1267,11 @@ function Hud:DrawTimer(center, radius, duration)
 		return math.pi * 2 * self.pct
 	end
 	
+	function timer:Reset(d)
+		start = GetTime()
+		duration = d
+		done = false
+	end
+	
 	return timer
 end
