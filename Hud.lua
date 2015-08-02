@@ -1164,7 +1164,7 @@ function Hud:DrawCircle(center, radius, tex)
 	center = circle:UsePoint(center)
 	if not center then return end
 	
-	circle.tex:SetTexture(tex or radius < 15 and "Interface\\AddOns\\FS_Core\\media\\radius_lg" or "Interface\\AddOns\\FS_Core\\media\\radius")
+	circle.tex:SetTexture(tex)
 	circle.tex:SetBlendMode("ADD")
 	circle.tex:SetVertexColor(0.8, 0.8, 0.8, 0.5)
 	
@@ -1210,8 +1210,10 @@ function Hud:DrawCircle(center, radius, tex)
 	return circle
 end
 
--- DrawRadius is actually a better name for DrawCircle
-Hud.DrawRadius = Hud.DrawCircle
+-- Draw a radius circle
+function Hud:DrawRadius(center, radius)
+	return self:DrawCircle(center, radius, radius < 15 and "Interface\\AddOns\\FS_Core\\media\\radius_lg" or "Interface\\AddOns\\FS_Core\\media\\radius")
+end
 
 -- Area of Effect
 function Hud:DrawArea(center, radius)
