@@ -205,9 +205,17 @@ local hud_config = {
 			end
 			
 			Hud:DrawLine("player", s1, 128)
-			Hud:DrawLine("player", s2)
-			Hud:DrawLine(s1, s2, 256)
+			Hud:DrawLine("player", s2):SetColor(0, 0.5, 0.8, 0.8)
+			local l3 = Hud:DrawLine(s1, s2, 128)
 
+			function l3:OnUpdate()
+				if self:UnitDistance("player", true) < 1.5 then
+					self:SetColor(0.8, 0, 0, 0.8)
+				else
+					self:SetColor(0, 0.8, 0, 0.8)
+				end
+			end
+			
 			function a1:OnUpdate()
 			   self.radius = 25 + math.sin(GetTime() * 5)
 			end
@@ -524,11 +532,17 @@ do
 			end
 		end
 		
+		-- Point distance to this point
+		function point:PointDistance(x, y)
+			if not x or not y then return end
+			local dx = x - self.world_x
+			local dy = y - self.world_y
+			return (dx * dx + dy * dy) ^ 0.5
+		end
+		
 		-- Unit distance to this point
 		function point:UnitDistance(unit)
-			local x, y = UnitPosition(unit)
-			if not x then return end
-			return Map:GetDistance(self.world_x, self.world_y, x, y)
+			return self:PointDistance(UnitPosition(unit))
 		end
 		
 		-- Return the cached world position for this point
@@ -816,6 +830,11 @@ end
 
 local HudObject = {}
 
+-- Dummy update function
+function HudObject:Update()
+	if self.OnUpdate then self:OnUpdate() end
+end
+
 -- Helper function to get a point and register the object with it
 function HudObject:UsePoint(name)
 	local pt = Hud:GetPoint(name)
@@ -1037,6 +1056,8 @@ function Hud:DrawLine(from, to, width)
 	line.tex:SetBlendMode("ADD")
 	
 	function line:Update()
+		if self.OnUpdate then self:OnUpdate() end
+		
 		local sx, sy = from.x, from.y
 		local ex, ey = to.x, to.y
 		
@@ -1087,6 +1108,52 @@ function Hud:DrawLine(from, to, width)
 		self.tex:SetTexCoord(TLx, TLy, BLx, BLy, TRx, TRy, BRx, BRy)
 	end
 	
+	do
+		local function dist(ax, ay, bx, by)
+			local dx = ax - bx
+			local dy = ay - by
+			return (dx * dx + dy * dy) ^ 0.5
+		end
+		
+		-- Return a shortest distance between a point and the line
+		-- If strict, the function will return 10000 if the point falls outside of
+		-- the segment. Otherwise it will return the distance to the closest end
+		function line:PointDistance(x, y, strict)
+			if not x or not y then return end
+			
+			local fx, fy = from:FastPosition()
+			local tx, ty = to:FastPosition()
+			
+			-- Squared distance of the line
+			local l = dist(fx, fy, tx, ty)
+			
+			-- from and to have the same position
+			if l < 0.1 then 
+				return strict and 10000 or dist(fx, fy, x, y)
+			end
+			
+			-- Compute the projection on the line
+			local t = ((x - fx) * (tx - fx) + (y - fy) * (ty - fy)) / (l ^ 2)
+			
+			if t < 0 then
+				-- Before from
+				return strict and 10000 or dist(fx, fy, x, y)
+			elseif t > 1 then
+				-- After to
+				return strict and 10000 or dist(tx, ty, x, y)
+			else
+				-- On the segment
+				return dist(x, y, fx + t * (tx - fx), fy + t * (ty - fy))
+			end
+		end
+		
+		-- Return unit distance to the line
+		function line:UnitDistance(unit, strict)
+			local px, py = UnitPosition(unit)
+			return self:PointDistance(px, py, strict)
+		end
+	end
+	
 	return line
 end
 
@@ -1100,6 +1167,12 @@ function Hud:DrawCircle(center, radius, tex)
 	circle.tex:SetTexture(tex or radius < 15 and "Interface\\AddOns\\FS_Core\\media\\radius_lg" or "Interface\\AddOns\\FS_Core\\media\\radius")
 	circle.tex:SetBlendMode("ADD")
 	circle.tex:SetVertexColor(0.8, 0.8, 0.8, 0.5)
+	
+	-- Check if a specific point is inside the circle
+	function circle:PointIsInside(x, y)
+		if not x or not y then return end
+		return center:PointDistance(x, y) < self.radius
+	end
 	
 	-- Check if a given unit is inside the circle
 	function circle:UnitIsInside(unit)
