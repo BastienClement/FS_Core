@@ -3,8 +3,9 @@ local Hud = FS:RegisterModule("Hud")
 local Map
 
 -- Math aliases
-local sin, cos, atan2, abs = math.sin, math.cos, math.atan2, math.abs
-local pi_2 = math.pi / 2
+local sin, cos, atan2, abs = math.sin, math.cos, math.atan2
+local abs, floor, min, max = math.abs, math.floor, math.min, math.max
+local pi2, pi_2 = math.pi * 2, math.pi / 2
 
 --------------------------------------------------------------------------------
 -- HUD Frame
@@ -1220,7 +1221,7 @@ function Hud:DrawCircle(center, radius, tex)
 		if self.Rotate then
 			-- Rotation require a multiplier on size
 			size = size * (2 ^ 0.5)
-			self.tex:SetRotation(self:Rotate())
+			self.tex:SetRotation(self:Rotate() % pi2)
 		end
 		
 		self.frame:SetSize(size, size)
@@ -1246,7 +1247,7 @@ function Hud:DrawTarget(center, radius)
 	if not target then return end
 	
 	function target:Rotate()
-		return GetTime()
+		return GetTime() * 1.5
 	end
 	
 	return target
@@ -1284,7 +1285,7 @@ function Hud:DrawTimer(center, radius, duration)
 	end
 	
 	function timer:Rotate()
-		return math.pi * 2 * self.pct
+		return pi2 * self.pct
 	end
 	
 	function timer:Reset(d)
