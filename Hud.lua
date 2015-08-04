@@ -704,7 +704,7 @@ do
 	function Hud:RefreshRaidPoints()
 		-- Prevent more than one raid point refresh per frame
 		if refresh_done then return end
-		C_Timer.After(0, function() refresh_done = false print("ok") end)
+		C_Timer.After(0, function() refresh_done = false end)
 		refresh_done = true
 		
 		-- Create the player point if not already done
