@@ -1398,3 +1398,223 @@ function Hud:DrawTriangle(a, b, c)
 	
 	return triangle
 end
+
+-- Polygon
+do
+	-- Used to make table circular
+	local circular = {
+		__index = function(t, k)
+			if type(k) == "number" then
+				return rawget(t, ((k - 1) % #t) + 1)
+			else
+				return nil
+			end
+		end
+	}
+	
+	-- Draw a polygon
+	--
+	-- The polygon will automatically be decomposed into triangles
+	--
+	-- *** IMPORTANT ***
+	-- The polygon must be convex or concave (not complex).
+	-- Be cautious when giving moving vertices, it's easy to make the resulting
+	-- polygon a complex one.
+	--
+	function Hud:DrawPolygon(args, border)
+		-- Create the polygon object
+		local polygon = self:CreateObject()
+		
+		-- Normalize border
+		if type(border) ~= "number" then
+			if border ~= false then
+				border = 32
+			end
+		elseif border < 10 then
+			border = false
+		end
+		
+		-- Allocated static points
+		local points = {}
+		
+		-- Vertices points objects
+		local vertices = setmetatable({}, circular)
+		polygon.vertices = vertices
+		
+		-- Sub-triangles
+		local triangles = {}
+		polygon.triangles = triangles
+		
+		-- Border lines
+		local lines = {}
+		polygon.lines = lines
+		
+		-- Parse arguments
+		local i, e = 1, #args
+		while i <= e do
+			local x = args[i]
+			if type(x) == "number" then
+				-- (x, y) given
+				local y = args[i + 1]
+				if type(y) ~= "number" then
+					self:Printf("Missing Y coordinate for vertex (got '%s')", tostring(y))
+					return
+				end
+				local pt = self:CreateStaticPoint(x, y)
+				table.insert(vertices, pt)
+				table.insert(points, pt)
+				i = i + 2
+			else
+				-- Point given
+				local pt = self:GetPoint(x)
+				if not pt then
+					self:Printf("Unable to get point for vertex '%s'", tostring(x))
+					return
+				end
+				table.insert(vertices, pt)
+				i = i + 1
+			end
+		end
+		
+		-- Check that we have at lease 3 vertices
+		if #vertices < 3 then
+			self:Print("At least 3 vertices are required to draw a polygon")
+			return
+		end
+		
+		-- Register used points and draw border
+		for i, pt in ipairs(vertices) do
+			polygon:UsePoint(pt)
+			if border then
+				table.insert(lines, self:DrawLine(pt, vertices[i + 1], border))
+			end
+		end
+		
+		-- Check if a specific point is inside the polygon
+		function polygon:PointIsInside(x, y, complex)
+			if not x or not y then return end
+			
+			-- If the polygon can be complex (it really shouldn't be), this
+			-- slower check is way more accurate. Sub-triangles doesn't
+			-- care if the polygon is complex or not.
+			if complex then
+				for _, t in ipairs(triangles) do
+					if t:PointIsInside(x, y) then return true end
+				end
+				return false
+			end
+			
+			-- http://www.ecse.rpi.edu/~wrf/Research/Short_Notes/pnpoly.html
+			local inside = false
+			for i = 1, #vertices do
+				local ix, iy = vertices[i]:FastPosition()
+				local jx, jy = vertices[i - 1]:FastPosition()
+				if ((iy > y) ~= (jy > y)) and (x < (jx - ix) * (y - iy) / (jy - iy) + ix) then
+					inside = not inside
+				end
+			end
+			
+			return inside
+		end
+		
+		-- Check if a unit is inside the polygon
+		function polygon:UnitIsInside(unit, complex)
+			local x, y = UnitPosition(unit)
+			return self:PointIsInside(x, y, complex)
+		end
+		
+		-- Polygon triangulation
+		do
+			-- Vertices available for triangulation
+			local tvertices = setmetatable({}, circular)
+			for k in ipairs(vertices) do tvertices[k] = k end
+			
+			-- Run until only 3 vertices are left
+			while #tvertices > 3 do
+				local success = false
+				
+				-- Search an ear
+				for i = 1, #tvertices do
+					-- Previous and next point
+					local p = vertices[tvertices[i - 1]]
+					local n = vertices[tvertices[i + 1]]
+					
+					local px, py = p:FastPosition()
+					local nx, ny = n:FastPosition()
+					
+					-- Compute the middle of the diagonal
+					local tx = (px + nx) / 2
+					local ty = (py + ny) / 2
+					
+					-- If the diagonal is inside the polygon, we found an ear
+					if polygon:PointIsInside(tx, ty) then
+						-- Draw the triangle with these 3 points
+						table.insert(triangles, self:DrawTriangle(p, vertices[tvertices[i]], n))
+						
+						-- Remove the vertex from the list of usable ones
+						table.remove(tvertices, i)
+						
+						success = true
+						break
+					end
+				end
+				
+				-- Failed to find an ear, unable to triangulate
+				if not success then
+					self:Print("Failed to triangulate. No ear found.")
+					return
+				end
+			end
+			
+			-- Draw the remaining triangle
+			table.insert(triangles, self:DrawTriangle(
+				vertices[tvertices[1]],
+				vertices[tvertices[2]],
+				vertices[tvertices[3]]
+			))
+		end
+		
+		-- Set both the triangles color and the border color
+		function polygon:SetColor(...)
+			if border then self:SetBorderColor(...) end
+			return self:SetFillColor(...)
+		end
+		
+		-- Set the color of all triangles composing this polygon
+		function polygon:SetFillColor(...)
+			for _, triangle in ipairs(triangles) do triangle:SetColor(...) end
+			return self
+		end
+		
+		-- Set the color of the border
+		function polygon:SetBorderColor(...)
+			for _, line in ipairs(lines) do line:SetColor(...) end
+			return self
+		end
+		
+		-- Return the color of the first triangle of this polygon, should be
+		-- the color of the whole polygon
+		function polygon:GetColor()
+			return triangles[1]:GetColor()
+		end
+		
+		-- Alias as GetFillColor
+		polygon.GetFillColor = polygon.GetColor
+		
+		-- Return the color of the border
+		function polygon:GetBorderColor()
+			if not border then return end
+			return lines[1]:GetColor()
+		end
+		
+		-- Remove triangles and static points on polygon removal
+		function polygon:Remove()
+			for _, triangle in ipairs(triangles) do triangle:Remove() end
+			for _, line in ipairs(lines) do line:Remove() end
+			for _, pt in ipairs(points) do pt:Remove() end
+			HudObject.Remove(self)
+		end
+		
+		return polygon
+	end
+end
