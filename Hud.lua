@@ -778,10 +778,14 @@ do
 	-- Safety helper to update points and objects
 	local function obj_update(obj)
 		-- Use pcall to prevent an external error to freeze the HUD
-		if not pcall(obj.Update, obj) then
+		local success, err = pcall(obj.Update, obj)
+		if not success then
 			-- If more than 5 failures are caused by this object, remove it
 			obj._err_count = (obj._err_count or 0) + 1
 			if obj._err_count > 5 then
+				if FS.version == "dev" then
+					Hud:Printf("Error during update...\n%s", err)
+				end
 				obj:Remove()
 			end
 		end
