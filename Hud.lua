@@ -748,9 +748,6 @@ function Hud:Show(force)
 	self.visible = true
 	self.force = force
 	
-	-- Refresh raid points just in case
-	self:RefreshRaidPoints()
-	
 	-- Update show all points setting
 	self:UpdateShowAllPoints()
 	
