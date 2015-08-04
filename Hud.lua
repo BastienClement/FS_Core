@@ -351,8 +351,8 @@ do
 		
 		point.x = 0
 		point.y = 0
-		point.world_x = 0
-		point.world_y = 0
+		point.world_x = -1
+		point.world_y = -1
 		
 		point.attached = {}
 		point.num_attached = 0
@@ -542,6 +542,9 @@ do
 		
 		-- Return the cached world position for this point
 		function point:FastPosition()
+			if self.world_x < 0 then
+				self.world_x, self.world_y = self:Position()
+			end
 			return self.world_x, self.world_y
 		end
 		
