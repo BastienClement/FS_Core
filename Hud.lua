@@ -123,6 +123,9 @@ local hud_config = {
 		min = 2,
 		max = 50,
 		bigStep = 1,
+		hidden = function()
+			return FS.version ~= "dev"
+		end,
 		get = function()
 			return Hud.settings.scale
 		end,
