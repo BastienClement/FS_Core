@@ -552,14 +552,26 @@ do
 	end
 	
 	-- Create a static point
-	function Hud:CreateStaticPoint(x, y, ...)
-		local pt = self:CreatePoint(...)
+	function Hud:CreateStaticPoint(x, y, name)
+		local pt = self:CreatePoint(name)
 		function pt:Position() return x, y end
 		return pt
 	end
 	
+	-- Snapshot point is a static point at another point current location
+	function Hud:CreateSnapshotPoint(pt, name)
+		local ref = self:GetPoint(pt)
+		if not ref then
+			self:Printf("Snapshot point creation failed: unable to get the reference point ('%s')", tostring(pt))
+			return
+		end
+		
+		local x, y = ref:Position()
+		return self:CreateStaticPoint(x, y, name)
+	end
+	
 	-- Create a shadow point
-	function Hud:CreateShadowPoint(pt, ...)
+	function Hud:CreateShadowPoint(pt, name, fast)
 		-- Shadow points are actually half object
 		-- Since we usually attach them to unit point, refresh them now
 		self:RefreshRaidPoints()
@@ -567,16 +579,22 @@ do
 		-- Get the reference point
 		local ref = self:GetPoint(pt)
 		if not ref then
-			self:Printf("Shadow point creation failed: unable to get the reference point ('%s')", pt)
+			self:Printf("Shadow point creation failed: unable to get the reference point ('%s')", tostring(pt))
 			return
 		end
 		
-		local shadow = self:CreatePoint(...)
+		local shadow = self:CreatePoint(name)
 		shadow.ref = ref
 		
 		-- Mirror reference point
-		function shadow:Position()
-			return ref:Position()
+		if fast then
+			function shadow:Position()
+				return ref:FastPosition()
+			end
+		else
+			function shadow:Position()
+				return ref:Position()
+			end
 		end
 		
 		-- Consider the shadow point as an object attached to the reference point
