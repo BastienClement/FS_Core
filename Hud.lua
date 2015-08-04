@@ -1082,7 +1082,7 @@ function Hud:DrawLine(from, to, width)
 		local ex, ey = to.x, to.y
 		
 		-- Determine dimensions and center point of line
-		local dx, dy = ex - sx, ey - sy
+		local dx, dy = (ex - sx) * 1.015, (ey - sy) * 1.015
 		local cx, cy = (sx + ex) / 2, (sy + ey) / 2
 		local w = self.width
 		
@@ -1098,8 +1098,8 @@ function Hud:DrawLine(from, to, width)
 		if l == 0 then
 			self.frame:ClearAllPoints()
 			self.frame:SetPoint("BOTTOMLEFT", hud, "CENTER", cx, cy)
-			self.frame:SetPoint("TOPRIGHT",   hud, "CENTER", cx, cy)
-			self.tex:SetTexCoord(0,0,0,0,0,0,0,0)
+			self.frame:SetPoint("TOPRIGHT", hud, "CENTER", cx, cy)
+			self.tex:SetTexCoord(0, 0, 0, 0, 0, 0, 0, 0)
 			return
 		end
 		
@@ -1124,7 +1124,7 @@ function Hud:DrawLine(from, to, width)
 		end
 		
 		self.frame:SetPoint("BOTTOMLEFT", hud, "CENTER", cx - Bwid, cy - Bhgt)
-		self.frame:SetPoint("TOPRIGHT",   hud, "CENTER", cx + Bwid, cy + Bhgt)
+		self.frame:SetPoint("TOPRIGHT", hud, "CENTER", cx + Bwid, cy + Bhgt)
 		self.tex:SetTexCoord(TLx, TLy, BLx, BLy, TRx, TRy, BRx, BRy)
 	end
 	
