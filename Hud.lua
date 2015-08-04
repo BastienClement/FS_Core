@@ -396,11 +396,7 @@ do
 			self.world_y = y
 			
 			-- Project point
-			x, y = Hud:Project(x, y)
-			
-			-- Save screen coordinates
-			self.x = x
-			self.y = y
+			self.x, self.y = Hud:Project(x, y)
 			
 			-- Decide if the point is visible or not
 			if self.num_attached > 0 -- If the point has an attached object
@@ -413,7 +409,7 @@ do
 					self.frame:Show()
 				end
 				-- Place the point
-				self.frame:SetPoint("CENTER", hud, "CENTER", x, y)
+				self.frame:SetPoint("CENTER", hud, "CENTER", self.x, self.y)
 			elseif not self.hidden then
 				-- Hide the wrapper frame to keep point color intact
 				self.hidden = true
