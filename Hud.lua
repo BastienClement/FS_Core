@@ -256,11 +256,6 @@ function Hud:OnInitialize()
 	self.objects = {}
 	self.num_objs = 0
 	
-	-- Track right click on the game world and disable rotation smoothing
-	self.right_click = false
-	hooksecurefunc(_G, "TurnOrActionStart", function() self.right_click = true end)
-	hooksecurefunc(_G, "TurnOrActionStop", function() self.right_click = false end)
-	
 	FS:GetModule("Config"):Register("Head-up display", hud_config)
 end
 
@@ -802,7 +797,7 @@ do
 		a = GetPlayerFacing() + pi_2
 		
 		local ea
-		if self.settings.smoothing and (not self.right_click or self.settings.smoothing_click) then
+		if self.settings.smoothing and (not IsMouseButtonDown(2) or self.settings.smoothing_click) then
 			local da = atan2(sin(a - last_a), cos(a - last_a))
 			ea = (abs(da) < 0.1) and a or (last_a + (da / 3))
 		else
