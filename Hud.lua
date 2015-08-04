@@ -189,7 +189,7 @@ local hud_config = {
 			
 			local s1 = Hud:CreateStaticPoint(x+20, y+20):SetColor(0.8, 0, 0.8, 1)
 			local s2 = Hud:CreateStaticPoint(x+30, y):SetColor(0, 0.8, 0.8, 1)
-			local s3 = Hud:CreateShadowPoint("player"):SetColor(0.8, 0.8, 0, 1)
+			local s3 = Hud:CreateSnapshotPoint("player"):SetColor(0.8, 0.8, 0, 1)
 
 			local a1 = Hud:DrawArea(s1, 15)
 			local a2 = Hud:DrawTarget(s2, 10):Fade(false)
@@ -585,6 +585,9 @@ do
 	
 	-- Snapshot point is a static point at another point current location
 	function Hud:CreateSnapshotPoint(pt, name)
+		-- Snapshot points requires raid points
+		self:RefreshRaidPoints()
+		
 		local ref = self:GetPoint(pt)
 		if not ref then
 			self:Printf("Snapshot point creation failed: unable to get the reference point ('%s')", tostring(pt))
