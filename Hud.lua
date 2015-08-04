@@ -187,14 +187,14 @@ local hud_config = {
 		func = function()
 			local x, y = UnitPosition("player")
 			
-			local s1 = Hud:CreateStaticPoint(x+15, y+15):SetColor(0.8, 0, 0.8, 1)
+			local s1 = Hud:CreateStaticPoint(x+20, y+20):SetColor(0.8, 0, 0.8, 1)
 			local s2 = Hud:CreateStaticPoint(x+30, y):SetColor(0, 0.8, 0.8, 1)
 			local s3 = Hud:CreateShadowPoint("player"):SetColor(0.8, 0.8, 0, 1)
 
 			local a1 = Hud:DrawArea(s1, 15)
 			local a2 = Hud:DrawTarget(s2, 10):Fade(false)
-			local a3 = Hud:DrawTimer(s3, 15, 10):SetColor(0.8, 0.8, 0, 0.5)
-			local a4 = Hud:DrawRadius(s3, 25)
+			local a3 = Hud:DrawTimer(s3, 10, 10):SetColor(0.8, 0.8, 0, 0.5)
+			local a4 = Hud:DrawRadius(s3, 20)
 			
 			function a2:OnUpdate()
 				self:SetColor(abs(sin(GetTime())), abs(sin(GetTime() / 2)), abs(sin(GetTime() / 3)), 0.8)
@@ -218,7 +218,35 @@ local hud_config = {
 			end
 			
 			function a1:OnUpdate()
-			   self.radius = 25 + math.sin(GetTime() * 5)
+			   self.radius = 15 + math.sin(GetTime() * 3)
+			end
+			
+			local vertices = {}
+			
+			for i = 1, 8 do
+				local r = math.random()
+				table.insert(vertices, x + sin(i * pi2 / 8) * r * 40)
+				table.insert(vertices, y + cos(i * pi2 / 8) * r * 40)
+			end
+			
+			local poly = Hud:DrawPolygon(vertices)
+			
+			for _, t in ipairs(poly.triangles) do
+				function t:OnUpdate()
+					if self:UnitIsInside("player") then
+						self:SetColor(0.4, 0.8, 0, 0.2)
+					else
+						self:SetColor(0.8, 0.4, 0, 0.2)
+					end
+				end
+			end
+			
+			function poly:OnUpdate()
+				if self:UnitIsInside("player", true) then
+					self:SetBorderColor(0.4, 0.8, 0, 0.2)
+				else
+					self:SetBorderColor(0.8, 0.4, 0, 0.2)
+				end
 			end
 		end,
 		order = 100,
