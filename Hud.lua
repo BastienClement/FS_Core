@@ -700,7 +700,13 @@ do
 	
 	-- Refresh all raid members points
 	local player_pt
+	local refresh_done = false
 	function Hud:RefreshRaidPoints()
+		-- Prevent more than one raid point refresh per frame
+		if refresh_done then return end
+		C_Timer.After(0, function() refresh_done = false print("ok") end)
+		refresh_done = true
+		
 		-- Create the player point if not already done
 		if not player_pt and UnitName("player") ~= UNKNOWNOBJECT then
 			player_pt = Hud:CreatePoint(UnitGUID("player"), "player", UnitName("player"))
