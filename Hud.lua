@@ -1292,3 +1292,109 @@ function Hud:DrawTimer(center, radius, duration)
 	
 	return timer
 end
+
+-- Triangle
+function Hud:DrawTriangle(a, b, c)
+	local triangle = self:CreateObject(nil, true)
+	
+	a = triangle:UsePoint(a)
+	b = triangle:UsePoint(b)
+	c = triangle:UsePoint(c)
+	
+	if not a or not b or not c then return end
+	
+	triangle.tex:SetTexture("Interface\\AddOns\\FS_Core\\media\\triangle")
+	triangle.tex:SetBlendMode("ADD")
+	triangle.tex:SetVertexColor(0.8, 0.8, 0.8, 0.5)
+	
+	function triangle:PointIsInside(x, y)
+		if not x or not y then return end
+		
+		local x1, y1 = a:FastPosition()
+		local x2, y2 = b:FastPosition()
+		local x3, y3 = c:FastPosition()
+		
+		-- http://stackoverflow.com/a/20861130
+		
+		local s = y1 * x3 - x1 * y3 + (y3 - y1) * x + (x1 - x3) * y
+		local t = x1 * y2 - y1 * x2 + (y1 - y2) * x + (x2 - x1) * y
+		
+		if (s < 0) ~= (t < 0) then return false end
+		
+		local A = -y2 * x3 + y1 * (x3 - x2) + x1 * (y2 - y3) + x2 * y3
+		
+		if A < 0 then
+			s = -s
+			t = -t
+			A = -A
+		end
+		
+		return s > 0 and t > 0 and (s + t) < A
+	end
+	
+	function triangle:UnitIsInside(unit)
+		local x, y = UnitPosition(unit)
+		return self:PointIsInside(x, y)
+	end
+	
+	function triangle:Update()
+		if self.OnUpdate then self:OnUpdate() end
+		
+		local x1, x2, x3 = a.x, b.x, c.x
+		local y1, y2, y3 = a.y, b.y, c.y
+		
+		-- Taken from the good old AVR
+		
+		local minx = min(a.x, b.x, c.x)
+		local miny = min(a.y, b.y, c.y)
+		local maxx = max(a.x, b.x, c.x)
+		local maxy = max(a.y, b.y, c.y)
+		
+		local dx = maxx - minx
+		local dy = maxy - miny
+		
+		if dx == 0 or dy == 0 then
+			return
+		end
+		
+		local tx3, ty1, ty2, ty3
+		if x1 == minx then
+			if x2 == maxx then
+				tx3, ty1, ty2, ty3 = (x3 - minx) / dx, (maxy - y1), (maxy - y2), (maxy - y3)
+			else
+				tx3, ty1, ty2, ty3 = (x2 - minx) / dx, (maxy - y1), (maxy - y3), (maxy - y2)
+			end
+		elseif x2 == minx then
+			if x1 == maxx then
+				tx3, ty1, ty2, ty3 = (x3 - minx) / dx, (maxy - y2), (maxy - y1), (maxy - y3)
+			else
+				tx3, ty1, ty2, ty3 = (x1 - minx) / dx, (maxy - y2), (maxy - y3), (maxy - y1)
+			end
+		else -- x3 == minx
+			if x2 == maxx then
+				tx3, ty1, ty2, ty3 = (x1 - minx) / dx, (maxy - y3), (maxy - y2), (maxy - y1)
+			else
+				tx3, ty1, ty2, ty3 = (x2 - minx) / dx, (maxy - y3), (maxy - y1), (maxy - y2)
+			end
+		end
+		
+		local t1 = -0.99609375 / (ty3 - tx3 * ty2 + (tx3 - 1) * ty1) -- 0.99609375 = 510/512
+		local t2 = dy * t1
+		x1 = 0.001953125 - t1 * tx3 * ty1 -- 0.001953125 = 1/512
+		x2 = 0.001953125 + t1 * ty1
+		x3 = t2 * tx3 + x1
+		y1 = t1 * (ty2 - ty1)
+		y2 = t1 * (ty1 - ty3)
+		y3 = -t2 + x2
+		
+		if abs(t2) >= 9000 then
+			return
+		end
+		
+		triangle.frame:SetPoint("BOTTOMLEFT", hud, "CENTER", minx, miny)
+		triangle.frame:SetPoint("TOPRIGHT", hud, "CENTER", maxx, maxy)
+		triangle.tex:SetTexCoord(x1, x2, x3, y3, x1 + y2, x2 + y1, y2 + x3, y1 + y3)
+	end
+	
+	return triangle
+end
