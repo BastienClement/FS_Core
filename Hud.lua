@@ -1458,7 +1458,7 @@ do
 	-- Be cautious when giving moving vertices, it's easy to make the resulting
 	-- polygon a complex one.
 	--
-	function Hud:DrawPolygon(args, border)
+	function Hud:DrawPolygon(args, border, border_only)
 		-- Create the polygon object
 		local polygon = self:CreateObject()
 		
@@ -1534,7 +1534,7 @@ do
 			-- If the polygon can be complex (it really shouldn't be), this
 			-- slower check is way more accurate. Sub-triangles doesn't
 			-- care if the polygon is complex or not.
-			if complex then
+			if complex and not border_only then
 				for _, t in ipairs(triangles) do
 					if t:PointIsInside(x, y) then return true end
 				end
@@ -1561,7 +1561,7 @@ do
 		end
 		
 		-- Polygon triangulation
-		do
+		if not border_only then
 			-- Vertices available for triangulation
 			local tvertices = setmetatable({}, circular)
 			for k in ipairs(vertices) do tvertices[k] = k end
