@@ -1170,8 +1170,9 @@ function Hud:DrawLine(from, to, width)
 		end
 		
 		-- Return a shortest distance between a point and the line
-		-- If strict, the function will return 10000 if the point falls outside of
-		-- the segment. Otherwise it will return the distance to the closest end
+		-- If strict, the function will return 10000 if the point projection
+		-- falls outside of the segment. Otherwise it will return the distance
+		-- to the closest end
 		function line:PointDistance(x, y, strict)
 			if not x or not y then return end
 			
@@ -1654,4 +1655,86 @@ do
 		
 		return polygon
 	end
+end
+
+-- Exact ray
+function Hud:DrawRay(from, to, width, border)
+	local ray = self:CreateObject()
+	local poly -- Placeholder for the polygon object
+	
+	from = ray:UsePoint(from)
+	to = ray:UsePoint(to)
+	if not from or not to then return end
+	
+	-- Vector composants and length
+	local vx, vy, vl
+	
+	-- Normal unit vector
+	local nx, ny
+	
+	-- Prevent more than one update per frame
+	local updated = false
+	
+	-- Update vectors informations
+	local function update_vectors()
+		-- Vertices position
+		local fx, fy = from:Position()
+		local tx, ty = to:Position()
+		
+		-- Compute main vector
+		vx = tx - fx + 0.001
+		vy = ty - fy + 0.001
+		
+		-- Compute length
+		vl = (vx * vx + vy * vy) ^ 0.5
+		
+		-- Create a normal unit vector
+		nx = vy / vl
+		ny = -vx / vl
+		
+		-- Prevent another update until next frame
+		updated = true
+	end
+	
+	-- Object are always updated after points
+	-- We use this to unlock vector updating for the next frame
+	function ray:Update()
+		updated = false
+	end
+	
+	-- Create one vertex of the ray
+	local function create_point(ref, dir, o)
+		local pt = self:CreateShadowPoint(ref)
+		function pt:Position()
+			if not updated then update_vectors() end
+			local x, y = ref:Position()
+			local w = (poly and poly.width or width) / 2
+			return
+				x + ny * 0.001 * o + nx * w * dir,
+				y - nx * 0.001 * o + ny * w * dir
+		end
+		return pt
+	end
+	
+	local p1 = create_point(from, 1, 1)
+	local p2 = create_point(from, -1, 1)
+	local p3 = create_point(to, -1, -1)
+	local p4 = create_point(to, 1, -1)
+	
+	-- The ray polygon
+	poly = self:DrawPolygon({ p1, p2, p3, p4 }, border)
+	poly.width = width
+	
+	-- Cleanup
+	local poly_remove = poly.Remove
+	function poly:Remove()
+		poly_remove(self)
+		ray:Remove()
+		p1:Remove()
+		p2:Remove()
+		p3:Remove()
+		p4:Remove()
+	end
+	
+	return poly
 end
