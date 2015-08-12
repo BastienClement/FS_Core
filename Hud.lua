@@ -1,11 +1,15 @@
 local _, FS = ...
 local Hud = FS:RegisterModule("Hud")
-local Map
+local Map, Geometry
 
 -- Math aliases
 local sin, cos, atan2, abs = math.sin, math.cos, math.atan2
 local abs, floor, min, max = math.abs, math.floor, math.min, math.max
 local pi2, pi_2 = math.pi * 2, math.pi / 2
+
+-- Geometry aliases
+local GDistance, GRotatePoint, GAngleDelta, GPointVectorDistance
+local GPointInTriangle, GPointInPolygon
 
 --------------------------------------------------------------------------------
 -- HUD Frame
@@ -269,6 +273,14 @@ local hud_config = {
 
 function Hud:OnInitialize()
 	Map = FS:GetModule("Map")
+	Geometry = FS:GetModule("Geometry")
+	
+	GDistance = Geometry.Distance
+	GRotatePoint = Geometry.RotatePoint
+	GAngleDelta = Geometry.AngleDelta
+	GPointVectorDistance = Geometry.PointVectorDistance
+	GPointInTriangle = Geometry.PointInTriangle
+	GPointInPolygon = Geometry.PointInPolygon
 	
 	-- Create config database
 	self.db = FS.db:RegisterNamespace("HUD", hud_defaults)
@@ -558,9 +570,7 @@ do
 		-- Point distance to this point
 		function point:PointDistance(x, y)
 			if not x or not y then return end
-			local dx = x - self.world_x
-			local dy = y - self.world_y
-			return (dx * dx + dy * dy) ^ 0.5
+			return GDistance(x, y, self.world_x, self.world_y)
 		end
 		
 		-- Unit distance to this point
@@ -820,8 +830,7 @@ do
 		local dy = py - y
 		
 		-- Rotate according to player facing direction
-		local rx = dx * cos_a + dy * sin_a
-		local ry = -dx * sin_a+ dy * cos_a
+		local rx, ry = GRotatePoint(dx, dy, a, nil, nil, sin_a, cos_a)
 		
 		-- Multiply by zoom factor
 		return rx * zoom, ry * zoom
@@ -857,7 +866,7 @@ do
 		
 		local ea
 		if self.settings.smoothing and (not IsMouseButtonDown(2) or self.settings.smoothing_click) then
-			local da = atan2(sin(a - last_a), cos(a - last_a))
+			local da = GAngleDelta(last_a, a)
 			ea = (abs(da) < 0.1) and a or (last_a + (da / 3))
 		else
 			ea = a
@@ -1162,51 +1171,24 @@ function Hud:DrawLine(from, to, width)
 		self.tex:SetTexCoord(TLx, TLy, BLx, BLy, TRx, TRy, BRx, BRy)
 	end
 	
-	do
-		local function dist(ax, ay, bx, by)
-			local dx = ax - bx
-			local dy = ay - by
-			return (dx * dx + dy * dy) ^ 0.5
-		end
+	-- Return a shortest distance between a point and the line
+	-- If strict, the function will return 10000 if the point projection
+	-- falls outside of the segment. Otherwise it will return the distance
+	-- to the closest end
+	function line:PointDistance(x, y, strict)
+		if not x or not y then return end
 		
-		-- Return a shortest distance between a point and the line
-		-- If strict, the function will return 10000 if the point projection
-		-- falls outside of the segment. Otherwise it will return the distance
-		-- to the closest end
-		function line:PointDistance(x, y, strict)
-			if not x or not y then return end
-			
-			local fx, fy = from:FastPosition()
-			local tx, ty = to:FastPosition()
-			
-			-- Squared distance of the line
-			local l = dist(fx, fy, tx, ty)
-			
-			-- from and to have the same position
-			if l < 0.1 then 
-				return strict and 10000 or dist(fx, fy, x, y)
-			end
-			
-			-- Compute the projection on the line
-			local t = ((x - fx) * (tx - fx) + (y - fy) * (ty - fy)) / (l ^ 2)
-			
-			if t < 0 then
-				-- Before from
-				return strict and 10000 or dist(fx, fy, x, y)
-			elseif t > 1 then
-				-- After to
-				return strict and 10000 or dist(tx, ty, x, y)
-			else
-				-- On the segment
-				return dist(x, y, fx + t * (tx - fx), fy + t * (ty - fy))
-			end
-		end
+		local fx, fy = from:FastPosition()
+		local tx, ty = to:FastPosition()
 		
-		-- Return unit distance to the line
-		function line:UnitDistance(unit, strict)
-			local px, py = UnitPosition(unit)
-			return self:PointDistance(px, py, strict)
-		end
+		local d, outside = GPointVectorDistance(x, y, fx, fy, tx, ty)
+		return (outside and strict) and 10000 or d
+	end
+	
+	-- Return unit distance to the line
+	function line:UnitDistance(unit, strict)
+		local px, py = UnitPosition(unit)
+		return self:PointDistance(px, py, strict)
 	end
 	
 	return line
@@ -1352,22 +1334,7 @@ function Hud:DrawTriangle(a, b, c)
 		local x2, y2 = b:FastPosition()
 		local x3, y3 = c:FastPosition()
 		
-		-- http://stackoverflow.com/a/20861130
-		
-		local s = y1 * x3 - x1 * y3 + (y3 - y1) * x + (x1 - x3) * y
-		local t = x1 * y2 - y1 * x2 + (y1 - y2) * x + (x2 - x1) * y
-		
-		if (s < 0) ~= (t < 0) then return false end
-		
-		local A = -y2 * x3 + y1 * (x3 - x2) + x1 * (y2 - y3) + x2 * y3
-		
-		if A < 0 then
-			s = -s
-			t = -t
-			A = -A
-		end
-		
-		return s > 0 and t > 0 and (s + t) < A
+		return GPointInTriangle(x, y, x1, y1, x2, y2, x3, y3)
 	end
 	
 	function triangle:UnitIsInside(unit)
@@ -1542,17 +1509,8 @@ do
 				return false
 			end
 			
-			-- http://www.ecse.rpi.edu/~wrf/Research/Short_Notes/pnpoly.html
-			local inside = false
-			for i = 1, #vertices do
-				local ix, iy = vertices[i]:FastPosition()
-				local jx, jy = vertices[i - 1]:FastPosition()
-				if ((iy > y) ~= (jy > y)) and (x < (jx - ix) * (y - iy) / (jy - iy) + ix) then
-					inside = not inside
-				end
-			end
-			
-			return inside
+			local function vertex(i) return vertices[i]:FastPosition() end
+			return GPointInPolygon(x, y, vertex, #vertices)
 		end
 		
 		-- Check if a unit is inside the polygon

@@ -30,6 +30,7 @@ Format.lua
 Network.lua
 Console.lua
 Config.lua
+Geometry.lua
 
 Map.lua
 Arrow.lua
