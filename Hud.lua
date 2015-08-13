@@ -1615,8 +1615,8 @@ do
 	end
 end
 
--- Exact ray
-function Hud:DrawRay(from, to, width, border)
+-- Exact line using polygon
+function Hud:DrawPolyLine(from, to, width, border)
 	local ray = self:CreateObject()
 	local poly -- Placeholder for the polygon object
 	
