@@ -1,6 +1,6 @@
 local _, FS = ...
 local Hud = FS:RegisterModule("Hud")
-local Map, Geometry
+local Map, Geometry, Tracker
 
 -- Math aliases
 local sin, cos, atan2, abs = math.sin, math.cos, math.atan2
@@ -274,6 +274,7 @@ local hud_config = {
 function Hud:OnInitialize()
 	Map = FS:GetModule("Map")
 	Geometry = FS:GetModule("Geometry")
+	Tracker = FS:GetModule("Tracker")
 	
 	GDistance = Geometry.Distance
 	GRotatePoint = Geometry.RotatePoint
@@ -651,13 +652,43 @@ do
 		return shadow
 	end
 	
+	-- Create a point following the estimated position of an hostile unit
+	function Hud:GetTrackerPoint(guid)
+		local pt = self:GetPoint(guid, true)
+		if pt then return pt end
+		
+		pt = self:CreatePoint(guid)
+		pt.guid = guid
+		
+		local lx, ly
+		
+		function pt:Position()
+			local x, y = Tracker:GetMobPosition(guid)
+			if not x then self:Remove() end
+			
+			if lx then
+				local dx = x - lx
+				local dy = y - ly
+				if (dx * dx + dy * dy) < 100 then
+					x = lx + dx / 3
+					y = ly + dy / 3
+				end
+			end
+			
+			lx, ly = x, y
+			return x, y
+		end
+		
+		return pt
+	end
+	
 	-- Iterates over all points
 	function Hud:IteratePoints()
 		return pairs(self.points)
 	end
 	
 	-- Return a point
-	function Hud:GetPoint(name)
+	function Hud:GetPoint(name, exact)
 		-- Y U NO HAZ NAME ?
 		if not name then
 			self:Print("Attempted to get a point with a nil name")
@@ -670,7 +701,7 @@ do
 		-- Fetch by name
 		local pt = self.points[name]
 		
-		if pt then
+		if pt or exact then
 			return pt
 		elseif UnitExists(name) then
 			-- Requested a unit point, lookup by GUID

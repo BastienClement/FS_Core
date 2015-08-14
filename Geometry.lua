@@ -109,6 +109,138 @@ local function PointInPolygon(x, y, vertex, nvert)
 	return inside
 end
 
+-- Compute the smallest enclosing circle of a set of points
+local SmallestEnclosingCircle
+do
+	local ws = {}
+	local ws_len = 0
+	
+	local function ws_add(x, y)
+		ws_len = ws_len + 1
+		local point = ws[ws_len]
+		if point then
+			point[1] = x
+			point[2] = y
+		else
+			ws[ws_len] = { x, y }
+		end
+	end
+	
+	local function ws_remove(i)
+		if i < ws_len then
+			ws[i] = ws[ws_len]
+		end
+		ws_len = ws_len - 1
+	end
+	
+	local function ws_get(i)
+		local point = ws[i]
+		if not point then return end
+		return point[1], point[2]
+	end
+	
+	local cx, cy, cr
+	
+	local function is_in_circle(px, py)
+		return cx and Distance(cx, cy, px, py) < cr + 1e-12
+	end
+	
+	local function cross_product(x0, y0, x1, y1, x2, y2)
+		return (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0)
+	end
+	
+	local function make_circumcircle(ax, ay, bx, by, cx, cy)
+		local d = (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by)) * 2
+		if d == 0 then return end
+		
+		local a2 = ax * ax + ay * ay
+		local b2 = bx * bx + by * by
+		local c2 = cx * cx + cy * cy
+		
+		local x = (a2 * (by - cy) + b2 * (cy - ay) + c2 * (ay - by)) / d
+		local y = (a2 * (cx - bx) + b2 * (ax - cx) + c2 * (bx - ax)) / d
+		
+		return x, y, Distance(x, y, ax, ay)
+	end
+	
+	function SmallestEnclosingCircle(point, npts)
+		ws_len = 0
+		
+		for i = 1, npts do
+			ws_add(point(i))
+		end
+		
+		if npts < 1 then
+			error("You need at least 1 point to compute the smallest enclosing circle")
+		end
+		
+		cx = nil
+		
+		-- Progressively add points to circle or recompute circle
+		for i = 1, npts do
+			local px, py = ws_get(i)
+			
+			if not is_in_circle(px, py) then
+				-- makeCircleOnePoint
+				cx, cy, cr = px, py, 0
+				
+				for j = 1, i do
+					local qx, qy = ws_get(j)
+					
+					if not is_in_circle(qx, qy) then
+						local _cr = cr
+						
+						-- makeDiameter
+						cx = (px + qx) / 2
+						cy = (py + qy) / 2
+						cr = Distance(px, py, qx, qy) / 2
+						
+						if _cr > 0 then
+							-- makeCircleTwoPoints
+							local contains_all = true
+							for k = 1, j do
+								local tx, ty = ws_get(k)
+								if not is_in_circle(tx, ty) then
+									contains_all = false
+									break
+								end
+							end
+							
+							if not contains_all then
+								local lx, ly, lr
+								local rx, ry, rr
+								
+								for k = 1, j do
+									local tx, ty = ws_get(k)
+									
+									local cross = cross_product(px, py, qx, qy, tx, ty)
+									local wx, wy, wr = make_circumcircle(px, py, qx, qy, tx, ty)
+									
+									if wx then
+										if cross > 0 and (not lx or cross_product(px, py, qx, qy, wx, wy) > cross_product(px, py, qx, qy, lx, ly)) then
+											lx, ly, lr = wx, wy, wr
+										elseif cross < 0 and (not rx or cross_product(px, py, qx, qy, wx, wy) < cross_product(px, py, qx, qy, rx, ry)) then
+											rx, ry, rr = wx, wy, wr
+										end
+									end
+								end
+								
+								if not rx or (lx and lr <= rr) then
+									cx, cy, cr = lx, ly, lr
+								else
+									cx, cy, cr = rx, ry, rr
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+		
+		return cx, cy, cr
+	end
+end
+
 Geometry.Distance = Distance
 Geometry.RotatePoint = RotatePoint
 Geometry.AngleDelta = AngleDelta
@@ -116,3 +248,4 @@ Geometry.PointVectorProject = PointVectorProject
 Geometry.PointVectorDistance = PointVectorDistance
 Geometry.PointInTriangle = PointInTriangle
 Geometry.PointInPolygon = PointInPolygon
+Geometry.SmallestEnclosingCircle = SmallestEnclosingCircle

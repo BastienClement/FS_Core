@@ -61,7 +61,6 @@ local version_gui = {
 function Network:OnInitialize()
 	self:RegisterComm("FS")
 	self:RegisterComm("FSCTRL")
-	self:RegisterComm("FSCTRL")
 	self.versions = {}
 	
 	FS:GetModule("Config"):Register("Versions", version_gui)
