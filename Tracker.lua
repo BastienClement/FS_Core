@@ -2,8 +2,9 @@ local _, FS = ...
 local Tracker = FS:RegisterModule("Tracker")
 
 local MELEE_SPELLS = {}
+local SMALL_AOES = {}
 do
-	local spells = {
+	local melee = {
 		-- Death Knight
 		45462, -- Plague Strike
 		49998, -- Death Strike
@@ -20,6 +21,8 @@ do
 		33745, -- Lacerate
 		6807, -- Maul
 		80313, -- Pulverize
+		22570, -- Maim
+		1822, -- Rake
 		
 		-- Monk
 		100780, -- Jab
@@ -30,8 +33,11 @@ do
 		108557, -- Jab
 		100787, -- Tiger Palm
 		100784, -- Blackout Kick
+		115080, -- Touch of Death
 		116705, -- Spear Hand Strike
 		107428, -- Rising Sun Kick
+		116095, -- Disable
+		122470, -- Touch of Karma
 		
 		-- Paladin
 		35395, -- Crusader Strike
@@ -45,8 +51,18 @@ do
 		2098, -- Eviscerate
 		8676, -- Ambush
 		1766, -- Kick
+		1776, -- Gouge
+		1833, -- Cheap Shot
+		408, -- Kidney Shot
 		703, -- Garrote
+		5938, -- Shiv
 		53, -- Backstab
+		111240, -- Dispatch
+		32645, -- Envenom
+		16511, -- Hemorrhage
+		1329, -- Mutilate
+		84617, -- Revealing Strike
+		1943, -- Rupture
 		
 		-- Shaman
 		73899, -- Primal Strike
@@ -55,23 +71,50 @@ do
 		
 		-- Warrior
 		78, -- Heroic Strike
+		34428, -- Victory Rush
+		6552, -- Pummel
+		1715, -- Hamstring
 		167105, -- Colossus Smash
 		12294, -- Mortal Strike
 		85288, -- Raging Blow
 		772, -- Rend
 		23922, -- Shield Slam
+		20243, -- Devastate
+		163201, -- Execute
+		5308, -- Execute
+		6572, -- Revenge
+		100130, -- Wild Strike
 	}
 	
-	for i = 1, #spells do
-		local spell = spells[i]
+	local aoe = {
+		53595,  -- Hammer of the Righteous
+		106785, -- Swipe
+		101546, -- Spinning Crane Kick
+		51723, -- Fan of Knives
+		113656, -- Fists of Fury
+		101423, -- Seal of Righteousness
+		1680, -- Whirlwind
+		53385, -- Divine Storm
+		--50842, -- Blood Boil
+		121411, -- Crimsom Tempest
+		6544, -- Heroic Leap
+		46924, -- Blade Storm
+	}
+	
+	for i = 1, #melee do
+		local spell = melee[i]
 		local name, _, _, _, _, maxRange = GetSpellInfo(spell)
 		if not name then
 			Tracker:Printf("|cffff9f00Failed to get spell infos for spell #%d.", spell)
 		elseif maxRange ~= 0 then
 			Tracker:Printf("|cffff9f00Spell #%d [%s] is listed as a melee-range spell but its max range is %dyd. Please report.", spell, name, maxRange)
 		else
-			MELEE_SPELLS[spells[i]] = true
+			MELEE_SPELLS[spell] = true
 		end
+	end
+	
+	for i = 1, #aoe do
+		SMALL_AOES[aoe[i]] = true
 	end
 	
 	--[[
@@ -104,6 +147,7 @@ do
 end
 
 local Distance, SmallestEnclosingCircle
+local max = math.max
 
 function Tracker:OnInitialize()
 	self.mobs = {}
@@ -163,13 +207,14 @@ do
 	local function ret_helper(...) return ... end
 	
 	function Tracker:ParseGUID(guid, only_type)
-		local _, offset, unit_type = guid:find("^([^-]+)")
+		local offset = guid:find("-")
+		local unit_type = guid:sub(1, offset - 1)
 		if only_type then return unit_type end
 		if unit_type == "Player" then
-			local s, u = guid:match("(.-)-(.+)", offset + 2)
+			local s, u = guid:match("(.-)-(.+)", offset + 1)
 			return ret_helper(unit_type, tonumber(s), u)
 		else
-			local x, s, i, z, m, u = guid:match("(.-)-(.-)-(.-)-(.-)-(.-)-(.+)", offset + 2)
+			local x, s, i, z, m, u = guid:match("(.-)-(.-)-(.-)-(.-)-(.-)-(.+)", offset + 1)
 			return ret_helper(unit_type, tonumber(x), tonumber(s), tonumber(i), tonumber(z), tonumber(m), u)
 		end
 	end
@@ -200,7 +245,8 @@ end
 function Tracker:GC()
 	local now = GetTime()
 	for guid, data in pairs(self.mobs) do
-		if now - data.ping > 5 then
+		local unit = self:GetMobUnit(guid, data)
+		if not unit and now - data.ping > 5 then
 			self:SendMessage("FS_TRACKER_LOST", guid, data.id)
 			self:RemoveMob(guid)
 		end
@@ -209,8 +255,8 @@ end
 
 --------------------------------------------------------------------------------
 
-function Tracker:GetMobUnit(guid)
-	local mob = self:GetMob(guid)
+function Tracker:GetMobUnit(guid, mob)
+	if not mob then mob = self:GetMob(guid) end
 	if not mob then return end
 	
 	for unit in pairs(mob.unitids) do
@@ -224,6 +270,12 @@ end
 
 do
 	local S = {}
+	
+	local tank_clamping = 0
+	local nontank_clamping = 0
+	function Tracker.ClampingStats()
+		return tank_clamping, nontank_clamping
+	end
 	
 	local function S_Accessor(i)
 		return S[i].x, S[i].y
@@ -239,8 +291,9 @@ do
 			local target_guid = UnitGUID(unitid .. "target")
 			local target_data = target_guid and mob.near[target_guid]
 			if target_data then
+				tank_clamping = tank_clamping + 1
 				-- Drop unit more than 50% away than the tank
-				local max_dist = Distance(target_data.x, target_data.y, x, y) * 1.5
+				local max_dist = max(Distance(target_data.x, target_data.y, x, y), 5) * 1.5
 				
 				local updated = false
 				for i = #S, 1, -1 do
@@ -259,6 +312,8 @@ do
 			end
 		end
 		
+		nontank_clamping = nontank_clamping + 1
+		
 		-- Be a bit less smart and check based on average distance
 		local sum = 0
 		local count = 0
@@ -268,7 +323,7 @@ do
 			count = count + 1
 		end
 		
-		local max_dist = (sum / count) * 1.5
+		local max_dist = max((sum / count), 5) * 1.5
 		
 		local updated = false
 		for i = #S, 1, -1 do
@@ -286,8 +341,8 @@ do
 		end
 	end
 	
-	function Tracker:GetMobPosition(guid)
-		local mob = self:GetMob(guid)
+	function Tracker:GetMobPosition(guid, mob)
+		if not mob then  mob = self:GetMob(guid) end
 		if not mob then return end
 		
 		if mob.near_updated then
@@ -301,7 +356,7 @@ do
 				wipe(S)
 				
 				for guid, data in pairs(mob.near) do
-					if now - data.t < 3.5 then
+					if now - data.t < 3 then
 						S[#S + 1] = data
 					else
 						mob.near[guid] = nil
@@ -321,12 +376,6 @@ do
 	end
 end
 
-function Tracker:PingMob(guid, ts)
-	if self:ParseGUID(guid, true) == "Creature" then
-		return self:GetMob(guid, ts or GetTime())
-	end
-end
-
 --------------------------------------------------------------------------------
 
 function Tracker:COMBAT_LOG_EVENT_UNFILTERED(_, timestamp, event, _, ...)
@@ -337,10 +386,13 @@ end
 
 do
 	local function update_near(near, guid, name, ts)
+		local near_data = near[guid]
+		if near_data and (ts - near_data.t) < 0.5 then return false end
+		
 		name = Ambiguate(name, "short")
+		
 		if UnitExists(name) then
 			local x, y = UnitPosition(name)
-			local near_data = near[guid]
 			if near_data then
 				near_data.x = x
 				near_data.y = y
@@ -354,23 +406,35 @@ do
 				}
 			end
 		end
+		
+		return true
 	end
 	
 	function Tracker:SWING_DAMAGE(ts, source, sourceName, _, _, dest, destName)
 		local source_t = self:ParseGUID(source, true)
 		local dest_t = self:ParseGUID(dest, true)
 
-		if source_t == "Creature" then
+		if source_t == "Creature" and dest_t == "Player" then
 			local source_m = self:GetMob(source, ts)
-			if dest_t == "Player" then
-				update_near(source_m.near, dest, destName, ts)
+			if update_near(source_m.near, dest, destName, ts) then
 				source_m.near_updated = true
 			end
 		end
 
-		if dest_t == "Creature" then
+		if dest_t == "Creature" and source_t == "Player" then
 			local dest_m = self:GetMob(dest, ts)
-			if source_t == "Player" then
+			if update_near(dest_m.near, source, sourceName, ts) then
+				dest_m.near_updated = true
+			end
+		end
+	end
+
+	function Tracker:SPELL_DAMAGE(ts, source, sourceName, _, _, dest, destName, _, _, spell)
+		if SMALL_AOES[spell] then
+			local source_t = self:ParseGUID(source, true)
+			local dest_t = self:ParseGUID(dest, true)
+			if source_t == "Player" and dest_t == "Creature" then
+				local dest_m = self:GetMob(dest, ts)
 				update_near(dest_m.near, source, sourceName, ts)
 				dest_m.near_updated = true
 			end
@@ -384,17 +448,14 @@ function Tracker:SPELL_CAST_SUCCESS(ts, source, sourceName, _, _, dest, destName
 	end
 end
 
-function Tracker:SPELL_DAMAGE(ts, source, sourceName, _, _, dest, destName, _, _, spell)
-	self:PingMob(source, ts)
-	self:PingMob(dest, ts)
-end
-
 function Tracker:UNIT_DIED(ts, source, _, _, _, dest)
 	if self.mobs[dest] then
 		self:SendMessage("FS_TRACKER_DIED", guid)
 		self:RemoveMob(dest)
 	end
 end
+
+Tracker.UNIT_DESTROYED = Tracker.UNIT_DIED
 
 function Tracker:UNIT_TARGET(_, unit)
 	local target = unit .. "target"

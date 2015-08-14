@@ -653,23 +653,27 @@ do
 	end
 	
 	-- Create a point following the estimated position of an hostile unit
-	function Hud:GetTrackerPoint(guid)
+	function Hud:RegisterTrackerPoint(guid)
 		local pt = self:GetPoint(guid, true)
 		if pt then return pt end
 		
 		pt = self:CreatePoint(guid)
 		pt.guid = guid
 		
-		local lx, ly
+		local lx, ly = -1, -1
 		
 		function pt:Position()
+			if self.num_attached < 1 then
+				return lx, ly
+			end
+		
 			local x, y = Tracker:GetMobPosition(guid)
 			if not x then self:Remove() end
 			
 			if lx then
 				local dx = x - lx
 				local dy = y - ly
-				if (dx * dx + dy * dy) < 100 then
+				if (dx * dx + dy * dy) < 2500 then
 					x = lx + dx / 3
 					y = ly + dy / 3
 				end
