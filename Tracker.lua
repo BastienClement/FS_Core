@@ -355,18 +355,28 @@ end
 do
 	local S = {}
 	
-	local tank_clamping = 0
-	local nontank_clamping = 0
-	function Tracker.ClampingStats()
-		return tank_clamping, nontank_clamping
-	end
-	
 	local function S_Accessor(i)
 		return S[i].x, S[i].y
 	end
 	
-	local function ComputePosition(guid, mob)
+	local function purge(max_dist, x, y)
+		-- Check points too far away
+		local updated = false
+		for i = #S, 1, -1 do
+			if Distance(S[i].x, S[i].y, x, y) > max_dist then
+				table.remove(S, i)
+				updated = true
+			end
+		end
+		
+		return updated
+	end
+	
+	local function ComputePosition(guid, mob, final)
 		local x, y = SmallestEnclosingCircle(S_Accessor, #S)
+		
+		-- If this is the last iteration, do not try to enhance the estimate
+		if final then return x, y end
 		
 		-- Attempt to be smart by finding the tank
 		-- We also check that this tank is *near* the target
@@ -375,28 +385,17 @@ do
 			local target_guid = UnitGUID(unitid .. "target")
 			local target_data = target_guid and mob.near[target_guid]
 			if target_data then
-				tank_clamping = tank_clamping + 1
 				-- Drop unit more than 50% away than the tank
 				local max_dist = max(Distance(target_data.x, target_data.y, x, y), 5) * 1.5
 				
-				local updated = false
-				for i = #S, 1, -1 do
-					if Distance(S[i].x, S[i].y, x, y) > max_dist then
-						table.remove(S, i)
-						updated = true
-					end
-				end
-				
 				-- At least one unit was removed, recompute
-				if updated then
-					return ComputePosition()
+				if purge(max_dist, x, y) then
+					return ComputePosition(guid, mob, true)
 				else
 					return x, y
 				end
 			end
 		end
-		
-		nontank_clamping = nontank_clamping + 1
 		
 		-- Be a bit less smart and check based on average distance
 		local sum = 0
@@ -409,17 +408,9 @@ do
 		
 		local max_dist = max((sum / count), 5) * 1.5
 		
-		local updated = false
-		for i = #S, 1, -1 do
-			if Distance(S[i].x, S[i].y, x, y) > max_dist then
-				table.remove(S, i)
-				updated = true
-			end
-		end
-		
 		-- At least one unit was removed, recompute
-		if updated then
-			return ComputePosition()
+		if purge(max_dist, x, y) then
+			return ComputePosition(guid, mob, true)
 		else
 			return x, y
 		end
@@ -431,7 +422,7 @@ do
 		
 		if mob.near_updated then
 			local now = GetTime()
-			if now - mob.near_last > 0.033 then
+			if now - mob.near_last > 0.1 then
 				-- Register now as last refresh of mob position
 				mob.near_last = now
 				mob.near_updated = false
