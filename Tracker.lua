@@ -149,11 +149,95 @@ end
 local Distance, SmallestEnclosingCircle
 local max = math.max
 
+-------------------------------------------------------------------------------
+-- Tracker config
+
+local tracker_default = {
+	profile = {
+		enable = true,
+		use_aoe = true,
+		use_single = true
+	}
+}
+
+local tracker_config = {
+	title = {
+		type = "description",
+		name = "|cff64b4ffHostile Tracker",
+		fontSize = "large",
+		order = 0
+	},
+	desc = {
+		type = "description",
+		name = "Track nearby hostile units and estimate their position. Required by some HUD modules.\n",
+		fontSize = "medium",
+		order = 1
+	},
+	enable = {
+		type = "toggle",
+		name = "Enable",
+		width = "full",
+		get = function()
+			return Tracker.settings.enable
+		end,
+		set = function(_, value)
+			Tracker.settings.enable = value
+			if value then
+				Tracker:Enable()
+			else
+				Tracker:Disable()
+			end
+		end,
+		order = 5
+	},
+	spacing_9 = {
+		type = "description",
+		name = "\n",
+		order = 9
+	},
+	use_single = {
+		type = "toggle",
+		name = "Track single-target spells",
+		desc = "Track single-target melee casts (in addition to melee swings) for hostile units position estimation",
+		get = function()
+			return Tracker.settings.use_single
+		end,
+		set = function(_, value)
+			Tracker.settings.use_single = value
+		end,
+		order = 20
+	},
+	use_aoe = {
+		type = "toggle",
+		name = "Track AoE spells",
+		desc = "Track AoE abilities for hostile units position estimation",
+		get = function()
+			return Tracker.settings.use_aoe
+		end,
+		set = function(_, value)
+			Tracker.settings.use_aoe = value
+		end,
+		order = 21
+	},
+}
+
+--------------------------------------------------------------------------------
+
 function Tracker:OnInitialize()
-	self.mobs = {}
-	self.mobs_id = {}
 	Distance = FS.Geometry.Distance
 	SmallestEnclosingCircle = FS.Geometry.SmallestEnclosingCircle
+	
+	-- Create config database
+	self.db = FS.db:RegisterNamespace("Tracker", tracker_default)
+	self.settings = self.db.profile
+	
+	-- Config enable state
+	self:SetEnabledState(self.settings.enable)
+	
+	self.mobs = {}
+	self.mobs_id = {}
+	
+	FS.Config:Register("Hostile Tracker", tracker_config)
 end
 
 function Tracker:OnEnable()
@@ -428,8 +512,9 @@ do
 			end
 		end
 	end
-
+	
 	function Tracker:SPELL_DAMAGE(ts, source, sourceName, _, _, dest, destName, _, _, spell)
+		if not Tracker.settings.use_aoe then return end
 		if SMALL_AOES[spell] then
 			local source_t = self:ParseGUID(source, true)
 			local dest_t = self:ParseGUID(dest, true)
@@ -443,6 +528,7 @@ do
 end
 
 function Tracker:SPELL_CAST_SUCCESS(ts, source, sourceName, _, _, dest, destName, _, _, spell)
+	if not Tracker.settings.use_single then return end
 	if MELEE_SPELLS[spell] then
 		self:SWING_DAMAGE(ts, source, sourceName, nil, nil, dest, destName)
 	end
