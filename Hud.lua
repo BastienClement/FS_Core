@@ -603,7 +603,7 @@ do
 		-- Return the cached world position for this point
 		function point:FastPosition()
 			if self.world_x < 0 then
-				self.world_x, self.world_y = self:Position()
+				self.world_x, self.world_y = self:Position(true)
 			end
 			return self.world_x, self.world_y
 		end
@@ -629,7 +629,7 @@ do
 			return
 		end
 		
-		local x, y = ref:Position()
+		local x, y = ref:Position(true)
 		return self:CreateStaticPoint(x, y, name)
 	end
 	
@@ -683,13 +683,16 @@ do
 		
 		local lx, ly = -1, -1
 		
-		function pt:Position()
-			if self.num_attached < 1 then
+		function pt:Position(force)
+			if self.num_attached < 1 and not force then
 				return lx, ly
 			end
 		
-			local x, y = Tracker:GetMobPosition(guid)
-			if not x then self:Remove() end
+			local x, y = Tracker:GetPosition(guid)
+			if not x then
+				C_Timer.After(0, function() self:Remove() end)
+				return lx, ly
+			end
 			
 			if lx then
 				local dx = x - lx
