@@ -455,7 +455,7 @@ end
 
 function Tracker:COMBAT_LOG_EVENT_UNFILTERED(_, timestamp, event, _, ...)
 	if self[event] then
-		self[event](self, GetTime(), ...)
+		self[event](self, ...)
 	end
 end
 
@@ -485,47 +485,49 @@ do
 		return true
 	end
 	
-	function Tracker:SWING_DAMAGE(ts, source, sourceName, _, _, dest, destName)
+	function Tracker:SWING_DAMAGE(source, sourceName, _, _, dest, destName)
 		local source_t = self:ParseGUID(source, true)
 		local dest_t = self:ParseGUID(dest, true)
+		local now = GetTime()
 
 		if source_t == "Creature" and dest_t == "Player" then
-			local source_m = self:GetMob(source, ts)
-			if update_near(source_m.near, dest, destName, ts) then
+			local source_m = self:GetMob(source, now)
+			if update_near(source_m.near, dest, destName, now) then
 				source_m.near_updated = true
 			end
 		end
 
 		if dest_t == "Creature" and source_t == "Player" then
-			local dest_m = self:GetMob(dest, ts)
-			if update_near(dest_m.near, source, sourceName, ts) then
+			local dest_m = self:GetMob(dest, now)
+			if update_near(dest_m.near, source, sourceName, now) then
 				dest_m.near_updated = true
 			end
 		end
 	end
 	
-	function Tracker:SPELL_DAMAGE(ts, source, sourceName, _, _, dest, destName, _, _, spell)
+	function Tracker:SPELL_DAMAGE(source, sourceName, _, _, dest, destName, _, _, spell)
 		if not Tracker.settings.use_aoe then return end
 		if SMALL_AOES[spell] then
 			local source_t = self:ParseGUID(source, true)
 			local dest_t = self:ParseGUID(dest, true)
 			if source_t == "Player" and dest_t == "Creature" then
-				local dest_m = self:GetMob(dest, ts)
-				update_near(dest_m.near, source, sourceName, ts)
+				local now = GetTime()
+				local dest_m = self:GetMob(dest, now)
+				update_near(dest_m.near, source, sourceName, now)
 				dest_m.near_updated = true
 			end
 		end
 	end
 end
 
-function Tracker:SPELL_CAST_SUCCESS(ts, source, sourceName, _, _, dest, destName, _, _, spell)
+function Tracker:SPELL_CAST_SUCCESS(source, sourceName, _, _, dest, destName, _, _, spell)
 	if not Tracker.settings.use_single then return end
 	if MELEE_SPELLS[spell] then
-		self:SWING_DAMAGE(ts, source, sourceName, nil, nil, dest, destName)
+		self:SWING_DAMAGE(source, sourceName, nil, nil, dest, destName)
 	end
 end
 
-function Tracker:UNIT_DIED(ts, source, _, _, _, dest)
+function Tracker:UNIT_DIED(source, _, _, _, dest)
 	if self.mobs[dest] then
 		self:SendMessage("FS_TRACKER_DIED", guid)
 		self:RemoveMob(dest)
