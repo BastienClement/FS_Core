@@ -11,6 +11,17 @@ local pi2, pi_2 = math.pi * 2, math.pi / 2
 local GDistance, GRotatePoint, GAngleDelta, GPointVectorDistance
 local GPointInTriangle, GPointInPolygon
 
+local Makers_Color = {
+	{ 0.98, 0.93, 0.33 },
+	{ 1.00, 0.57, 0.00 },
+	{ 0.84, 0.30, 0.91 },
+	{ 0.16, 0.89, 0.13 },
+	{ 0.46, 0.69, 0.93 },
+	{ 0.00, 0.57, 1.00 },
+	{ 1.00, 0.23, 0.20 },
+	{ 1.00, 0.98, 0.98 }
+}
+
 --------------------------------------------------------------------------------
 -- HUD Frame
 
@@ -413,6 +424,16 @@ do
 		function point:SetColor(r, g, b, a)
 			self.tex:SetVertexColor(r, g, b, a or 1)
 			return self
+		end
+		
+		function point:SetMarkerColor(marker, a)
+			local color = Makers_Color[marker]
+			if color then
+				local r, g, b = unpack(color)
+				return self:SetColor(r, g, b, a)
+			else
+				return self
+			end
 		end
 		
 		-- Define the always_visible flag
@@ -946,9 +967,19 @@ function HudObject:UsePoint(name)
 end
 
 -- Set the obejct color
-function HudObject:SetColor(...)
-	self.tex:SetVertexColor(...)
+function HudObject:SetColor(r, g, b, a)
+	self.tex:SetVertexColor(r, g, b, a or 0.5)
 	return self
+end
+
+function HudObject:SetMarkerColor(marker, a)
+	local color = Makers_Color[marker]
+	if color then
+		local r, g, b = unpack(color)
+		return self:SetColor(r, g, b, a)
+	else
+		return self
+	end
 end
 
 -- Get the object color
@@ -1609,6 +1640,16 @@ do
 		function polygon:SetColor(...)
 			if border then self:SetBorderColor(...) end
 			return self:SetFillColor(...)
+		end
+		
+		function polygon:SetMarkerColor(marker, a)
+			local color = Makers_Color[marker]
+			if color then
+				local r, g, b = unpack(color)
+				return self:SetColor(r, g, b, a)
+			else
+				return self
+			end
 		end
 		
 		-- Set the color of all triangles composing this polygon
