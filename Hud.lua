@@ -751,6 +751,38 @@ do
 			pt:Remove()
 		end
 	end
+	
+	-- Distance between two points
+	function Hud:Distance(pt1, pt2)
+		pt1 = self:GetPoint(pt1)
+		pt2 = self:GetPoint(pt2)
+		if not pt1 or not pt2 then
+			return
+		else
+			local x, y = pt2:FastPosition()
+			return pt1:PointDistance(x, y)
+		end
+	end
+	
+	-- Create a vector from pt1 to pt2
+	function Hud:Vector(pt1, pt2, length)
+		pt1 = self:GetPoint(pt1)
+		pt2 = self:GetPoint(pt2)
+		if not pt1 or not pt2 then return end
+		
+		-- Default to unit vector
+		if not length then length = 1 end
+		
+		local pt1x, pt1y = pt1:FastPosition()
+		local pt2x, pt2y = pt2:FastPosition()
+		
+		local l = GDistance(pt1x, pt1y, pt2x, pt2y)
+		if l == 0 then return 0, 0 end
+		
+		local dx, dy = pt2x - pt1x, pt2y - pt1y
+		
+		return dx * length / l, dy * length / l
+	end
 end
 
 -- Automatically create points for raid units
