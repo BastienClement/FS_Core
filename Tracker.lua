@@ -227,11 +227,9 @@ function Tracker:OnInitialize()
 	Distance = FS.Geometry.Distance
 	SmallestEnclosingCircle = FS.Geometry.SmallestEnclosingCircle
 	
-	-- Create config database
 	self.db = FS.db:RegisterNamespace("Tracker", tracker_default)
 	self.settings = self.db.profile
 	
-	-- Config enable state
 	self:SetEnabledState(self.settings.enable)
 	
 	self.mobs = {}
@@ -249,6 +247,9 @@ end
 function Tracker:OnDisable()
 	self.gc:Cancel()
 end
+
+--------------------------------------------------------------------------------
+-- Private
 
 function Tracker:GetMob(guid, timestamp)
 	local mob = self.mobs[guid]
@@ -268,7 +269,7 @@ function Tracker:GetMob(guid, timestamp)
 			x = -1,
 			y = -1,
 			near = {},
-			near_bad = true,
+			near_good = false,
 			near_updated = false,
 			near_last = 0
 		}
@@ -329,7 +330,7 @@ end
 function Tracker:GC()
 	local now = GetTime()
 	for guid, data in pairs(self.mobs) do
-		local unit = self:GetMobUnit(guid, data)
+		local unit = self:GetUnit(guid, data)
 		if not unit and now - data.ping > 5 then
 			self:SendMessage("FS_TRACKER_LOST", guid, data.id)
 			self:RemoveMob(guid)
@@ -338,8 +339,9 @@ function Tracker:GC()
 end
 
 --------------------------------------------------------------------------------
+-- Public
 
-function Tracker:GetMobUnit(guid, mob)
+function Tracker:GetUnit(guid, mob)
 	if not mob then mob = self:GetMob(guid) end
 	if not mob then return end
 	
@@ -375,12 +377,12 @@ do
 	local function ComputePosition(guid, mob, final)
 		local x, y = SmallestEnclosingCircle(S_Accessor, #S)
 		
-		-- If this is the last iteration, do not try to enhance the estimate
+		-- If this is the last iteration, do not try to enhance the result
 		if final then return x, y end
 		
 		-- Attempt to be smart by finding the tank
 		-- We also check that this tank is *near* the target
-		local unitid = Tracker:GetMobUnit(guid)
+		local unitid = Tracker:GetUnit(guid)
 		if unitid then
 			local target_guid = UnitGUID(unitid .. "target")
 			local target_data = target_guid and mob.near[target_guid]
@@ -388,8 +390,8 @@ do
 				-- Drop unit more than 50% away than the tank
 				local max_dist = max(Distance(target_data.x, target_data.y, x, y), 5) * 1.5
 				
-				-- At least one unit was removed, recompute
 				if purge(max_dist, x, y) then
+					-- At least one unit was removed, recompute
 					return ComputePosition(guid, mob, true)
 				else
 					return x, y
@@ -408,16 +410,16 @@ do
 		
 		local max_dist = max((sum / count), 5) * 1.5
 		
-		-- At least one unit was removed, recompute
 		if purge(max_dist, x, y) then
+			-- At least one unit was removed, recompute
 			return ComputePosition(guid, mob, true)
 		else
 			return x, y
 		end
 	end
 	
-	function Tracker:GetMobPosition(guid, mob)
-		if not mob then  mob = self:GetMob(guid) end
+	function Tracker:GetPosition(guid, mob)
+		if not mob then mob = self:GetMob(guid) end
 		if not mob then return end
 		
 		if mob.near_updated then
@@ -439,19 +441,20 @@ do
 				end
 				
 				if #S > 0 then
-					mob.near_bad = false
+					mob.near_good = true
 					mob.x, mob.y = ComputePosition(guid, mob)
 				else
-					mob.near_bad = true
+					mob.near_good = false
 				end
 			end
 		end
 			
-		return mob.x, mob.y, mob.near_bad
+		return mob.x, mob.y, mob.near_good
 	end
 end
 
 --------------------------------------------------------------------------------
+-- Events
 
 function Tracker:COMBAT_LOG_EVENT_UNFILTERED(_, timestamp, event, _, ...)
 	if self[event] then
