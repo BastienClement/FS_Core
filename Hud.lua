@@ -1735,9 +1735,6 @@ function Hud:DrawPolyLine(from, to, width, border)
 	to = ray:UsePoint(to)
 	if not from or not to then return end
 	
-	-- Vector composants and length
-	local vx, vy, vl
-	
 	-- Normal unit vector
 	local nx, ny
 	
@@ -1746,20 +1743,12 @@ function Hud:DrawPolyLine(from, to, width, border)
 	
 	-- Update vectors informations
 	local function update_vectors()
-		-- Vertices position
-		local fx, fy = from:Position()
-		local tx, ty = to:Position()
+		-- Get unit vector
+		local vx, vy = Hud:Vector(from, to)
 		
-		-- Compute main vector
-		vx = tx - fx + 0.001
-		vy = ty - fy + 0.001
-		
-		-- Compute length
-		vl = (vx * vx + vy * vy) ^ 0.5
-		
-		-- Create a normal unit vector
-		nx = vy / vl
-		ny = -vx / vl
+		-- Create a normal vector
+		nx = vy + 0.01
+		ny = -vx + 0.01
 		
 		-- Prevent another update until next frame
 		updated = true
@@ -1778,9 +1767,10 @@ function Hud:DrawPolyLine(from, to, width, border)
 			if not updated then update_vectors() end
 			local x, y = ref:Position()
 			local w = (poly and poly.width or width) / 2
+			local overrun = poly and poly.overrun or 1
 			return
-				x + ny * 0.001 * o + nx * w * dir,
-				y - nx * 0.001 * o + ny * w * dir
+				x + ny * overrun * o + nx * w * dir,
+				y - nx * overrun * o + ny * w * dir
 		end
 		return pt
 	end
@@ -1793,6 +1783,13 @@ function Hud:DrawPolyLine(from, to, width, border)
 	-- The ray polygon
 	poly = self:DrawPolygon({ p1, p2, p3, p4 }, border)
 	poly.width = width
+	poly.overrun = 0
+	
+	function poly:Overrun(value)
+		if not value then return self.overrun end
+		self.overrun = value
+		return self
+	end
 	
 	-- Cleanup
 	local poly_remove = poly.Remove
