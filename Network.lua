@@ -7,7 +7,8 @@ LibStub("AceSerializer-3.0"):Embed(Network)
 local EMPTY_TABLE = {}
 
 -- GUI for versions informations
-local version_gui = {
+local version_gui
+version_gui = {
 	title = {
 		type = "description",
 		name = "|cff64b4ffVersions",
@@ -35,7 +36,9 @@ local version_gui = {
 		desc = "Request guild and raid members to broadcast their FS Core version",
 		order = 3,
 		func = function()
-			Network:RequestVersions()
+			if Network:RequestVersions() then
+				wipe(version_gui.versions.args)
+			end
 		end
 	},
 	last_updated = {
@@ -165,10 +168,11 @@ do
 		local now = GetTime()
 		if now < request_cooldown then
 			self:Printf("Cannot request version broadcast right now, try again in %s seconds", math.ceil(request_cooldown - now))
-			return
+			return false
 		end
 		request_cooldown = now + 30
-		self:SendCtrl("version_query", nil, "GUILD")
+		--self:SendCtrl("version_query", nil, "GUILD")
 		self:SendCtrl("version_query", nil, "RAID")
+		return true
 	end
 end
