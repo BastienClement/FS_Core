@@ -33,12 +33,32 @@ text:SetShadowOffset(1, -2)
 text:SetPoint("TOP", arrow, "BOTTOM", 0, -7)
 
 --------------------------------------------------------------------------------
+-- Config infos
+
+local arrow_config_infos = {
+	title = {
+		type = "description",
+		name = "|cff64b4ffArrow",
+		fontSize = "large",
+		order = 0,
+	},
+	desc = {
+		type = "description",
+		name = "Arrow module.\n",
+		fontSize = "medium",
+		order = 1,
+	},
+}
+
+--------------------------------------------------------------------------------
 -- Module initialization
 
 function Arrow:OnInitialize()
 	Map = FS:GetModule("Map")
 	Console = FS:GetModule("Console")
 	Console:RegisterCommand("arrow", self)
+	
+	FS:GetModule("Config"):Register("Arrow", arrow_config_infos)
 end
 
 function Arrow:OnEnable()
