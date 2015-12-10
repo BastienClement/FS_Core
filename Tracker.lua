@@ -154,6 +154,11 @@ local tracker_config = {
 		end,
 		order = 5
 	},
+	enable_warn = {
+		type = "description",
+		name = "WARNING: disabling hostile tracker can prevent some location-based indicators from working.",
+		order = 6
+	},
 	spacing_9 = {
 		type = "description",
 		name = "\n",
