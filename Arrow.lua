@@ -255,6 +255,8 @@ function Arrow:OnSlash(arg1, arg2)
 		else
 			self:PointToLocation(UnitPosition("player"))
 		end
+	elseif arg1 == "hide" then
+		self:Hide()
 	elseif UnitExists(arg1) then
 		self:PointToUnit(arg1)
 	elseif arg1 == "target" then
@@ -283,7 +285,6 @@ function Arrow:FS_MSG_ARROW(_, prefix, data, channel, sender)
 		elseif data.raidtarget then
 			self:PointToRaidTarget(data.raidtarget, data.options)
 		end
-	
 	elseif action == "hide" then
 		-- Hide the arrow
 		self:Hide()
