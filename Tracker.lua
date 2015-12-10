@@ -102,48 +102,12 @@ do
 	}
 	
 	for i = 1, #melee do
-		local spell = melee[i]
-		local name, _, _, _, _, maxRange = GetSpellInfo(spell)
-		if not name then
-			Tracker:Printf("|cffff9f00Failed to get spell infos for spell #%d.", spell)
-		elseif maxRange ~= 0 then
-			Tracker:Printf("|cffff9f00Spell #%d [%s] is listed as a melee-range spell but its max range is %dyd. Please report.", spell, name, maxRange)
-		else
-			MELEE_SPELLS[spell] = true
-		end
+		MELEE_SPELLS[melee[i]] = true
 	end
 	
 	for i = 1, #aoe do
 		SMALL_AOES[aoe[i]] = true
 	end
-	
-	--[[
-	local good = {}
-	local bad = {}
-	for t = 2, GetNumSpellTabs() do
-		local _, _, offset, numSpells = GetSpellTabInfo(t)
-		for i = offset + 1, offset + numSpells do
-			if not IsPassiveSpell(i, "spell") and IsHarmfulSpell(i, "spell") then
-				local name, _, _, _, _, maxRange, spellID = GetSpellInfo(i, "spell")
-				local desc = GetSpellDescription(i, "spell")
-				local suspicious = desc:match("yards") or desc:match("area") or desc:match("yd")
-				if not suspicious and maxRange == 0 then
-					good[spellID] = name
-				else
-					bad[spellID] = name
-				end
-			end
-		end
-	end
-	
-	for id, name in pairs(good) do
-		Tracker:Printf("GOOD %d - %s", id, name)
-	end
-	
-	for id, name in pairs(bad) do
-		Tracker:Printf("BAD %d - %s", id, name)
-	end
-	]]
 end
 
 local Distance, SmallestEnclosingCircle
