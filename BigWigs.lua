@@ -46,7 +46,67 @@ local icons = setmetatable({}, {__index =
 })
 
 --------------------------------------------------------------------------------
+-- Config infos
+
+local bigwigs_default = {
+	profile = {
+		allow_remote = true
+	}
+}
+
+local bigwigs_config = {
+	title = {
+		type = "description",
+		name = "|cff64b4ffBigWigs Integration",
+		fontSize = "large",
+		order = 0,
+	},
+	desc = {
+		type = "description",
+		name = "Allows other modules to easily inject custom timers and alerts.\n",
+		fontSize = "medium",
+		order = 1,
+	},
+	--[[placholder = {
+		type = "description",
+		name = "|cff999999This module does not have any configuration option.",
+		order = 50
+	},]]
+	remote = {
+		type = "toggle",
+		name = "Allow remote activation",
+		desc = "Allow trusted raid members to remotely inject timers and alerts.",
+		width = "full",
+		get = function() return BW.settings.allow_remote end,
+		set = function(_, v) BW.settings.allow_remote = v end,
+		order = 6
+	},
+	ref = {
+		type = "header",
+		name = "Module reference",
+		order = 1000
+	},
+	api = FS.Config:MakeDoc("Public API", 2000, {
+		{":Message(key, msg, color)", "Display a simple message."},
+		{":Emphasized(key, msg, r, g, b)", "Display an emphasized message."},
+		{":Sound(key, sound)", "Play the given sound."},
+		{":Say(key, what, channel, target)", "Say the given message on the given channel. Defaults to SAY."},
+		{":Bar(key, length, text, icon)", "Display a timer bar."},
+		{":StopBar(key)", "Remove a bar created with :Bar()."},
+		{":Proximity(key, range, player, isReverse)", "Open the proximity display."},
+		{":CloseProximity(key)", "Close the proximity display."},
+	}, "FS.BigWigs")
+}
+
+--------------------------------------------------------------------------------
 -- Module initialization
+
+function BW:OnInitialize()
+	self.db = FS.db:RegisterNamespace("BigWigs", bigwigs_default)
+	self.settings = self.db.profile
+	
+	FS:GetModule("Config"):Register("BigWigs", bigwigs_config)
+end
 
 function BW:OnEnable()
 	-- Force BigWigs loading
@@ -216,7 +276,9 @@ do
 	end
 
 	function BW:FS_MSG_BIGWIGS(_, data, channel, sender)
+		if not self.settings.allow_remote then return end
 		if not FS:UnitIsTrusted(sender) or type(data) ~= "table" then return end
+		
 		if type(data[1]) == "table" then
 			for i = 1, #data do
 				schedule_action(data[i])

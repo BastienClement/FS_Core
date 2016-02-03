@@ -115,6 +115,7 @@ local max = math.max
 
 -------------------------------------------------------------------------------
 -- Tracker config
+--------------------------------------------------------------------------------
 
 local tracker_default = {
 	profile = {
@@ -133,7 +134,7 @@ local tracker_config = {
 	},
 	desc = {
 		type = "description",
-		name = "Track nearby hostile units and estimate their position. Required by some HUD modules.\n",
+		name = "Track nearby hostile units and estimate their position.\n",
 		fontSize = "medium",
 		order = 1
 	},
@@ -156,7 +157,7 @@ local tracker_config = {
 	},
 	enable_warn = {
 		type = "description",
-		name = "WARNING: disabling hostile tracker can prevent some location-based indicators from working.",
+		name = "|cff999999This module gather many useful informations about hostile units.\nDisabling it can prevent other modules from working effectively.",
 		order = 6
 	},
 	spacing_9 = {
@@ -167,7 +168,8 @@ local tracker_config = {
 	use_single = {
 		type = "toggle",
 		name = "Track single-target spells",
-		desc = "Track single-target melee casts (in addition to melee swings) for hostile units position estimation",
+		desc = "Track single-target melee casts (in addition to melee swings) for hostile units position estimation.",
+		width = "full",
 		get = function()
 			return Tracker.settings.use_single
 		end,
@@ -179,7 +181,8 @@ local tracker_config = {
 	use_aoe = {
 		type = "toggle",
 		name = "Track AoE spells",
-		desc = "Track AoE abilities for hostile units position estimation",
+		desc = "Track AoE abilities for hostile units position estimation.",
+		width = "full",
 		get = function()
 			return Tracker.settings.use_aoe
 		end,
@@ -219,6 +222,7 @@ end
 
 --------------------------------------------------------------------------------
 -- Private
+--------------------------------------------------------------------------------
 
 function Tracker:GetMob(guid, timestamp)
 	local mob = self.mobs[guid]
@@ -309,6 +313,7 @@ end
 
 --------------------------------------------------------------------------------
 -- Public
+--------------------------------------------------------------------------------
 
 function Tracker:GetUnit(guid, mob)
 	if not mob then mob = self:GetMob(guid) end
@@ -424,6 +429,7 @@ end
 
 --------------------------------------------------------------------------------
 -- Events
+--------------------------------------------------------------------------------
 
 function Tracker:COMBAT_LOG_EVENT_UNFILTERED(_, timestamp, event, _, ...)
 	if self[event] then

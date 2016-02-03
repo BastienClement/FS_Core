@@ -35,6 +35,13 @@ text:SetPoint("TOP", arrow, "BOTTOM", 0, -7)
 --------------------------------------------------------------------------------
 -- Config infos
 
+local arrow_default = {
+	profile = {
+		enable = true,
+		allow_remote = true
+	}
+}
+
 local arrow_config_infos = {
 	title = {
 		type = "description",
@@ -48,6 +55,49 @@ local arrow_config_infos = {
 		fontSize = "medium",
 		order = 1,
 	},
+	enable = {
+		type = "toggle",
+		name = "Enable",
+		width = "full",
+		get = function()
+			return Arrow.settings.enable
+		end,
+		set = function(_, value)
+			Arrow.settings.enable = value
+			if value then
+				Arrow:Enable()
+			else
+				Arrow:Disable()
+			end
+		end,
+		order = 5
+	},
+	remote = {
+		type = "toggle",
+		name = "Allow remote activation",
+		desc = "Allow trusted raid members to remotely activate the arrow.",
+		width = "full",
+		get = function() return Arrow.settings.allow_remote end,
+		set = function(_, v) Arrow.settings.allow_remote = v end,
+		order = 6
+	},
+	ref = {
+		type = "header",
+		name = "Module reference",
+		order = 1000
+	},
+	cmds = FS.Config:MakeDoc("Available chat commands", 2000, {
+		{"arrow", "Hide the arrow if visible.\nIf it isn't, displays an arrow pointing to the player."},
+		{"arrow <unit>", "Display an arrow pointing to the specified unit."},
+		{"arrow <raid-target-id>", "Display an arrow pointing to the player with the specified raid target marker."},
+		{"arrow <x> <y>", "Display an arrow pointing to the specified location."},
+	}, "/fs "),
+	api = FS.Config:MakeDoc("Public API", 3000, {
+		{":PointToUnit(unit, options)", "Display an arrow pointing to the specified unit."},
+		{":PointToLocation(x, y, options)", "Display an arrow pointing to the specified location."},
+		{":PointToRaidTarget(index, options)", "Display an arrow pointing to the player with the specified raid target marker."},
+		{":Hide()", "Hide the arrow."}
+	}, "FS.Arrow"),
 }
 
 --------------------------------------------------------------------------------
@@ -57,6 +107,11 @@ function Arrow:OnInitialize()
 	Map = FS:GetModule("Map")
 	Console = FS:GetModule("Console")
 	Console:RegisterCommand("arrow", self)
+	
+	self.db = FS.db:RegisterNamespace("Arrow", arrow_default)
+	self.settings = self.db.profile
+	
+	self:SetEnabledState(self.settings.enable)
 	
 	FS:GetModule("Config"):Register("Arrow", arrow_config_infos)
 end
@@ -71,6 +126,7 @@ function Arrow:OnDisable()
 end
 
 function Arrow:Show()
+	if not self:IsEnabled() then return end
 	if self:IsVisible() then return end
 	self._tal = 0
 	self.visible = true
@@ -290,6 +346,8 @@ end
 -- Network messages handler
 
 function Arrow:FS_MSG_ARROW(_, prefix, data, channel, sender)
+	if not self.settings.allow_remote then return end
+	
 	-- Require the sender to be in the raid group
 	if not FS:UnitIsTrusted(sender) then return end
 	

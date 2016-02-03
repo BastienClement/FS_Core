@@ -48,6 +48,72 @@ local hud_defaults = {
 	}
 }
 
+local function hud_test()
+	local x, y = UnitPosition("player")
+	
+	local s1 = Hud:CreateStaticPoint(x+20, y+20):SetColor(0.8, 0, 0.8, 1)
+	local s2 = Hud:CreateStaticPoint(x+30, y):SetColor(0, 0.8, 0.8, 1)
+	local s3 = Hud:CreateSnapshotPoint("player"):SetColor(0.8, 0.8, 0, 1)
+
+	local a1 = Hud:DrawArea(s1, 15)
+	local a2 = Hud:DrawTarget(s2, 10):Fade(false)
+	local a3 = Hud:DrawTimer(s3, 10, 10):SetColor(0.8, 0.8, 0, 0.5)
+	local a4 = Hud:DrawRadius(s3, 20)
+	
+	function a2:OnUpdate()
+		self:SetColor(abs(sin(GetTime())), abs(sin(GetTime() / 2)), abs(sin(GetTime() / 3)), 0.8)
+	end
+	
+	function a3:OnDone()
+		a3:Remove()
+		a4:Remove()
+	end
+	
+	Hud:DrawLine("player", s1, 128)
+	Hud:DrawLine("player", s2):SetColor(0, 0.5, 0.8, 0.8)
+	local l3 = Hud:DrawLine(s1, s2, 128)
+
+	function l3:OnUpdate()
+		if self:UnitDistance("player", true) < 1.5 then
+			self:SetColor(0.8, 0, 0, 0.8)
+		else
+			self:SetColor(0, 0.8, 0, 0.8)
+		end
+	end
+	
+	function a1:OnUpdate()
+	   self.radius = 15 + math.sin(GetTime() * 3)
+	end
+	
+	local vertices = {}
+	
+	for i = 1, 8 do
+		local r = math.random()
+		table.insert(vertices, x + sin(i * pi2 / 8) * r * 40)
+		table.insert(vertices, y + cos(i * pi2 / 8) * r * 40)
+	end
+	
+	local poly = Hud:DrawPolygon(vertices)
+	
+	for _, t in ipairs(poly.triangles) do
+		function t:OnUpdate()
+			if self:UnitIsInside("player") then
+				self:SetColor(0.4, 0.8, 0, 0.2)
+			else
+				self:SetColor(0.8, 0.4, 0, 0.2)
+			end
+		end
+	end
+	
+	function poly:OnUpdate()
+		if self:UnitIsInside("player", true) then
+			self:SetBorderColor(0.4, 0.8, 0, 0.2)
+		else
+			self:SetBorderColor(0.8, 0.4, 0, 0.2)
+		end
+	end
+end
+
 local hud_config = {
 	title = {
 		type = "description",
@@ -158,7 +224,8 @@ local hud_config = {
 	smooth = {
 		type = "toggle",
 		name = "Enable rotation smoothing",
-		desc = "Enable smooth rotation when your character abruptly changes orientation",
+		desc = "Enable smooth rotation when your character abruptly changes orientation.",
+		width = "full",
 		get = function()
 			return Hud.settings.smoothing
 		end,
@@ -170,7 +237,8 @@ local hud_config = {
 	smooth_click = {
 		type = "toggle",
 		name = "Smooth right-click rotation",
-		desc = "Smooth rotation even when done manually by right-clicking on the game world",
+		desc = "Smooth rotation even when done manually by right-clicking on the game world.",
+		width = "full",
 		get = function()
 			return Hud.settings.smoothing_click
 		end,
@@ -185,7 +253,8 @@ local hud_config = {
 	fade = {
 		type = "toggle",
 		name = "Enable fade-in-out animations",
-		desc = "Enable animations on objects creation and removal",
+		desc = "Enable animations on objects creation and removal.",
+		width = "full",
 		get = function()
 			return Hud.settings.fade
 		end,
@@ -202,71 +271,7 @@ local hud_config = {
 	test = {
 		type = "execute",
 		name = "Test",
-		func = function()
-			local x, y = UnitPosition("player")
-			
-			local s1 = Hud:CreateStaticPoint(x+20, y+20):SetColor(0.8, 0, 0.8, 1)
-			local s2 = Hud:CreateStaticPoint(x+30, y):SetColor(0, 0.8, 0.8, 1)
-			local s3 = Hud:CreateSnapshotPoint("player"):SetColor(0.8, 0.8, 0, 1)
-
-			local a1 = Hud:DrawArea(s1, 15)
-			local a2 = Hud:DrawTarget(s2, 10):Fade(false)
-			local a3 = Hud:DrawTimer(s3, 10, 10):SetColor(0.8, 0.8, 0, 0.5)
-			local a4 = Hud:DrawRadius(s3, 20)
-			
-			function a2:OnUpdate()
-				self:SetColor(abs(sin(GetTime())), abs(sin(GetTime() / 2)), abs(sin(GetTime() / 3)), 0.8)
-			end
-			
-			function a3:OnDone()
-				a3:Remove()
-				a4:Remove()
-			end
-			
-			Hud:DrawLine("player", s1, 128)
-			Hud:DrawLine("player", s2):SetColor(0, 0.5, 0.8, 0.8)
-			local l3 = Hud:DrawLine(s1, s2, 128)
-
-			function l3:OnUpdate()
-				if self:UnitDistance("player", true) < 1.5 then
-					self:SetColor(0.8, 0, 0, 0.8)
-				else
-					self:SetColor(0, 0.8, 0, 0.8)
-				end
-			end
-			
-			function a1:OnUpdate()
-			   self.radius = 15 + math.sin(GetTime() * 3)
-			end
-			
-			local vertices = {}
-			
-			for i = 1, 8 do
-				local r = math.random()
-				table.insert(vertices, x + sin(i * pi2 / 8) * r * 40)
-				table.insert(vertices, y + cos(i * pi2 / 8) * r * 40)
-			end
-			
-			local poly = Hud:DrawPolygon(vertices)
-			
-			for _, t in ipairs(poly.triangles) do
-				function t:OnUpdate()
-					if self:UnitIsInside("player") then
-						self:SetColor(0.4, 0.8, 0, 0.2)
-					else
-						self:SetColor(0.8, 0.4, 0, 0.2)
-					end
-				end
-			end
-			
-			function poly:OnUpdate()
-				if self:UnitIsInside("player", true) then
-					self:SetBorderColor(0.4, 0.8, 0, 0.2)
-				else
-					self:SetBorderColor(0.8, 0.4, 0, 0.2)
-				end
-			end
-		end,
+		func = hud_test,
 		order = 100,
 	},
 	clear = {
@@ -276,6 +281,41 @@ local hud_config = {
 			Hud:Clear()
 		end,
 		order = 101,
+	},
+	cmds_spacing = {
+		type = "description",
+		name = "\n",
+		order = 1000
+	},
+	cmds = {
+		type = "group",
+		name = "|cff64b4ffAvailable chat commands",
+		inline = true,
+		order = 1001,
+		args = {
+			clear = {
+				type = "description",
+				name = "|cffffd200/fs hud clear",
+				fontSize = "medium",
+				order = 10
+			},
+			clear_d = {
+				type = "description",
+				name = "Resets the HUD and removes every objects on it\n",
+				order = 11
+			},
+			test = {
+				type = "description",
+				name = "|cffffd200/fs hud test",
+				fontSize = "medium",
+				order = 20
+			},
+			test_d = {
+				type = "description",
+				name = "Displays test objects.\n",
+				order = 21
+			},
+		}
 	},
 }
 
@@ -313,6 +353,7 @@ function Hud:OnInitialize()
 	self.num_objs = 0
 	
 	FS:GetModule("Config"):Register("Head-up display", hud_config)
+	FS:GetModule("Console"):RegisterCommand("hud", self)
 end
 
 function Hud:OnEnable()
@@ -327,6 +368,14 @@ end
 function Hud:OnDisable()
 	-- Clear all active objects on disable
 	self:Clear()
+end
+
+function Hud:OnSlash(arg1, arg2)
+	if arg1 == "clear" then
+		self:Clear()
+	elseif arg1 == "test" then
+		hud_test()
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -793,7 +842,7 @@ do
 			local unit_name = UnitName(unit)
 			-- Ensure unit name is currently available
 			if unit_name and unit_name ~= UNKNOWNOBJECT then
-				local pt = Hud:CreatePoint(UnitGUID(unit), unit_name, unit)
+				local pt = Hud:CreatePoint(UnitGUID(unit))
 				pt:SetUnit(unit)
 				function pt:Position()
 					return UnitPosition(self.unit)
@@ -813,7 +862,7 @@ do
 		
 		-- Create the player point if not already done
 		if not player_pt and UnitName("player") ~= UNKNOWNOBJECT then
-			player_pt = Hud:CreatePoint(UnitGUID("player"), "player", UnitName("player"))
+			player_pt = Hud:CreatePoint(UnitGUID("player"))
 			player_pt:SetUnit("player")
 			function player_pt:Position()
 				return UnitPosition("player")

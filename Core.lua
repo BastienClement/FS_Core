@@ -15,13 +15,16 @@ end
 
 function Core:OnInitialize()
 	self.db = LibStub("AceDB-3.0"):New("FSDB", nil, true)
+	if not self.db.global.PLAYER_KEY then
+		self.db.global.PLAYER_KEY = "PK:" .. FS:UUID() .. ":" .. time()
+	end
 end
 
 function Core:OnEnable()
 	self:RegisterEvent("ENCOUNTER_START")
 	self:RegisterEvent("ENCOUNTER_END")
 	self:RegisterEvent("GUILD_ROSTER_UPDATE")
-	self:Print("Core Loaded")
+	self:Printf("Core Loaded [%s]", FS.version)
 end
 
 function Core:RegisterModule(name, ...)
@@ -64,7 +67,7 @@ do
 
 	function Core:IterateGroup()
 		return function(_, last)
-			if not IsInRaid() and not IsInGroup() then
+			if not IsInGroup() then
 				if not last then return 1, "player" end
 			end
 			local num = (last or 0) + 1
@@ -87,32 +90,86 @@ do
 	end
 end
 
+-- UUID
+do
+	local chars = {}
+	for i = 48, 57 do chars[#chars + 1] = string.char(i) end
+	for i = 65, 90 do chars[#chars + 1] = string.char(i) end
+	for i = 97, 122 do chars[#chars + 1] = string.char(i) end
+	
+	local floor, random = math.floor, math.random
+	
+	function Core:UUID(length)
+		if not length then length = 64 end
+		local uuid = ""
+		for i = 1, length do
+			uuid = uuid .. chars[floor(random() * #chars + 1)]
+		end
+		return uuid
+	end
+end
+
+-- PlayerKey
+function Core:PlayerKey()
+	if not self.db then return end
+	return self.db.global.PLAYER_KEY
+end
+
 -- Debug helper
 function Core:Dump(t)
 	local dump_cache = {}
-	local function sub_dump(t,indent)
-		if (dump_cache[tostring(t)]) then
-			print(indent.."*"..tostring(t))
+	local function to_string(v)
+		local prefix = "|cff00ff96"
+		local suffix = "|r"
+		local tpe = type(v)
+		
+		if tpe == "string" then
+			prefix = "|cfffff569\""
+			suffix = "\"|r"
+		elseif tpe == "number" then
+			prefix = "|cffff7d0a"
+		elseif tpe == "table" then
+			prefix = "|cffabd473"
+		elseif tpe == "function" then
+			prefix = "|cff69ccf0"
+		end
+		
+		return prefix .. tostring(v) .. suffix
+	end
+	local function sub_dump(t, indent)
+		local t_str = to_string(t)
+		if dump_cache[t_str] then
+			print(indent .. "*" .. t_str)
 		else
-			dump_cache[tostring(t)]=true
-			if (type(t)=="table") then
-				for pos,val in pairs(t) do
-					if (type(val)=="table") then
-						print(indent.."["..pos.."] => "..tostring(t).." {")
-						sub_dump(val,indent..string.rep(" ",string.len(pos)+8))
-						print(indent..string.rep(" ",string.len(pos)+6).."}")
-					elseif (type(pos)=="table") then
-						print(indent.."["..tostring(pos).."] => "..tostring(t).." {")
-						sub_dump(pos,indent..string.rep(" ",string.len(tostring(pos))+8))
-						print(indent..string.rep(" ",string.len(tostring(pos))+6).."}")
+			dump_cache[t_str] = true
+			if type(t) == "table" then
+				for pos, val in pairs(t) do
+					if type(val) == "table" then
+						print(indent .. to_string(pos) .. " => " .. to_string(val) .." {")
+						sub_dump(val, indent .. (" "):rep(4))
+						print(indent .. "}")
 					else
-						print(indent.."["..tostring(pos).."] => "..tostring(val))
+						print(indent .. to_string(pos) .. " => " .. to_string(val))
 					end
 				end
 			else
-				print(indent..tostring(t))
+				print(indent .. t_str)
 			end
 		end
 	end
-	sub_dump(t," ")
+	sub_dump(t, " ")
 end
+
+-- Deep cloning helper
+function Core:Clone(source)
+	local clone = {}
+	for k, v in pairs(source) do
+		if type(v) == "table" then
+			clone[k] = Core:Clone(v)
+		else
+			clone[k] = v
+		end
+	end
+	return clone
+end
+

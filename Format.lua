@@ -44,3 +44,18 @@ function FS:Icon(index, align)
 	if not index then return "" end
 	return icn_string:format(index, align or "0")
 end
+
+function FS:Wrap(str, length)
+	local wrapped = ""
+	while true do
+		local a, b = str:match("(" .. ("."):rep(length) .. ")(.*)")
+		if a then
+			wrapped = wrapped .. a .. "\n"
+			str = b
+		else
+			wrapped = wrapped .. str
+			break
+		end
+	end
+	return wrapped
+end

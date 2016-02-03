@@ -1,7 +1,7 @@
 ## Interface: 60200
 ## Title: |cff64b4ffFrom Scratch|r Core
 ## SavedVariables: FSDB
-## OptionalDeps: LibStub, CallbackHandler-1.0, Ace3, LibGroupInSpecT-1.1, LibStrataFix, BigWigs
+## OptionalDeps: LibStub, CallbackHandler-1.0, Ace3, LibGroupInSpecT-1.1, LibStrataFix, BigWigs, LibSharedMedia-3.0, AceGUI-3.0-SharedMediaWidgets, LibCompress
 
 #@no-lib-strip@
 LibStub\LibStub.lua
@@ -22,16 +22,19 @@ Ace3\AceTab-3.0\AceTab-3.0.xml
 Ace3\AceSerializer-3.0\AceSerializer-3.0.xml
 LibGroupInSpecT-1.1\LibGroupInSpecT-1.1.lua
 LibStrataFix\lib.xml
+LibSharedMedia-3.0\lib.xml
+AceGUI-3.0-SharedMediaWidgets\widget.xml
+LibCompress\lib.xml
 #@end-no-lib-strip@
 
 Core.lua
+Config.lua
+
+Geometry.lua
 
 Format.lua
 Network.lua
 Console.lua
-Config.lua
-Geometry.lua
-
 Map.lua
 Arrow.lua
 BigWigs.lua
