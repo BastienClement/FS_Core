@@ -1,6 +1,6 @@
 ## Interface: 60200
 ## Title: |cff64b4ffFrom Scratch|r Core
-## SavedVariables: FSDB
+## SavedVariables: FSDB, PACMAN_DB
 ## OptionalDeps: LibStub, CallbackHandler-1.0, Ace3, LibGroupInSpecT-1.1, LibStrataFix, BigWigs, LibSharedMedia-3.0, AceGUI-3.0-SharedMediaWidgets, LibCompress
 
 #@no-lib-strip@
@@ -27,6 +27,8 @@ AceGUI-3.0-SharedMediaWidgets\widget.xml
 LibCompress\lib.xml
 #@end-no-lib-strip@
 
+libs\indents.lua
+
 Core.lua
 Config.lua
 
@@ -40,3 +42,5 @@ Arrow.lua
 BigWigs.lua
 Tracker.lua
 Hud.lua
+
+pacman\Pacman.xml
