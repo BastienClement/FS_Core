@@ -419,7 +419,8 @@ local function FileSelected(container, _, file)
 				tree_backdrop_altered = true
 			end
 			
-			editor:GetUserData("setfocus")()
+			local setfocus = editor:GetUserData("setfocus")
+			if setfocus then setfocus() end
 		end
 	end
 end

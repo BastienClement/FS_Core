@@ -32,12 +32,13 @@ local function PrintPackagesList()
 	
 	local out = {}
 	for uuid, pkg in Store:Packages() do
+		local status = Store:Status(pkg)
 		out[#out + 1] = ("  |cff64b4ff%s|r %s |cffffd200%s |r[|cff%s|cff%s|r]"):format(
 			pkg.id,
 			pkg.revision,
 			pkg.author,
-			pkg.conf.enabled and "00ff00E" or "ff7d0aD",
-			pkg.conf.loaded and "00ff00L" or "ff7d0aU"
+			status.profile.enabled and "00ff00E" or "ff7d0aD",
+			status.loaded and "00ff00L" or "ff7d0aU"
 		)
 	end
 	

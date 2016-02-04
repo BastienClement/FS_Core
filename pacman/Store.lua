@@ -284,9 +284,9 @@ end
 -- Remove a package
 function Store:RemovePackage(pkg)
 	db[pkg.uuid] = nil
-	Pacman.db.profile.pkg[uuid] = nil
-	Pacman.db.global.pkg[uuid] = nil
-	status[uuid] = nil
+	Pacman.db.profile.pkg[pkg.uuid] = nil
+	Pacman.db.global.pkg[pkg.uuid] = nil
+	status[pkg.uuid] = nil
 	self:StoreUpdated()
 end
 

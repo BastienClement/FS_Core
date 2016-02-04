@@ -520,15 +520,15 @@ local function create_package_gui(pkg, valid)
 			o.pkg_conf = {
 				type = "group",
 				inline = true,
-				name = " ",
+				name = "Package configuration",
 				order = 9,
 				args = conf_table
 			}
-			o.pkg_conf_spacing = {
+			--[[o.pkg_conf_spacing = {
 				type = "description",
 				name = " ",
 				order = 10
-			}
+			}]]
 		end
 	end
 	

@@ -286,8 +286,6 @@ do
 			local upgrade = Store:Get(meta.uuid)
 			local useless = meta.revision <= upgrade.revision
 			
-			useless = false
-			
 			if upgrade then
 				window:SetTitle("Upgrade package")
 			else
@@ -300,7 +298,7 @@ do
 				add_text(meta.desc:trim() .. "\n")
 			end
 			
-			if upgrade then
+			if upgrade and not useless then
 				add_text("|cffabd473An update for this package is available.\n")
 			end
 			
@@ -308,10 +306,17 @@ do
 			add_text(("|cffffd200Revision: |r%s |cffcccccc(%s)"):format(meta.revision, meta.revision_date))
 			if not is_push then add_text(("|cffffd200Size: |r%s\n"):format(FS:FormatNumber(meta.size, 1) .. "B")) end
 			
-			local push
+			local enable, push
 			if not upgrade then
+				enable = AceGUI:Create("CheckBox")
+				enable:SetLabel("Enable package")
+				enable:SetFullWidth(true)
+				enable:SetValue(true)
+				container:AddChild(enable)
+				add_text("|cffccccccThis package will be enabled once downloaded.\n", GameFontHighlightSmall)
+			
 				push = AceGUI:Create("CheckBox")
-				push:SetLabel("Enable push-updates")
+				push:SetLabel("Allow push-updates")
 				push:SetFullWidth(true)
 				push:SetValue(true)
 				container:AddChild(push)
@@ -332,9 +337,9 @@ do
 			if useless then
 				add_text("|cffabd473You already have latest version of this package.\n")
 			elseif upgrade then
-				table.insert(buttons, { "Upgrade", function() do_import(nil, trust:GetValue()) end })
+				table.insert(buttons, { "Upgrade", function() do_import(nil, nil, trust:GetValue()) end })
 			else
-				table.insert(buttons, { "Import", function() do_import(push:GetValue(), trust:GetValue()) end })
+				table.insert(buttons, { "Import", function() do_import(enable:GetValue(), push:GetValue(), trust:GetValue()) end })
 			end
 
 			table.insert(buttons, { (useless and "Close" or "Cancel"), function()
@@ -411,12 +416,24 @@ function Updater:RequestPackage(id, from, key)
 		self:Listen("RECEIVED_METADATA", function(metadata, sender)
 			if metadata.id:lower() == id
 			and Ambiguate(sender, "none") == Ambiguate(from , "none") then
-				Updater:Open("import", metadata, sender, function(push, trust)
+				Updater:Open("import", metadata, sender, function(enable, push, trust)
 					self:Send({ download = metadata.uuid, key = key }, from)
 					Updater:Open("download", metadata.id, sender, metadata.size)
 					self:Listen("PACKAGE_DOWNLOADED", function(pkg)
 						if pkg.uuid == metadata.uuid then
-							-- TODO: GOT PACKAGE, THEN INSTALL IT
+							if Updater:Upgrade(pkg) then
+								local status = Store:Status(pkg)
+								if enable then
+									Store:EnablePackage(pkg)
+								end
+								if push then
+									status.global.push = true
+								end
+								if trust then
+									status.global.trusted[sender] = true
+								end
+							end
+							Updater:Flush()
 						end
 					end)
 				end)
@@ -425,18 +442,45 @@ function Updater:RequestPackage(id, from, key)
 	end)
 end
 
+-- Upgrade or Install a package
 function Updater:Upgrade(pkg, old)
 	if Store:IsValid(pkg) then
-		Store:UpdatePackage(pkg)
-		printf("The package '%' was upgraded to revision %s.", pkg.id, pkg.revision)
-		if old and not old.flags.Reloadable then
-			printf("You need to reload your interface to apply the upgrade.")
+		-- Fetch old if not given
+		if not old then
+			old = Store:Get(pkg.uuid)
 		end
+		
+		-- Keep customized ID
+		if old then
+			pkg.id = old.id
+		end
+		
+		-- Perform Store update
+		Store:UpdatePackage(pkg)
+		
+		if old then
+			printf("The package '%s' was upgraded to revision %s.", pkg.id, pkg.revision)
+			if not old.flags.Reloadable then
+				printf("You need to reload your interface to apply the upgrade.")
+			end
+		else
+			printf("The package '%s' was successfully installed.", pkg.id)
+		end
+		
+		return true
 	end
+	return false
 end
 
 function Updater:IsShareable(pkg, key)
-
+	if not pkg then return false end
+	
+	local status = Store:Status(pkg)
+	if not status then return false end
+	
+	return pkg.flags.Pullable
+		or ((pkg.Shareable or pkg.author_key == FS:PlayerKey())
+			and Updater:CheckShareKey(pkg, key))
 end
 
 -------------------------------------------------------------------------------
@@ -465,7 +509,7 @@ function Updater:OnNetMessage(_, data, channel, sender)
 	elseif data.request then
 		-- Received a metadata request
 		local pkg = Store:Get(data.request)
-		if pkg then
+		if self:IsShareable(pkg, data.key) then
 			self:Send({ metadata = Store:Metadata(pkg) }, sender)
 		end
 		
@@ -473,9 +517,9 @@ function Updater:OnNetMessage(_, data, channel, sender)
 	-- Download request
 	---------------------------------------------------------------------------
 	elseif data.download then
-		-- Received a metadata request
+		-- Received a download request
 		local pkg = Store:Get(data.download)
-		if pkg then
+		if self:IsShareable(pkg, data.key) then
 			self:Send({ pkg = Store:Export(pkg) }, sender, "BULK", function(_, bytes, total)
 				self:Send({ progress = bytes, total = total }, sender)
 			end)
@@ -517,7 +561,7 @@ function Updater:OnNetMessage(_, data, channel, sender)
 			Updater:Upgrade(data.push, pkg)
 			return
 		else
-			Updater:Open("import_pkg", data.push, sender, function(push, trust)
+			Updater:Open("import_pkg", data.push, sender, function(enable, push, trust)
 				Updater:Upgrade(data.push, pkg)
 				if trust then
 					status.global.trusted[sender] = true
