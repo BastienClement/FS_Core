@@ -611,8 +611,9 @@ do
 				end
 				
 				-- Find ignored vertex
+				local search_ignored = odd and trace
 				local ignored
-				if odd then
+				if search_ignored then
 					ignored = {}
 					for i = 1, card do
 						ignored[vertices[i]] = true
@@ -624,7 +625,7 @@ do
 					local a = vertices[i]
 					local b = vertices[j]
 					
-					if odd then
+					if search_ignored then
 						ignored[a] = nil
 						ignored[b] = nil
 					end
@@ -632,15 +633,15 @@ do
 					M_Add(a, b)
 				end
 				
-				if odd then
+				if search_ignored then
 					ignored = next(ignored)
 					if ignored then
-						if trace then trace("IGNORED", points, ignored) end
+						trace("IGNORED", points, ignored)
 					end
 				end
 			
 			-- Construct Eulerian cycle and then shortcut into Hamiltonian cycle
-			-- This defines two matching, take the best of two (approximate solution)
+			-- This defines two matchings, take the best of two (approximate solution)
 			else
 				if trace then trace("APPROXIMATING", points, card) end
 				
