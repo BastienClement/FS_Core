@@ -1,7 +1,7 @@
 local _, FS = ...
 local Network = FS:RegisterModule("Network")
 
-LibStub("AceComm-3.0"):Embed(Network)
+local AceComm = LibStub("AceComm-3.0")
 LibStub("AceSerializer-3.0"):Embed(Network)
 
 local Compress = LibStub:GetLibrary("LibCompress")
@@ -10,10 +10,24 @@ local CompressEncode = Compress:GetAddonEncodeTable()
 local EMPTY_TABLE = {}
 local PLAYER_GUID
 
+-- Lua APIs
+local type, next, pairs, tostring = type, next, pairs, tostring
+local strsub, strfind = string.sub, string.find
+local match = string.match
+local tinsert, tconcat = table.insert, table.concat
+local error, assert = error, assert
+
+-- Multipart messages
+local MSG_MULTI_FIRST = "\001"
+local MSG_MULTI_NEXT  = "\002"
+local MSG_MULTI_LAST  = "\003"
+local MSG_ESCAPE = "\004"
+
+-- Default config
 local network_default = {
 	profile = {},
 	global = {
-		burst4 = false
+		burst = false
 	}
 }
 
@@ -98,7 +112,7 @@ function Network:OnInitialize()
 	self.db = FS.db:RegisterNamespace("Network", network_default)
 	self.settings = self.db.profile
 	
-	self:RegisterComm("FS")
+	RegisterAddonMessagePrefix("FS")
 	
 	self.versions = {}
 	self.keys = {}
@@ -110,8 +124,11 @@ end
 -- Broadcast version on enable
 function Network:OnEnable()
 	PLAYER_GUID = UnitGUID("player")
-	self:RegisterMessage("FS_MSG_NET", "OnControlMessage")
+	
+	self:RegisterMessage("FS_MSG_$NET", "OnControlMessage")
 	self:RegisterEvent("GROUP_ROSTER_UPDATE", "BroadcastAnnounce")
+	self:RegisterEvent("CHAT_MSG_ADDON")
+	
 	self:BroadcastAnnounce()
 	
 	if self.settings.burst then
@@ -121,6 +138,7 @@ function Network:OnEnable()
 	end
 end
 
+-- Send method
 do
 	-- Valid channels
 	local broadcast_channels = {
@@ -183,39 +201,119 @@ do
 		serialized = Compress:CompressHuffman(serialized)
 		serialized = CompressEncode:Encode(serialized)
 
-		self:SendCommMessage("FS", serialized, channel, target, prio, callback)
+		AceComm:SendCommMessage("FS", serialized, channel, target, prio, callback)
+	end
+end
+
+-- Handle reception without Ambiguate, thanks AceComm!
+function Network:CHAT_MSG_ADDON(event, prefix, message, distribution, sender)
+	if prefix ~= "FS" then return end
+	local control, rest = match(message, "^([\001-\009])(.*)")
+	if control then
+		if control == MSG_MULTI_FIRST then
+			Network:OnReceiveMultipartFirst(rest, distribution, sender)
+		elseif control == MSG_MULTI_NEXT then
+			Network:OnReceiveMultipartNext(rest, distribution, sender)
+		elseif control == MSG_MULTI_LAST then
+			Network:OnReceiveMultipartLast(rest, distribution, sender)
+		elseif control == MSG_ESCAPE then
+			Network:OnCommReceived(rest, distribution, sender)
+		else
+			-- unknown control character
+		end
+	else
+		Network:OnCommReceived(message, distribution, sender)
+	end
+end
+
+-- Multipart receiving
+-- Taken from AceComm implementation
+do
+	local spool = {}
+	local compost = setmetatable({}, { __mode = "k" })
+	
+	local function new()
+		local t = next(compost)
+		if t then
+			compost[t]=nil
+			for i = #t, 3, -1 do
+				t[i] = nil
+			end
+			return t
+		end
+		return {}
+	end
+
+	function Network:OnReceiveMultipartFirst(message, distribution, sender)
+		local key = distribution .. "\t" .. sender
+		spool[key] = message
+	end
+
+	function Network:OnReceiveMultipartNext(message, distribution, sender)
+		local key = distribution .. "\t" .. sender
+		local olddata = spool[key]
+		
+		if not olddata then
+			return
+		end
+
+		if type(olddata) ~= "table" then
+			local t = new()
+			t[1] = olddata
+			t[2] = message
+			spool[key] = t
+		else
+			tinsert(olddata, message)
+		end
+	end
+
+	function Network:OnReceiveMultipartLast(message, distribution, sender)
+		local key = distribution .. "\t" .. sender
+		local olddata = spool[key]
+		
+		if not olddata then
+			return
+		end
+
+		spool[key] = nil
+		
+		if type(olddata) == "table" then
+			tinsert(olddata, message)
+			Network:OnCommReceived(tconcat(olddata, ""), distribution, sender)
+			compost[olddata] = true
+		else
+			Network:OnCommReceived(olddata .. message, distribution, sender)
+		end
 	end
 end
 
 -- Receive message from player
-function Network:OnCommReceived(prefix, text, channel, source)
-	if prefix == "FS" then
-		-- Decompress
-		text = CompressEncode:Decode(text)
-		text = Compress:Decompress(text)
-		if not text then return end
-		
-		-- Deserialize
-		local res, label, data, multicast = self:Deserialize(text)
-		if not res then return end
-		
-		-- Check multicast recipients
-		if type(multicast) == "table" then
-			local me = false
-			for _, recipient in pairs(multicast) do
-				if UnitIsUnit("player", recipient)
-				or PLAYER_GUID == recipient then
-					me = true
-					break
-				end
+function Network:OnCommReceived(text, channel, source)
+	-- Decompress
+	text = CompressEncode:Decode(text)
+	text = Compress:Decompress(text)
+	if not text then return end
+	
+	-- Deserialize
+	local res, label, data, multicast = self:Deserialize(text)
+	if not res then return end
+	
+	-- Check multicast recipients
+	if type(multicast) == "table" then
+		local me = false
+		for _, recipient in pairs(multicast) do
+			if UnitIsUnit("player", recipient)
+			or PLAYER_GUID == recipient then
+				me = true
+				break
 			end
-			if not me then return end
 		end
-		
-		-- Emit
-		self:SendMessage("FS_MSG", label, data or EMPTY_TABLE, channel, source)
-		self:SendMessage("FS_MSG_" .. label:upper(), data or EMPTY_TABLE, channel, source)
+		if not me then return end
 	end
+	
+	-- Emit
+	self:SendMessage("FS_MSG", label, data or EMPTY_TABLE, channel, source)
+	self:SendMessage("FS_MSG_" .. label:upper(), data or EMPTY_TABLE, channel, source)
 end
 
 -- Alias Send in the global object
@@ -241,21 +339,21 @@ do
 		
 		-- Guild mates
 		if IsInGuild() then
-			Network:Send("NET", msg, "GUILD", "BULK")
+			Network:Send("$NET", msg, "GUILD", "BULK")
 		end
 		
 		-- Raid or party members
 		if IsInGroup() then
-			Network:Send("NET", msg, "RAID", "BULK")
+			Network:Send("$NET", msg, "RAID", "BULK")
 		end
 		
 		-- Instance chat
 		if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
-			Network:Send("NET", msg, "INSTANCE_CHAT", "BULK")
+			Network:Send("$NET", msg, "INSTANCE_CHAT", "BULK")
 		end
 		
 		-- Ourselves
-		--Network:Send("NET", msg, nil, "BULK")
+		--Network:Send("$NET", msg, nil, "BULK")
 	end
 
 	function Network:BroadcastAnnounce()
@@ -264,7 +362,7 @@ do
 	end
 end
 
--- Handle FS_MSG_NET (Network Control) messages
+-- Handle FS_MSG_$NET (Network Control) messages
 function Network:OnControlMessage(_, msg, channel, sender)
 	local cmd, data = unpack(msg)
 	if cmd == "ANNOUNCE" then
@@ -295,8 +393,8 @@ do
 		request_cooldown = now + 30
 		
 		local msg = { "REQ_ANNOUNCE" }
-		if IsInGuild() then self:Send("NET", msg, "GUILD", "BULK") end
-		if IsInGroup() then self:Send("NET", msg, "RAID", "BULK") end
+		if IsInGuild() then self:Send("$NET", msg, "GUILD", "BULK") end
+		if IsInGroup() then self:Send("$NET", msg, "RAID", "BULK") end
 		return true
 	end
 end
