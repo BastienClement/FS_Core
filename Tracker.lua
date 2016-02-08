@@ -191,6 +191,23 @@ local tracker_config = {
 		end,
 		order = 21
 	},
+	ref = {
+		type = "header",
+		name = "Module reference",
+		order = 1000
+	},
+	docs = FS.Config:MakeDoc("Public API", 2000, {
+		{":GetUnit(guid)", "Return a unitid for the given mob, if known."},
+		{":GetPosition(guid)", "Return an estimated position for the given mob, if known.\n" ..
+			"Also return a flag indicating if this estimation is accurate."},
+	}, "FS.Tracker"),
+	events = FS.Config:MakeDoc("Emitted events", 3000, {
+		{"_FOUND(guid, npcid)", "Emitted when a new unit is discovered."},
+		{"_DIED(guid)", "Emitted when a tracked unit has died."},
+		{"_LOST(guid)", "Emitted when a tracked unit was lost.\n" ..
+			"A unit is considered lost if no events involving this unit was received in the last 5 sec and no one is targetting it."},
+		{"_REMOVE(guid, npcid)", "Emitted when a tracked unit has died or was lost."},
+	}, "FS_TRACKER")
 }
 
 --------------------------------------------------------------------------------
