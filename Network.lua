@@ -15,7 +15,6 @@ local type, next, pairs, tostring = type, next, pairs, tostring
 local strsub, strfind = string.sub, string.find
 local match = string.match
 local tinsert, tconcat = table.insert, table.concat
-local error, assert = error, assert
 
 -- Multipart messages
 local MSG_MULTI_FIRST = "\001"
@@ -23,7 +22,10 @@ local MSG_MULTI_NEXT  = "\002"
 local MSG_MULTI_LAST  = "\003"
 local MSG_ESCAPE = "\004"
 
--- Default config
+-------------------------------------------------------------------------------
+-- Options & configuration
+-------------------------------------------------------------------------------
+
 local network_default = {
 	profile = {},
 	global = {
@@ -31,7 +33,6 @@ local network_default = {
 	}
 }
 
--- GUI for versions informations
 local version_gui
 version_gui = {
 	title = {
@@ -106,6 +107,10 @@ version_gui = {
 	}
 }
 
+-------------------------------------------------------------------------------
+-- Life-cycle
+-------------------------------------------------------------------------------
+
 -- Register the addon messaging channel
 function Network:OnInitialize()
 	-- Settings
@@ -137,6 +142,10 @@ function Network:OnEnable()
 		ChatThrottleLib.MIN_FPS = 0
 	end
 end
+
+-------------------------------------------------------------------------------
+-- Sending
+-------------------------------------------------------------------------------
 
 -- Send method
 do
@@ -204,6 +213,15 @@ do
 		AceComm:SendCommMessage("FS", serialized, channel, target, prio, callback)
 	end
 end
+
+-- Alias Send in the global object
+function FS:Send(...)
+	return Network:Send(...)
+end
+
+-------------------------------------------------------------------------------
+-- Receive
+-------------------------------------------------------------------------------
 
 -- Handle reception without Ambiguate, thanks AceComm!
 function Network:CHAT_MSG_ADDON(event, prefix, message, distribution, sender)
@@ -316,10 +334,9 @@ function Network:OnCommReceived(text, channel, source)
 	self:SendMessage("FS_MSG_" .. label:upper(), data or EMPTY_TABLE, channel, source)
 end
 
--- Alias Send in the global object
-function FS:Send(...)
-	return Network:Send(...)
-end
+-------------------------------------------------------------------------------
+-- Broadcast
+-------------------------------------------------------------------------------
 
 -- Broadcast FS Core ANNOUNCE message
 do
@@ -362,6 +379,10 @@ do
 	end
 end
 
+-------------------------------------------------------------------------------
+-- FS_MSG_$NET handling
+-------------------------------------------------------------------------------
+
 -- Handle FS_MSG_$NET (Network Control) messages
 function Network:OnControlMessage(_, msg, channel, sender)
 	local cmd, data = unpack(msg)
@@ -380,6 +401,10 @@ function Network:OnControlMessage(_, msg, channel, sender)
 		self:BroadcastAnnounce()
 	end
 end
+
+-------------------------------------------------------------------------------
+-- Request version broadcast
+-------------------------------------------------------------------------------
 
 -- Request an upgrade of other players versions
 do
