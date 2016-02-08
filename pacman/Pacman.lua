@@ -453,7 +453,7 @@ local function create_package_gui(pkg, valid)
 					desc = "Open the update manager to update, push or view other players' package version.",
 					order = 3,
 					width = "half",
-					func = function() OpenUpdater(pkg) end
+					func = function() Pacman.Updater:Queue("updater", pkg.id) end
 				},
 				remove = {
 					type = "execute",
@@ -464,6 +464,40 @@ local function create_package_gui(pkg, valid)
 					confirm = true,
 					confirmText = "The package '|cff64b4ff" .. pkg.id .. "|r' will be removed",
 					func = function() Store:RemovePackage(pkg) end
+				},
+			}
+		},
+		trusted = {
+			type = "group",
+			inline = true,
+			name = "Trusted players",
+			order = 25,
+			args = {
+				list = {
+					type = "description",
+					name = function()
+						local trusteds = ""
+						for trusted in pairs(status.global.trusted) do
+							if trusteds == "" then
+								trusteds = trusted
+							else
+								trusteds = trusteds .. ", " .. trusted
+							end
+						end
+						if trusteds == "" then
+							trusteds = "None"
+						end
+						return trusteds .. "\n"
+					end,
+					order = 19
+				},
+				clear_trusted = {
+					type = "execute",
+					name = "Clear",
+					desc = "Clear the list of trusted players.",
+					order = 20,
+					width = "half",
+					func = function() wipe(status.global.trusted) end
 				},
 			}
 		},

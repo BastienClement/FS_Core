@@ -186,9 +186,21 @@ do
 		return label
 	end
 	
+	local function ContainerHeight(container)
+		local height = 0
+		for _, child in ipairs(container.obj.children) do
+			local frame = child.frame
+			local fheight = frame.height or frame:GetHeight()
+			height = height + fheight
+		end
+		return height
+	end
+	
 	-- Resize the dialog window
 	function Updater:Layout()
-		window:SetHeight(container.frame:GetHeight() + 57)
+		container:DoLayout()
+		local height = ContainerHeight(container.frame)
+		window:SetHeight(height + 57 - 10)
 	end
 	
 	-- Open the dialog window
@@ -230,18 +242,21 @@ do
 			container:AddChild(sender_label)
 		end
 		
-		local function add_text(text, font)
+		local function add_text(text, font, cont)
+			if not cont then cont = container end
 			if not font then font = GameFontHighlight end
+			
 			local text_label = CreateLabel(text)
 			text_label:SetFontObject(font)
-			container:AddChild(text_label)	
+			cont:AddChild(text_label)	
+			
+			return text_label
 		end
 		
 		local function add_buttons(buttons)
 			local actions = AceGUI:Create("SimpleGroup")
 			actions:SetLayout("flow")
-			actions:SetWidth(350)
-			actions:SetHeight(20)
+			actions:SetFullWidth(true)
 			container:AddChild(actions)
 			
 			for _, button in ipairs(buttons) do
@@ -269,7 +284,6 @@ do
 			add_text("|cffabd473Loading package informations...\n")
 			add_buttons({
 				{ "Cancel", function()
-					self:ClearListeners()
 					self:Flush()
 				end	}
 			})
@@ -284,7 +298,7 @@ do
 			
 			local is_push = display == "import_pkg"
 			local upgrade = Store:Get(meta.uuid)
-			local useless = meta.revision <= upgrade.revision
+			local useless = upgrade and meta.revision <= upgrade.revision
 			
 			if upgrade then
 				window:SetTitle("Upgrade package")
@@ -304,7 +318,11 @@ do
 			
 			add_text(("|cffffd200Author: |r%s"):format(meta.author))
 			add_text(("|cffffd200Revision: |r%s |cffcccccc(%s)"):format(meta.revision, meta.revision_date))
-			if not is_push then add_text(("|cffffd200Size: |r%s\n"):format(FS:FormatNumber(meta.size, 1) .. "B")) end
+			if not is_push then
+				add_text(("|cffffd200Size: |r%s\n"):format(FS:FormatNumber(meta.size, 1) .. "B"))
+			else
+				add_text(" ")
+			end
 			
 			local enable, push
 			if not upgrade then
@@ -330,6 +348,10 @@ do
 				trust:SetFullWidth(true)
 				container:AddChild(trust)
 				add_text("|cffccccccYou will not be prompted again for updates to this package.\n", GameFontHighlightSmall)
+				
+				if Updater:IsTrusted(meta.uuid, sender) then
+					trust:SetValue(true)
+				end
 			end
 			
 			local buttons = {}
@@ -367,22 +389,251 @@ do
 			
 			add_buttons({ 
 				{ "Cancel", function()
-					self:ClearListeners()
 					self:Flush()
 				end }
 			})
 			
 		-----------------------------------------------------------------------
-		-- Push-update 
+		-- Updater window
 		-----------------------------------------------------------------------
-		elseif display == "update" then
+		elseif display == "updater" then
+			local arg = ...
+			window:SetTitle("Pacman Updater")
 			
+			local pkg = Store:Get(arg)
+			local select_tab
+			
+			-- Package selector
+			do
+				local list = {}
+				local order = {}
+				
+				for uuid, pkg in Store:Packages() do
+					list[uuid] = pkg.id
+					order[#order + 1] = uuid
+				end
+				
+				table.sort(order, function(a, b)
+					return list[a] < list[b]
+				end)
+				
+				pkg_select = AceGUI:Create("Dropdown")
+				pkg_select:SetLabel("Package")
+				pkg_select:SetFullWidth(true)
+				pkg_select:SetList(list, order)
+				container:AddChild(pkg_select)
+				
+				if pkg then
+					pkg_select:SetValue(pkg.uuid)
+				end
+				
+				pkg_select:SetCallback("OnValueChanged", function(_, _, uuid)
+					pkg = Store:Get(uuid)
+					select_tab("search")
+				end)
+			end
+			
+			-- Tabs selector
+			do
+				local tabs = AceGUI:Create("TabGroup")
+				tabs:SetFullWidth(true)
+				tabs:SetLayout("List")
+				container:AddChild(tabs)
+				
+				function select_tab(tab)
+					tabs:SetTabs({
+						{ value = "search", text = "Search update" },
+						{ value = "push", text = "Push update", disabled = not pkg }
+					})
+					tabs:SelectTab(tab)
+				end
+				
+				tabs:SetCallback("OnGroupSelected", function(_, _, action)
+					tabs:ReleaseChildren()
+					
+					local function layout()
+						tabs:DoLayout()
+						self:Layout()
+					end
+					
+					local listc, list, placeholder
+					local function init_list(loading)
+						tabs:ReleaseChildren()
+						
+						listc = AceGUI:Create("SimpleGroup")
+						listc:SetFullWidth(true)
+						listc:SetLayout("Fill")
+						listc:SetHeight(300)
+						tabs:AddChild(listc)
+						
+						list = AceGUI:Create("ScrollFrame")
+						list:SetLayout("List")
+						listc:AddChild(list)
+						
+						add_text("\n|cffabd473".. loading .. "\n", nil, list)
+						placeholder = true
+					end
+					
+					local function push_result(name, rev, action, enabled, cb)
+						if placeholder then
+							list:ReleaseChildren()
+							add_text(" ", nil, list)
+							placeholder = false
+						end
+						
+						local row = AceGUI:Create("SimpleGroup")
+						row:SetFullWidth(true)
+						row:SetAutoAdjustHeight(true)
+						
+						add_text(name, nil, row)
+						add_text(("|cffffd200Revision: |r%s\n"):format(rev), nil, row)
+						
+						row:DoLayout()
+						row:PauseLayout()
+						
+						local btn = AceGUI:Create("Button")
+						btn:SetText(action)
+						btn:SetDisabled(not enabled)
+						btn:SetWidth(100)
+						
+						row:AddChild(btn)
+						btn:SetPoint("TOPRIGHT", row.frame, "TOPRIGHT", 0, -2)
+						
+						btn:SetCallback("OnClick", function()
+							btn:SetDisabled(true)
+							cb()
+						end)
+						
+						list:AddChild(row)
+					end
+					
+					local function replace_placeholder(text)
+						if placeholder then
+							list:ReleaseChildren()
+							add_text("\n|cffff7d0a".. text .. "\n", nil, list)
+						end
+					end
+					
+					local function add_button(text, cb)
+						local btn = AceGUI:Create("Button")
+						btn:SetText(text)
+						btn:SetFullWidth(true)
+						btn:SetCallback("OnClick", function()
+							btn:SetDisabled(true)
+							cb()
+						end)
+						tabs:AddChild(btn)
+						return btn
+					end
+					
+					if action == "search" then
+						local function search_btn()
+							return add_button("Search", function()
+								init_list("Searching...")
+								
+								local btn = search_btn()
+								btn:SetDisabled(true)
+								
+								local timer = C_Timer.NewTimer(5, function()
+									replace_placeholder("No updates found...")
+									btn:SetDisabled(false)
+								end)
+								
+								local senders = {}
+								self:Listen("SEARCH_RESULT", function(uuid, sender, rev, pullable)
+									if pkg.uuid == uuid and not senders[sender] then
+										senders[sender] = true
+										push_result(sender, rev, "Pull", pullable, function()
+											Updater:RequestPackage(pkg.uuid, sender)
+											Updater:Flush()
+										end)
+									end
+								end)
+								
+								local search_obj = {
+									search = pkg.uuid,
+									revision = pkg.revision
+								}
+								
+								if IsInGuild() then Updater:Send(search_obj, "GUILD") end
+								if IsInGroup() then Updater:Send(search_obj, "RAID") end
+								
+								btn:SetCallback("OnRelease", function()
+									timer:Cancel()
+								end)
+								
+								layout()
+							end)
+						end
+						
+						add_text("\n\n\n\nSend a request for an update to guildmates and raid members.\n", nil, tabs)
+						local btn = search_btn()
+						add_text("\n\n", nil, tabs)
+						
+						if not pkg then btn:SetDisabled(true) end
+					elseif action == "push" then
+						local function push_btn()
+							return add_button("Scan", function()
+								pkg = Store:Get(pkg.uuid)
+								init_list("Scanning...")
+								
+								local btn = push_btn()
+								btn:SetDisabled(true)
+								
+								local timer = C_Timer.NewTimer(5, function()
+									replace_placeholder("No results...")
+									btn:SetDisabled(false)
+								end)
+								
+								local senders = {}
+								self:Listen("PROBE_RESULT", function(uuid, sender, rev, pushable)
+									if pkg.uuid == uuid and not senders[sender] then
+										senders[sender] = true
+										if rev >= pkg.revision then pushable = false end
+										push_result(sender, rev, "Push", pushable, function()
+											Updater:Send({ push = Store:Export(pkg) }, sender)
+										end)
+									end
+								end)
+								
+								local probe_obj = { probe = pkg.uuid }
+								
+								if IsInGuild() then Updater:Send(probe_obj, "GUILD") end
+								if IsInGroup() then Updater:Send(probe_obj, "RAID") end
+								
+								btn:SetCallback("OnRelease", function()
+									timer:Cancel()
+								end)
+								
+								layout()
+							end)
+						end
+						
+						add_text("\n\n\n\nPush package updates to guildmates and raid members.\n", nil, tabs)
+						local btn = push_btn()
+						add_text("\n\n", nil, tabs)
+						
+						if not pkg then btn:SetDisabled(true) end
+					end
+					
+					layout()
+				end)
+				
+				select_tab("search")
+			end
+			
+			add_buttons({ 
+				{ "Close", function()
+					self:Flush()
+				end }
+			})
 		end
 		
 		self:Layout()
 	end
 	
 	function Updater:Flush()
+		self:ClearListeners()
 		if #queue > 0 then
 			local args = table.remove(queue, 1)
 			self:Open(unpack(args))
@@ -405,16 +656,15 @@ end
 -------------------------------------------------------------------------------
 
 function Updater:RequestPackage(id, from, key)
-	Updater:Queue("request", id, from, function()
-		-- Ensure ID is lower-case
-		id = id:lower()
-		
+	local pkg = Store:Get(id)
+	local display_id = pkg and pkg.id or id
+	Updater:Queue("request", display_id, from, function()
 		-- Request metadata informations
 		self:Send({ request = id, key = key }, from)
 		
 		-- Listen for response
 		self:Listen("RECEIVED_METADATA", function(metadata, sender)
-			if metadata.id:lower() == id
+			if (metadata.id:lower() == id:lower() or metadata.uuid == id)
 			and Ambiguate(sender, "none") == Ambiguate(from , "none") then
 				Updater:Open("import", metadata, sender, function(enable, push, trust)
 					self:Send({ download = metadata.uuid, key = key }, from)
@@ -426,12 +676,8 @@ function Updater:RequestPackage(id, from, key)
 								if enable then
 									Store:EnablePackage(pkg)
 								end
-								if push then
-									status.global.push = true
-								end
-								if trust then
-									status.global.trusted[sender] = true
-								end
+								status.global.push = push or false
+								status.global.trusted[sender] = trust or nil
 							end
 							Updater:Flush()
 						end
@@ -478,9 +724,20 @@ function Updater:IsShareable(pkg, key)
 	local status = Store:Status(pkg)
 	if not status then return false end
 	
-	return pkg.flags.Pullable
-		or ((pkg.Shareable or pkg.author_key == FS:PlayerKey())
-			and Updater:CheckShareKey(pkg, key))
+	return pkg.flags.Pullable or (
+		(pkg.flags.Shareable or pkg.author_key == FS:PlayerKey())
+		and Updater:CheckShareKey(pkg, key)
+	)
+end
+
+function Updater:IsTrusted(pkg, player)
+	if not pkg then return false end
+	if type(pkg) == "string" then pkg = { uuid = pkg } end
+	
+	local status = Store:Status(pkg)
+	if not status then return false end
+	
+	return status.global.trusted[player]
 end
 
 -------------------------------------------------------------------------------
@@ -538,6 +795,53 @@ function Updater:OnNetMessage(_, data, channel, sender)
 	---------------------------------------------------------------------------
 	elseif data.progress then
 		self:Notify("DOWNLOAD_PROGRESS", data.progress, data.total)
+		
+	---------------------------------------------------------------------------
+	-- Package probing request
+	---------------------------------------------------------------------------
+	elseif data.probe then
+		local pkg = Store:Get(data.probe)
+		if pkg then
+			local status = Store:Status(pkg)
+			if not status then return end
+			
+			self:Send({
+				probe_result = pkg.uuid,
+				revision = pkg.revision,
+				push = status.global.push
+			}, sender)
+		end
+		
+	---------------------------------------------------------------------------
+	-- Package probing response
+	---------------------------------------------------------------------------
+	elseif data.probe_result then
+		self:Notify("PROBE_RESULT", data.probe_result, sender, data.revision, data.push)
+		
+	---------------------------------------------------------------------------
+	-- Package search request
+	---------------------------------------------------------------------------
+	elseif data.search and data.revision then
+		local pkg = Store:Get(data.search)
+		if pkg
+		and pkg.revision > data.revision
+		and (
+			pkg.flags.Pullable
+			or pkg.flags.Shareable
+			or pkg.author_key == FS:PlayerKey()
+		) then
+			self:Send({
+				search_result = pkg.uuid,
+				revision = pkg.revision,
+				pullable = pkg.flags.Pullable
+			}, sender)
+		end
+		
+	---------------------------------------------------------------------------
+	-- Package search response
+	---------------------------------------------------------------------------
+	elseif data.search_result then
+		self:Notify("SEARCH_RESULT", data.search_result, sender, data.revision, data.pullable)
 	
 	---------------------------------------------------------------------------
 	-- Push-update offer
@@ -546,18 +850,18 @@ function Updater:OnNetMessage(_, data, channel, sender)
 		if not Store:IsValid(data.push) then return end
 		
 		-- Fetch current package and status table
-		local pkg = Store:Get(data.push.id)
+		local pkg = Store:Get(data.push.uuid)
 		if not pkg then return end
 		
 		local status = Store:Status(pkg)
 		
 		-- Check upgrade and allowed
-		if pkg.revision <= data.push.revision 
+		if pkg.revision >= data.push.revision 
 		or not status.global.push then
 			return
 		end
 		
-		if status.global.trusted[sender] then
+		if Updater:IsTrusted(pkg, sender) then
 			Updater:Upgrade(data.push, pkg)
 			return
 		else
@@ -566,6 +870,7 @@ function Updater:OnNetMessage(_, data, channel, sender)
 				if trust then
 					status.global.trusted[sender] = true
 				end
+				Updater:Flush()
 			end)
 		end
 	end

@@ -59,6 +59,8 @@ function Console:OnSlash(cmd, arg1, arg2)
 		Pacman:OpenGUI()
 	elseif cmd == "list" then
 		PrintPackagesList()
+	elseif cmd == "update" then
+		Pacman.Updater:Queue("updater", arg1)
 	elseif verbs[cmd] then
 		local pkg = Store:Get(arg1)
 		if pkg then
