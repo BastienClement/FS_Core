@@ -198,7 +198,7 @@ local pacman_gui = {
 	packages = pacman_installed,
 	--updates = pacman_updates,
 	new = pacman_new,
-	options = pacman_options
+	--options = pacman_options
 }
 
 local pacman_fs_opts = {
@@ -214,62 +214,22 @@ local pacman_fs_opts = {
 		fontSize = "medium",
 		order = 1
 	},
-	packages = pacman_installed,
+	--packages = pacman_installed,
 	--updates = pacman_updates,
-	new = pacman_new,
-	options = pacman_options,
-	cmds = {
-		type = "group",
-		name = "|cff64b4ffAvailable chat commands",
-		inline = true,
-		order = 1001,
-		args = {
-			toggle = {
-				type = "description",
-				name = "|cffffd200/pacman",
-				fontSize = "medium",
-				order = 10
-			},
-			toggle_d = {
-				type = "description",
-				name = "Open Pacman standalone interface.\n",
-				order = 11
-			},
-			list = {
-				type = "description",
-				name = "|cffffd200/pacman list",
-				fontSize = "medium",
-				order = 20
-			},
-			list_d = {
-				type = "description",
-				name = "List installed package status.\n",
-				order = 21
-			},
-			enable = {
-				type = "description",
-				name = "|cffffd200/pacman enable|disable <package-id>",
-				fontSize = "medium",
-				order = 30
-			},
-			enable_d = {
-				type = "description",
-				name = "Enable or disable the given package.\n",
-				order = 31
-			},
-			view = {
-				type = "description",
-				name = "|cffffd200/pacman view|edit <package-id>",
-				fontSize = "medium",
-				order = 40
-			},
-			view_d = {
-				type = "description",
-				name = "Open the package editor to view or edit the given package.\n",
-				order = 41
-			},
-		}
-	}
+	--new = pacman_new,
+	--options = pacman_options,
+	ref = {
+		type = "header",
+		name = "Module reference",
+		order = 1000
+	},
+	docs = FS.Config:MakeDoc("Available chat commands", 2000, {
+		{"", "Open Pacman standalone interface."},
+		{"list", "List installed package status."},
+		{"update", "Open the package updater window."},
+		{"enable|disable <package-id>", "Enable or disable the given package."},
+		{"view|edit <package-id>", "Open the package editor to view or edit the given package."},
+	}, "/pacman ")
 }
 
 -------------------------------------------------------------------------------
