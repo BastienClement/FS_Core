@@ -215,6 +215,7 @@ do
 			window:SetCallback("OnClose", function()
 				window:Release()
 				window = nil
+				ObjectiveTrackerFrame:Show()
 				self:Flush()
 			end)
 			
@@ -226,6 +227,7 @@ do
 		
 			window:ClearAllPoints()
 			window:SetPoint("TOPRIGHT", ObjectiveTrackerFrame)
+			ObjectiveTrackerFrame:Hide()
 		else
 			container:ReleaseChildren()
 		end
@@ -566,7 +568,7 @@ do
 							end)
 						end
 						
-						add_text("\n\n\n\nSend a request for an update to guildmates and raid members.\n", nil, tabs)
+						add_text("\n\n\n\nSearch an update to this package.\n", nil, tabs)
 						local btn = search_btn()
 						add_text("\n\n", nil, tabs)
 						
@@ -609,7 +611,7 @@ do
 							end)
 						end
 						
-						add_text("\n\n\n\nPush package updates to guildmates and raid members.\n", nil, tabs)
+						add_text("\n\n\n\nPush an update for this package.\n", nil, tabs)
 						local btn = push_btn()
 						add_text("\n\n", nil, tabs)
 						
