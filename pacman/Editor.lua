@@ -29,13 +29,13 @@ local function ConfirmPopup(message, func, func_else)
 	t.preferredIndex = STATICPOPUP_NUMDIALOGS
 	local dialog, oldstrata
 	t.OnAccept = function()
-		func()
+		if func then func() end
 		if dialog and oldstrata then
 			dialog:SetFrameStrata(oldstrata)
 		end
 	end
 	t.OnCancel = function()
-		func_else()
+		if func_else then func_else() end
 		if dialog and oldstrata then
 			dialog:SetFrameStrata(oldstrata)
 		end
