@@ -1280,6 +1280,8 @@ function Hud:CreateObject(proto, use_tex)
 	obj.attached = {}
 	obj.fade = Hud.settings.fade
 	
+	obj.frame:SetAlpha(0)
+	
 	-- Fade in if not disabled
 	C_Timer.After(0, function()
 		if obj.fade then
@@ -1295,6 +1297,8 @@ function Hud:CreateObject(proto, use_tex)
 					obj.frame:SetAlpha(pct)
 				end
 			end)
+		else
+			obj.frame:SetAlpha(1)
 		end
 	end)
 	
