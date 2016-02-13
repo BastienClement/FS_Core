@@ -214,6 +214,11 @@ local pacman_fs_opts = {
 		fontSize = "medium",
 		order = 1
 	},
+	notice = {
+		type = "description",
+		name = "|cff999999This module is exceptionally complex and has a dedicated configuration interface.\n",
+		order = 6
+	},
 	--packages = pacman_installed,
 	--updates = pacman_updates,
 	--new = pacman_new,
@@ -224,7 +229,7 @@ local pacman_fs_opts = {
 		order = 1000
 	},
 	docs = FS.Config:MakeDoc("Available chat commands", 2000, {
-		{"", "Open Pacman standalone interface."},
+		{"", "Open Pacman standalone interface.\nAlso available as /pm."},
 		{"list", "List installed package status."},
 		{"update", "Open the package updater window."},
 		{"enable|disable <package-id>", "Enable or disable the given package."},
