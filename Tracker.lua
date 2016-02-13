@@ -197,16 +197,18 @@ local tracker_config = {
 		order = 1000
 	},
 	docs = FS.Config:MakeDoc("Public API", 2000, {
-		{":GetUnit(guid)", "Return a unitid for the given mob, if known."},
-		{":GetPosition(guid)", "Return an estimated position for the given mob, if known.\n" ..
+		{":GetUnit ( guid ) -> unitid", "Return a unitid for the given mob, if known."},
+		{":GetPosition ( guid ) -> x , y , good", "Return an estimated position for the given mob, if known.\n" ..
 			"Also return a flag indicating if this estimation is accurate."},
+			
+		{":ParseGUID ( guid ) -> ...", "Parse a GUID string and return components."},
 	}, "FS.Tracker"),
 	events = FS.Config:MakeDoc("Emitted events", 3000, {
-		{"_FOUND(guid, npcid)", "Emitted when a new unit is discovered."},
-		{"_DIED(guid)", "Emitted when a tracked unit has died."},
-		{"_LOST(guid)", "Emitted when a tracked unit was lost.\n" ..
+		{"_FOUND ( guid , npcid )", "Emitted when a new unit is discovered."},
+		{"_DIED ( guid )", "Emitted when a tracked unit has died."},
+		{"_LOST ( guid )", "Emitted when a tracked unit was lost." ..
 			"A unit is considered lost if no events involving this unit was received in the last 5 sec and no one is targetting it."},
-		{"_REMOVE(guid, npcid)", "Emitted when a tracked unit has died or was lost."},
+		{"_REMOVE ( guid , npcid )", "Emitted when a tracked unit has died or was lost."},
 	}, "FS_TRACKER")
 }
 
@@ -278,23 +280,6 @@ function Tracker:GetMob(guid, timestamp)
 	return mob
 end
 
-do
-	local function ret_helper(...) return ... end
-	
-	function Tracker:ParseGUID(guid, only_type)
-		local offset = guid:find("-")
-		local unit_type = guid:sub(1, offset - 1)
-		if only_type then return unit_type end
-		if unit_type == "Player" then
-			local s, u = guid:match("(.-)-(.+)", offset + 1)
-			return ret_helper(unit_type, tonumber(s), u)
-		else
-			local x, s, i, z, m, u = guid:match("(.-)-(.-)-(.-)-(.-)-(.-)-(.+)", offset + 1)
-			return ret_helper(unit_type, tonumber(x), tonumber(s), tonumber(i), tonumber(z), tonumber(m), u)
-		end
-	end
-end
-
 function Tracker:RemoveMob(guid)
 	local data = self.mobs[guid]
 	if not data then return end
@@ -331,6 +316,19 @@ end
 --------------------------------------------------------------------------------
 -- Public
 --------------------------------------------------------------------------------
+
+function Tracker:ParseGUID(guid, only_type)
+	local offset = guid:find("-")
+	local unit_type = guid:sub(1, offset - 1)
+	if only_type then return unit_type end
+	if unit_type == "Player" then
+		local s, u = guid:match("(.-)-(.+)", offset + 1)
+		return unit_type, tonumber(s), u
+	else
+		local x, s, i, z, m, u = guid:match("(.-)-(.-)-(.-)-(.-)-(.-)-(.+)", offset + 1)
+		return unit_type, tonumber(x), tonumber(s), tonumber(i), tonumber(z), tonumber(m), u
+	end
+end
 
 function Tracker:GetUnit(guid, mob)
 	if not mob then mob = self:GetMob(guid) end

@@ -78,7 +78,7 @@ function Config:MakeDoc(title, order, fields, prefix)
 		order = order + 2
 		
 		local title = prefix and "|cffff7d0a" .. prefix or ""
-		title = title .. "|cfffff569" .. field[1]
+		title = title .. "|cfffff569" .. field[1]:gsub("[()<>%-%[%],%.]+", "|cffaaaaaa%0|cfffff569")
 		
 		output.args["item_" .. title_order] = {
 			type = "description",

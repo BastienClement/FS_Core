@@ -93,10 +93,10 @@ local arrow_config_infos = {
 		{"arrow <x> <y>", "Display an arrow pointing to the specified location."},
 	}, "/fs "),
 	api = FS.Config:MakeDoc("Public API", 3000, {
-		{":PointToUnit(unit, options)", "Display an arrow pointing to the specified unit."},
-		{":PointToLocation(x, y, options)", "Display an arrow pointing to the specified location."},
-		{":PointToRaidTarget(index, options)", "Display an arrow pointing to the player with the specified raid target marker."},
-		{":Hide()", "Hide the arrow."}
+		{":PointToUnit ( unit , options )", "Display an arrow pointing to the specified unit."},
+		{":PointToLocation ( x , y , options )", "Display an arrow pointing to the specified location."},
+		{":PointToRaidTarget ( index , options )", "Display an arrow pointing to the player with the specified raid target marker."},
+		{":Hide ( )", "Hide the arrow."}
 	}, "FS.Arrow"),
 }
 

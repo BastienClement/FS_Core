@@ -287,36 +287,98 @@ local hud_config = {
 		name = "\n",
 		order = 1000
 	},
-	cmds = {
-		type = "group",
-		name = "|cff64b4ffAvailable chat commands",
-		inline = true,
-		order = 1001,
-		args = {
-			clear = {
-				type = "description",
-				name = "|cffffd200/fs hud clear",
-				fontSize = "medium",
-				order = 10
-			},
-			clear_d = {
-				type = "description",
-				name = "Resets the HUD and removes every objects on it\n",
-				order = 11
-			},
-			test = {
-				type = "description",
-				name = "|cffffd200/fs hud test",
-				fontSize = "medium",
-				order = 20
-			},
-			test_d = {
-				type = "description",
-				name = "Displays test objects.\n",
-				order = 21
-			},
-		}
+	ref = {
+		type = "header",
+		name = "Module reference",
+		order = 1000
 	},
+	cmds = FS.Config:MakeDoc("Available chat commands", 2000, {
+		{"clear", "Reset the HUD and removes every objects on it."},
+		{"test", "Displays test objects."},
+	}, "/fs hud "),
+	public_api = FS.Config:MakeDoc("Public API", 3000, {
+		{":Project ( x , y ) -> x , y", "Project the given game-world coordinates to on-screen coordinates, relative to the HUD center (player)."},
+		{":Unproject ( x , y , raw ) -> x , y", "Perform the inverse operation. If raw, will not consider the HUD zoom factor."},
+		{":Clear ( )", "Remove every created objects from the HUD."},
+	}, "FS.Hud"),
+	points_api = FS.Config:MakeDoc("Points API", 3100, {
+		{":CreatePoint ( name ) -> point", "Create a generic point object. You must provide a point:Position() method returning game-world coordinates for this point. If name is not given a random name will be generated."},
+		{":CreateStaticPoint ( x , y , name ) -> point", "Create a point object with static world coordinates."},
+		{":CreateFixedPoint ( x , y , name ) -> point", "Create a point object with fixed on-screen coordinates. Coordinates are in yards, relative to the player. You must overload the point:FixedPosition() if you want dynamic x and y."},
+		{":CreateSnapshotPoint ( point , name ) -> point", "Create a static point object at the current location of another point."},
+		{":CreateShadowPoint ( point , name , fast ) -> point", "Create a point object replicating the position of another point. The reference point is available as point.ref. If fast, ref:FastPosition() will be used instead of ref:Position()."},
+		{":RegisterTrackerPoint ( guid ) -> point", "Create a point object at the estimated location of an hostile unit, as provided by the Tracker module."},
+		{":GetPoint ( name , exact ) -> point", "Return the point with the given name. If given a point instead of the name, return this point. If there is no point with the given name but exact is false or nil, attempt to find a point by treating name as an unitid or a GUID."},
+		{":RemovePoint ( name )", "Remove a point from the HUD."},
+		{":IteratePoints ( ) -> [ name , point ]", "Return an iterator over every created points."},
+		{":Distance ( point , point ) -> number", "Return the distance between the two points."},
+	}, "FS.Hud"),
+	points_instance_api = FS.Config:MakeDoc("Point instance API", 3200, {
+		{":SetColor ( r , g , b , a ) -> point", "Set the point color."},
+		{":SetMarkerColor ( marker , a ) -> point", "Set the point color to match a raid marker color."},
+		{":AlwaysVisible ( state ) -> point", "Set the point to be always visible. By default, points with no attached objects are not visible."},
+		{":Position ( ) -> x , y", "Return the game-world position of this point."},
+		{":FastPosition ( ) -> x , y", "Same as point:Position() but can be one frame late because of caching."},
+		{":PointDistance ( x , y ) -> number", "Return the game-world distance between this point and the given coordinates."},
+		{":UnitDistance ( unit ) -> number", "Return the game-world distance between this point and the given unit."},
+		{":Remove ( )", "Remove the point. Should not be called on HUD-managed points like raid units."},
+		{":OnRemove ( )", "You can implement this method to be notified when the point has been removed."},
+	}, "point"),
+	obj_api = FS.Config:MakeDoc("Objects API", 3500, {
+		{":CreateObject ( proto , use_tex ) -> object", "Generic object factory. Look at code to learn how to use it."},
+		{":RemoveObject ( name )", "Remove an object with the given name. You must have called object:Register() on it."},
+		{":IterateObjects ( ) -> [ object ]", "Return an iterator over every created ojects."},
+		{":DrawLine ( from , to , width ) -> line_object", "Draw a line between points from and to. Width is optional and defaults to 64."},
+		{":DrawTexture ( center , width , height , texture ) -> tex_object", "Draw a texture. If height is not given, texture is supposed to be square."},
+		{":DrawMarker ( center , size , idx ) -> tex_object", "Draw a raid target marker texture with given size in yard."},
+		{":DrawCircle ( center , radius , tex ) -> circle_object", "Draw a circle texture with given radius in yard."},
+		{":DrawRadius ( center , radius ) -> circle_object", "Draw a radius circle."},
+		{":DrawArea ( center , radius  ) -> circle_object", "Draw a filled area circle."},
+		{":DrawTarget ( center , radius ) -> circle_object", "Draw a rotating filled target circle."},
+		{":DrawTimer ( center , radius , duration ) -> timer_object", "Draw a rotating filled target circle."},
+		{":DrawTriangle ( a , b , c ) -> polygon_object", "Draw a triangle between the three given points."},
+		{":DrawPolygon ( args , border , border_only ) -> polygon_object", "Draw a polygon. args can be a list of points or a list of coordinates { ax, ay, bx, by, ... }. Border will be given to :DrawLine. If border-only, the polygon will not be filled. You should not draw complex polygons."},
+		{":DrawPolyLine ( from , to , width , border ) -> polyline_object", "Draw a line between from and to, as a polygon. In constrast to :DrawLine(), width is given in yards. The border argument is given to :DrawPolygon."},
+		{":DrawDummy ( point ) -> dummy_object", "Create an invisible dummy object."},
+	}, "FS.Hud"),
+	obj_instance_api = FS.Config:MakeDoc("Generic HudObject instance API", 3600, {
+		{":SetColor ( r , g , b , a ) -> object", "Set the object color."},
+		{":SetMarkerColor ( marker , a ) -> object", "Set the object color to match a raid marker color."},
+		{":ShowAllPoints ( state ) -> object", "If state is true, this object will make every points visible until removed."},
+		{":Fade ( state ) -> object", "If state is false, fade-in-out animations will be disabled for this object."},
+		{":Register ( name ) -> object", "Define a name for this object. If another object already exists with this name, it is removed."},
+		{":Remove ( )", "Remove the object."},
+		{":OnUpdate ( )", "You can implement this method to be notified when the object has been updated."},
+		{":OnRemove ( )", "You can implement this method to be notified when the object has been removed."},
+	}, "object"),
+	line_instance_api = FS.Config:MakeDoc("LineObject instance API (extends HudObject)", 3700, {
+		{".width", "The line width."},
+		{":PointDistance ( x , y , strict ) -> number", "Return the distance from this point to the line. If the point's projection falls outside the segment and strict is true, -1 is returned; else the distance to the closest end is returned."},
+		{":UnitDistance ( unit , strict ) -> number", "Same as PointDistance, but with the unit's position."},
+	}, "line_object"),
+	tex_instance_api = FS.Config:MakeDoc("TexObject instance API (extends HudObject)", 3710, {
+		{":SetBlendMode ( blend ) -> tex_object", "Change the texture blending mode. See Texture:SetBlendMode()."},
+	}, "tex_object"),
+	circle_instance_api = FS.Config:MakeDoc("CircleObject instance API (extends HudObject)", 3720, {
+		{".radius", "The circle radius"},
+		{":PointIsInside ( x , y ) -> bool", "Check if the given world coordinates are inside the circle."},
+		{":UnitIsInside ( unit ) -> bool", "Check if the given unit is inside the circle."},
+		{":UnitsInside ( ) -> { unitids }", "Return the list of group units inside the circle."},
+		{":Rotate ( ) -> number", "You can define this method to add a rotate effect to the circle."},
+	}, "circle_object"),
+	timer_instance_api = FS.Config:MakeDoc("TimerObject instance API (extends CircleObject)", 3730, {
+		{":Reset ( duration ) -> timer_object", "Restart the time with the given duration."},
+	}, "timer_object"),
+	polygon_instance_api = FS.Config:MakeDoc("PolygonObject instance API (extends HudObject)", 3740, {
+		{":PointIsInside ( x , y ) -> bool", "Check if the given world coordinates are inside the polygon."},
+		{":UnitIsInside ( unit ) -> bool", "Check if the given unit is inside the polygon."},
+	}, "polygon_object"),
+	polyline_instance_api = FS.Config:MakeDoc("PolyLineObject instance API (extends PolygonObject)", 3750, {
+		{":Overrun ( v ) -> polyline_object", "Define the line overrun distance."},
+	}, "polyline_object"),
+	events = FS.Config:MakeDoc("Emitted events", 5000, {
+		{"_UPDATE ( )", "Emitted at the begining of an HUD update."},
+	}, "FS_HUD")
 }
 
 --------------------------------------------------------------------------------
@@ -828,8 +890,8 @@ do
 				local dx = x - lx
 				local dy = y - ly
 				if (dx * dx + dy * dy) < 2500 then
-					x = lx + dx / 3
-					y = ly + dy / 3
+					x = lx + dx / 5
+					y = ly + dy / 5
 				end
 			end
 			
@@ -1451,7 +1513,7 @@ function Hud:DrawLine(from, to, width)
 	end
 	
 	-- Return a shortest distance between a point and the line
-	-- If strict, the function will return 10000 if the point projection
+	-- If strict, the function will return -1 if the point projection
 	-- falls outside of the segment. Otherwise it will return the distance
 	-- to the closest end
 	function line:PointDistance(x, y, strict)
@@ -1461,7 +1523,7 @@ function Hud:DrawLine(from, to, width)
 		local tx, ty = to:FastPosition()
 		
 		local d, outside = GPointVectorDistance(x, y, fx, fy, tx, ty)
-		return (outside and strict) and 10000 or d
+		return (outside and strict) and -1 or d
 	end
 	
 	-- Return unit distance to the line
@@ -1505,7 +1567,10 @@ function Hud:DrawTexture(center, width, height, tex)
 		self.frame:SetPoint("CENTER", hud, "CENTER", center.x, center.y)
 	end
 	
-	function texture:SetBlendMode(...) return texture.tex:SetBlendMode(...) end
+	function texture:SetBlendMode(...)
+		texture.tex:SetBlendMode(...)
+		return self
+	end
 	
 	return texture
 end
@@ -1634,6 +1699,7 @@ function Hud:DrawTimer(center, radius, duration)
 		start = GetTime()
 		duration = d
 		done = false
+		return self
 	end
 	
 	return timer

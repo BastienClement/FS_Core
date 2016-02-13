@@ -87,14 +87,14 @@ local bigwigs_config = {
 		order = 1000
 	},
 	api = FS.Config:MakeDoc("Public API", 2000, {
-		{":Message(key, msg, color)", "Display a simple message."},
-		{":Emphasized(key, msg, r, g, b)", "Display an emphasized message."},
-		{":Sound(key, sound)", "Play the given sound."},
-		{":Say(key, what, channel, target)", "Say the given message on the given channel. Defaults to SAY."},
-		{":Bar(key, length, text, icon)", "Display a timer bar."},
-		{":StopBar(key)", "Remove a bar created with :Bar()."},
-		{":Proximity(key, range, player, isReverse)", "Open the proximity display."},
-		{":CloseProximity(key)", "Close the proximity display."},
+		{":Message ( key , msg , color )", "Display a simple message."},
+		{":Emphasized ( key , msg , r , g , b )", "Display an emphasized message."},
+		{":Sound ( key , sound )", "Play the given sound."},
+		{":Say ( key , what , channel , target )", "Say the given message on the given channel. Defaults to SAY."},
+		{":Bar ( key , length , text , icon )", "Display a timer bar."},
+		{":StopBar ( key )", "Remove a bar created with :Bar()."},
+		{":Proximity ( key , range , player , isReverse )", "Open the proximity display."},
+		{":CloseProximity ( key )", "Close the proximity display."},
 	}, "FS.BigWigs")
 }
 
