@@ -1120,10 +1120,6 @@ do
 		-- Update all objects
 		for obj in Hud:IterateObjects() do
 			obj_update(obj)
-			if not obj._shown then
-				obj._shown = true
-				obj.frame:Show()
-			end
 		end
 	end
 end
@@ -1193,6 +1189,11 @@ function HudObject:Fade(state)
 	
 	-- Prevent setting the fade flags if globally disabled
 	if not Hud.settings.fade then return self end
+	
+	if not state and self.fade_init then
+		self.frame:SetAlpha(1)
+		self.frame:Show()
+	end
 	
 	self.fade = state
 	return self
@@ -1280,10 +1281,13 @@ function Hud:CreateObject(proto, use_tex)
 	obj.attached = {}
 	obj.fade = Hud.settings.fade
 	
+	obj.fade_init = true
 	obj.frame:SetAlpha(0)
+	obj.frame:Hide()
 	
 	-- Fade in if not disabled
 	C_Timer.After(0, function()
+		obj.fade_init = false
 		if obj.fade then
 			local created = GetTime()
 			obj.frame:SetAlpha(0)
@@ -1300,6 +1304,7 @@ function Hud:CreateObject(proto, use_tex)
 		else
 			obj.frame:SetAlpha(1)
 		end
+		obj.frame:Show()
 	end)
 	
 	-- Show() may cause some weird side effects, call it on tick later
