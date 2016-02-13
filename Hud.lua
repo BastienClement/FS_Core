@@ -362,7 +362,9 @@ function Hud:OnEnable()
 	
 	-- Clear the HUD on ENCOUNTER_END
 	-- This prevents bogus modules or encounters to keep the HUD open
-	self:RegisterEvent("ENCOUNTER_END", "Clear")
+	--self:RegisterEvent("ENCOUNTER_END", "Clear")
+	
+	self:UpdateGeometrySnapshot()
 end
 
 function Hud:OnDisable()
@@ -441,11 +443,27 @@ do
 			return self.points[name]
 		end
 		
-		local point = { __point = true }
+		local point = setmetatable({ __point = true }, {
+			__index = function(self, key)
+				if key == "frame" or key == "tex" then
+					self.frame = Hud:AllocObjFrame(true)
+					self.tex = self.frame.tex
+					
+					self.frame:SetSize(16, 16)
+					self.tex:SetTexture("Interface\\AddOns\\FS_Core\\media\\blip")
+					self.tex:SetVertexColor(1, 1, 1, 0)
+					self.tex:SetDrawLayer("OVERLAY")
+					
+					self.has_frame = true
+					return self[key]
+				end
+			end
+		})
 		
 		point.name = name
 		self.points[name] = point
 		
+		--[[
 		point.frame = Hud:AllocObjFrame(true)
 		point.tex = point.frame.tex
 		
@@ -453,11 +471,14 @@ do
 		point.tex:SetTexture("Interface\\AddOns\\FS_Core\\media\\blip")
 		point.tex:SetVertexColor(1, 1, 1, 0)
 		point.tex:SetDrawLayer("OVERLAY")
+		]]
+		self.has_frame = false
 		
 		point.x = 0
 		point.y = 0
 		point.world_x = -1
 		point.world_y = -1
+		point.fixed = false
 		
 		point.attached = {}
 		point.num_attached = 0
@@ -500,35 +521,27 @@ do
 				self:Remove()
 				return
 			end
+			
+			if self.fixed then
+				local fx, fy = self:FixedPosition()
+				local zoom = Hud:GetZoom()
 				
-			-- Fetch point position
-			local x, y = self:Position()
-			if not x then return end
-			
-			-- Set world x and y coordinates
-			self.world_x = x
-			self.world_y = y
-			
-			-- Project point
-			self.x, self.y = Hud:Project(x, y)
-			
-			-- Decide if the point is visible or not
-			if self.num_attached > 0 -- If the point has an attached object
-			or self.always_visible   -- If the point is always_visible
-			or Hud.show_all_points   -- If at least one object requests all points to be visible
-			or Hud.force then        -- If the HUD is in forced mode
-				if self.hidden then
-					-- Show the point if currently hidden
-					self.hidden = false
-					self.frame:Show()
-				end
-				-- Place the point
-				self.frame:SetPoint("CENTER", hud, "CENTER", self.x, self.y)
-			elseif not self.hidden then
-				-- Hide the wrapper frame to keep point color intact
-				self.hidden = true
-				self.frame:Hide()
-				return
+				self.x = fx * zoom
+				self.y = fy * zoom
+				
+				-- Set world x and y coordinates
+				self.world_x, self.world_y = self:Position()
+			else
+				-- Fetch point position
+				local x, y = self:Position()
+				if not x then return end
+				
+				-- Set world x and y coordinates
+				self.world_x = x
+				self.world_y = y
+				
+				-- Project point
+				self.x, self.y = Hud:Project(x, y)
 			end
 			
 			-- Unit point specifics
@@ -552,6 +565,27 @@ do
 				if not self.unit_ghost and self.unit_class ~= class then
 					self.tex:SetVertexColor(FS:GetClassColor(self.unit, true))
 					self.unit_class = class
+				end
+			end
+			
+			-- Decide if the point is visible or not
+			if self.has_frame then
+				if self.num_attached > 0 -- If the point has an attached object
+				or self.always_visible   -- If the point is always_visible
+				or Hud.show_all_points   -- If at least one object requests all points to be visible
+				or Hud.force then        -- If the HUD is in forced mode
+					if self.hidden then
+						-- Show the point if currently hidden
+						self.hidden = false
+						self.frame:Show()
+					end
+					-- Place the point
+					self.frame:SetPoint("CENTER", hud, "CENTER", self.x, self.y)
+				elseif not self.hidden then
+					-- Hide the wrapper frame to keep point color intact
+					self.hidden = true
+					self.frame:Hide()
+					return
 				end
 			end
 		end
@@ -598,7 +632,9 @@ do
 			removed = true
 			
 			-- Release frame
-			Hud:ReleaseObjFrame(self.frame)
+			if self.has_frame then
+				Hud:ReleaseObjFrame(self.frame)
+			end
 			
 			-- Point itself
 			Hud.points[self.name] = nil
@@ -657,6 +693,25 @@ do
 			return self.world_x, self.world_y
 		end
 		
+		function point:AttachTo(parent)
+			parent = Hud:GetPoint(parent)
+			if parent then
+				if self.parent then
+					self.parent:DetachObject(self)
+				end
+				parent:AttachObject(self)
+				self.parent = parent
+			end
+			return self
+		end
+		
+		function point:OnRemove()
+			if self.parent then
+				self.parent:DetachObject(self)
+				self.parent = nil
+			end
+		end
+		
 		return point
 	end
 	
@@ -664,6 +719,38 @@ do
 	function Hud:CreateStaticPoint(x, y, name)
 		local pt = self:CreatePoint(name)
 		function pt:Position() return x, y end
+		return pt
+	end
+	
+	-- Create a fixed point
+	function Hud:CreateFixedPoint(x, y, name)
+		local pt = self:CreatePoint(name)
+		
+		pt.fixed = true
+		function pt:FixedPosition() return x, y end
+		
+		function pt:Position()
+			local x, y = self:FixedPosition()
+			return Hud:Unproject(x, y, true)
+		end
+		
+		function pt:Lock(no_snapshot)
+			if not no_snapshot then
+				local zoom = Hud:GetZoom()
+				local x, y = self:FixedPosition()
+				self.x = x * zoom
+				self.y = y * zoom
+				self.world_x, self.world_y = self:Position()
+			end
+			Hud.points[self.name] = nil
+			return self
+		end
+		
+		function pt:Unlock()
+			Hud.points[self.name] = self
+			return self
+		end
+		
 		return pt
 	end
 	
@@ -711,15 +798,7 @@ do
 		
 		-- Consider the shadow point as an object attached to the reference point
 		-- This will cause the shadow point to be removed if the reference point is removed
-		ref:AttachObject(shadow)
-		
-		-- Detach the shadow point from the reference point on removal
-		-- This prevent a memory leak by keeping the object alive
-		function shadow:OnRemove()
-			return ref:DetachObject(self)
-		end
-		
-		return shadow
+		return shadow:AttachTo(ref)
 	end
 	
 	-- Create a point following the estimated position of an hostile unit
@@ -942,11 +1021,29 @@ do
 	
 	-- Sine and cosine of player facing angle
 	local a, last_a = 0, 0
-	local sin_a = 0
-	local cos_a = 0
+	local sin_a, sin_am = 0, 0
+	local cos_a, cos_am = 0, 0
 	
 	-- Zoom factor
 	local zoom = 10
+	
+	function Hud:UpdateGeometrySnapshot()
+		-- Fetch player position and facing for projection
+		px, py = UnitPosition("player")
+		a = GetPlayerFacing() + pi_2
+		
+		local ea
+		if self.settings.smoothing and (not IsMouseButtonDown(2) or self.settings.smoothing_click) then
+			local da = GAngleDelta(last_a, a)
+			ea = (abs(da) < 0.1) and a or (last_a + (da / 3))
+		else
+			ea = a
+		end
+		
+		last_a = ea
+		cos_a, cos_am = cos(ea), cos(-ea)
+		sin_a, sin_am = sin(ea), sin(-ea)
+	end
 	
 	-- Set the zoom factor, 1yd is equal to this value in pixels
 	function Hud:SetZoom(z)
@@ -976,6 +1073,18 @@ do
 		return rx * zoom, ry * zoom
 	end
 	
+	-- Inverse function of Project
+	function Hud:Unproject(zx, zy, unzoomed)
+		local rx, ry
+		if unzoomed then
+			rx, ry = zx, zy
+		else
+			rx, ry = zx / zoom, zy / zoom
+		end
+		local dx, dy = GRotatePoint(rx, ry, -a, nil, nil, sin_am, cos_am)
+		return px - dx, py - dy
+	end
+	
 	-- Safety helper to update points and objects
 	local function obj_update(obj)
 		-- Use pcall to prevent an external error to freeze the HUD
@@ -1000,21 +1109,8 @@ do
 			return
 		end
 		
-		-- Fetch player position and facing for projection
-		px, py = UnitPosition("player")
-		a = GetPlayerFacing() + pi_2
-		
-		local ea
-		if self.settings.smoothing and (not IsMouseButtonDown(2) or self.settings.smoothing_click) then
-			local da = GAngleDelta(last_a, a)
-			ea = (abs(da) < 0.1) and a or (last_a + (da / 3))
-		else
-			ea = a
-		end
-		
-		last_a = ea
-		cos_a = cos(ea)
-		sin_a = sin(ea)
+		self:UpdateGeometrySnapshot()
+		self:SendMessage("FS_HUD_UPDATE")
 		
 		-- Update all points
 		for name, obj in self:IteratePoints() do
@@ -1256,6 +1352,16 @@ end
 --------------------------------------------------------------------------------
 -- API
 
+-- Invisible object
+function Hud:DrawDummy(parent)
+	local dummy = self:CreateObject({})
+	
+	parent = dummy:UsePoint(parent)
+	if not parent then return end
+	
+	return dummy
+end
+
 -- Line
 function Hud:DrawLine(from, to, width)
 	local line = self:CreateObject({ width = width or 64 }, true)
@@ -1268,16 +1374,24 @@ function Hud:DrawLine(from, to, width)
 	line.tex:SetVertexColor(0.5, 0.5, 0.5, 1)
 	line.tex:SetBlendMode("ADD")
 	
+	local lsx, lsy, lex, ley, lw
+	
 	function line:Update()
 		if self.OnUpdate then self:OnUpdate() end
 		
 		local sx, sy = from.x, from.y
 		local ex, ey = to.x, to.y
+		local w = self.width
+		
+		if lsx == sx and lsy == sy and lex == ex and ley == ey and lw == w then
+			return
+		else
+			lsx, lsy, lex, ley, lw = sx, sy, ex, ey, w
+		end
 		
 		-- Determine dimensions and center point of line
 		local dx, dy = (ex - sx) * 1.015, (ey - sy) * 1.015
 		local cx, cy = (sx + ex) / 2, (sy + ey) / 2
-		local w = self.width
 		
 		-- Normalize direction if necessary
 		if dx < 0 then
@@ -1342,6 +1456,43 @@ function Hud:DrawLine(from, to, width)
 	end
 	
 	return line
+end
+
+-- Texture
+function Hud:DrawTexture(center, width, height, tex)
+	if tex == nil then
+		tex = height
+		height = width
+	end
+	
+	local texture = self:CreateObject({ width = width, height = height }, true)
+	
+	center = texture:UsePoint(center)
+	if not center then return end
+	
+	texture.tex:SetTexture(tex)
+	texture.tex:SetBlendMode("DISABLE")
+	texture.tex:SetVertexColor(1, 1, 1, 1)
+	
+	function texture:Update()
+		if self.OnUpdate then self:OnUpdate() end
+		
+		local width, height = self.width, self.height
+		
+		if self.Rotate then
+			-- Rotation require a multiplier on size
+			width = width * (2 ^ 0.5)
+			height = height * (2 ^ 0.5)
+			self.tex:SetRotation(self:Rotate() % pi2)
+		end
+		
+		self.frame:SetSize(width, height)
+		self.frame:SetPoint("CENTER", hud, "CENTER", center.x, center.y)
+	end
+	
+	function texture:SetBlendMode(...) return texture.tex:SetBlendMode(...) end
+	
+	return texture
 end
 
 -- Circle
@@ -1492,18 +1643,26 @@ function Hud:DrawTriangle(a, b, c)
 		return self:PointIsInside(x, y)
 	end
 	
+	local lx1, lx2, lx3, ly1, ly2, ly3
+	
 	function triangle:Update()
 		if self.OnUpdate then self:OnUpdate() end
 		
 		local x1, x2, x3 = a.x, b.x, c.x
 		local y1, y2, y3 = a.y, b.y, c.y
 		
+		if lx1 == x1 and lx2 == x2 and lx3 == x3 and ly1 == y1 and ly2 == y2 and ly3 == y3 then
+			return
+		else
+			lx1, lx2, lx3, ly1, ly2, ly3 = x1, x2, x3, y1, y2, y3
+		end
+		
 		-- Taken from the good old AVR
 		
-		local minx = min(a.x, b.x, c.x)
-		local miny = min(a.y, b.y, c.y)
-		local maxx = max(a.x, b.x, c.x)
-		local maxy = max(a.y, b.y, c.y)
+		local minx = min(x1, x2, x3)
+		local miny = min(y1, y2, y3)
+		local maxx = max(x1, x2, x3)
+		local maxy = max(y1, y2, y3)
 		
 		local dx = maxx - minx
 		local dy = maxy - miny
