@@ -472,7 +472,8 @@ do
 		point.tex:SetVertexColor(1, 1, 1, 0)
 		point.tex:SetDrawLayer("OVERLAY")
 		]]
-		self.has_frame = false
+		point.has_frame = false
+		point.hidden = true
 		
 		point.x = 0
 		point.y = 0
@@ -544,51 +545,52 @@ do
 				self.x, self.y = Hud:Project(x, y)
 			end
 			
-			-- Unit point specifics
-			if self.unit then
-				-- Hide the point if the unit is dead
-				if UnitIsDeadOrGhost(self.unit) then
-					if not self.unit_ghost then
-						self.tex:SetVertexColor(1, 1, 1, 0)
-						self.unit_ghost = true
-					end
-					return
-				elseif self.unit_ghost then
-					self.unit_ghost = false
-					
-					-- Reset the unit class, this will cause the color to be reset 
-					self.unit_class = nil
-				end
-				
-				-- Ensure the point color reflect the unit class
-				local class = UnitClass(self.unit)
-				if not self.unit_ghost and self.unit_class ~= class then
-					self.tex:SetVertexColor(FS:GetClassColor(self.unit, true))
-					self.unit_class = class
-				end
-			end
-			
 			-- Decide if the point is visible or not
 			if self.has_frame then
 				if self.num_attached > 0 -- If the point has an attached object
 				or self.always_visible   -- If the point is always_visible
 				or Hud.show_all_points   -- If at least one object requests all points to be visible
 				or Hud.force then        -- If the HUD is in forced mode
+					-- Place the point
+					self.frame:SetPoint("CENTER", hud, "CENTER", self.x, self.y)
 					if self.hidden then
 						-- Show the point if currently hidden
 						self.hidden = false
 						self.frame:Show()
 					end
-					-- Place the point
-					self.frame:SetPoint("CENTER", hud, "CENTER", self.x, self.y)
 				elseif not self.hidden then
 					-- Hide the wrapper frame to keep point color intact
 					self.hidden = true
 					self.frame:Hide()
 					return
 				end
+				
+				-- Unit point specifics
+				if self.unit then
+					-- Hide the point if the unit is dead
+					if UnitIsDeadOrGhost(self.unit) then
+						if not self.unit_ghost then
+							self.tex:SetVertexColor(1, 1, 1, 0)
+							self.unit_ghost = true
+						end
+						return
+					elseif self.unit_ghost then
+						self.unit_ghost = false
+						
+						-- Reset the unit class, this will cause the color to be reset 
+						self.unit_class = nil
+					end
+					
+					-- Ensure the point color reflect the unit class
+					local class = UnitClass(self.unit)
+					if not self.unit_ghost and self.unit_class ~= class then
+						self.tex:SetVertexColor(FS:GetClassColor(self.unit, true))
+						self.unit_class = class
+					end
+				end
 			end
 		end
+			
 		
 		-- Ensure the unit association of this point is correct
 		function point:RefreshUnit()
