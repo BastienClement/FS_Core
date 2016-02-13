@@ -120,13 +120,17 @@ function Sandbox:GetEnvironment(pkg)
 		setfenv(fn, locals)
 		
 		modules[file] = locals.exports
-		local res = fn()
+		local success, res = pcall(fn)
+		_loading[file] = nil
+		
+		if not success then
+			error(("Loading of '%s' failed: %s."):format(file, res), 2)
+		end
 		
 		if res ~= nil then
 			modules[file] = res
 		end
 		
-		_loading[file] = nil
 		return modules[file]
 	end
 	
