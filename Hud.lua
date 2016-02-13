@@ -402,7 +402,7 @@ do
 			frame.tex:Hide()
 		end
 		
-		frame:Show()
+		--frame:Show()
 		return frame
 	end
 	
@@ -1120,6 +1120,10 @@ do
 		-- Update all objects
 		for obj in Hud:IterateObjects() do
 			obj_update(obj)
+			if not obj._shown then
+				obj._shown = true
+				obj.frame:Show()
+			end
 		end
 	end
 end
@@ -1471,7 +1475,7 @@ function Hud:DrawTexture(center, width, height, tex)
 	if not center then return end
 	
 	texture.tex:SetTexture(tex)
-	texture.tex:SetBlendMode("DISABLE")
+	texture.tex:SetBlendMode("BLEND")
 	texture.tex:SetVertexColor(1, 1, 1, 1)
 	
 	function texture:Update()
@@ -1493,6 +1497,16 @@ function Hud:DrawTexture(center, width, height, tex)
 	function texture:SetBlendMode(...) return texture.tex:SetBlendMode(...) end
 	
 	return texture
+end
+
+-- Raid target
+function Hud:DrawMarker(center, size, target)
+	if target == nil then
+		target = size
+		size = 20
+	end
+	local path = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_" .. target
+	return self:DrawTexture(center, size, size, path)
 end
 
 -- Circle
@@ -1920,6 +1934,13 @@ do
 		function polygon:GetBorderColor()
 			if not border then return end
 			return lines[1]:GetColor()
+		end
+		
+		-- Set Fade flags
+		function polygon:Fade(state)
+			for _, triangle in ipairs(triangles) do triangle:Fade(state) end
+			for _, line in ipairs(lines) do line:Fade(state) end
+			return self
 		end
 		
 		-- Remove triangles and static points on polygon removal
