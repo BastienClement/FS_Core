@@ -33,8 +33,7 @@ local network_default = {
 	}
 }
 
-local version_gui
-version_gui = {
+local version_gui = {
 	title = {
 		type = "description",
 		name = "|cff64b4ffNetwork",
@@ -58,10 +57,21 @@ version_gui = {
 			Network:Print("Enabling/Disabling network burst requires a /reload to take effect.")
 		end
 	},
-	version_infos = {
-		type = "header",
-		name = "Version check",
-		order = 1.8,
+}
+
+local version_check
+version_check = {
+	title = {
+		type = "description",
+		name = "|cff64b4ffVersions check",
+		fontSize = "large",
+		order = 0,
+	},
+	desc = {
+		type = "description",
+		name = "Check the FS Core version of guild and group members.\n",
+		fontSize = "medium",
+		order = 1,
 	},
 	version_xspacing = {
 		type = "description",
@@ -84,7 +94,7 @@ version_gui = {
 		order = 4,
 		func = function()
 			if Network:RequestVersions() then
-				wipe(version_gui.versions.args)
+				wipe(version_check.versions.args)
 			end
 		end
 	},
@@ -124,6 +134,7 @@ function Network:OnInitialize()
 	self.guids = {}
 	
 	FS:GetModule("Config"):Register("Network", version_gui)
+	FS:GetModule("Config"):Register("Versions", version_check)
 end
 
 -- Broadcast version on enable
@@ -392,8 +403,8 @@ function Network:OnControlMessage(_, msg, channel, sender)
 		self.versions[data.key] = data.version
 		
 		-- TODO: rework
-		version_gui.last_updated.name = "Last updated: " .. date()
-		version_gui.versions.args[sender] = {
+		version_check.last_updated.name = "Last updated: " .. date()
+		version_check.versions.args[sender] = {
 			type = "description",
 			name = sender .. "  -  " .. data.version
 		}
