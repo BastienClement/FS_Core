@@ -642,6 +642,7 @@ do
 		elseif window then
 			window:Release()
 			window = nil
+			ObjectiveTrackerFrame:Show()
 		end
 	end
 	
