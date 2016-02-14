@@ -73,7 +73,7 @@ do
 				package_id = package_id:gsub("|c[Ff][Ff]......", ""):gsub("|r", "")
 				share_key = share_key:gsub("|c[Ff][Ff]......", ""):gsub("|r", "")
 				new_msg = new_msg .. remaining:sub(1, start - 1)
-				new_msg = new_msg .. ("|Hpacman:%s:%s:%s|h|cff64b4ff[Pacman: %s]|h|r"):format(share_key, player, package_id, package_id);
+				new_msg = new_msg .. ("|cff64b4ff|Hpacman:%s:%s:%s|h[Pacman: %s]|h|r"):format(share_key, player, package_id, package_id)
 				remaining = remaining:sub(finish + 1);
 			else
 				done = true

@@ -505,18 +505,26 @@ do
 			return self.points[name]
 		end
 		
-		local point = setmetatable({ __point = true }, {
+		local point
+		
+		local function alloc_frame()
+			if point.has_frame then return end
+			
+			point.frame = Hud:AllocObjFrame(true)
+			point.tex = point.frame.tex
+			
+			point.frame:SetSize(16, 16)
+			point.tex:SetTexture("Interface\\AddOns\\FS_Core\\media\\blip")
+			point.tex:SetVertexColor(1, 1, 1, 0)
+			point.tex:SetDrawLayer("OVERLAY")
+					
+			point.has_frame = true
+		end
+		
+		point = setmetatable({ __point = true }, {
 			__index = function(self, key)
 				if key == "frame" or key == "tex" then
-					self.frame = Hud:AllocObjFrame(true)
-					self.tex = self.frame.tex
-					
-					self.frame:SetSize(16, 16)
-					self.tex:SetTexture("Interface\\AddOns\\FS_Core\\media\\blip")
-					self.tex:SetVertexColor(1, 1, 1, 0)
-					self.tex:SetDrawLayer("OVERLAY")
-					
-					self.has_frame = true
+					alloc_frame()
 					return self[key]
 				end
 			end
@@ -550,6 +558,7 @@ do
 		function point:SetUnit(unit)
 			self.unit = unit
 			self:RefreshUnit()
+			alloc_frame()
 			return self
 		end
 		
