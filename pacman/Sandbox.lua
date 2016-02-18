@@ -58,6 +58,10 @@ function Sandbox:GetEnvironment(pkg)
 	-- Package database
 	sandbox.db = Store:Status(pkg).db
 	
+	-- Exposed data
+	sandbox.uuid = pkg.uuid
+	sandbox.revision = pkg.revision
+	
 	-- Module loading cache
 	local modules = {}
 	
@@ -67,6 +71,8 @@ function Sandbox:GetEnvironment(pkg)
 		pkg = Store:Get(uuid)
 		id = pkg.id
 		sandbox.db = Store:Status(pkg).db
+		sandbox.uuid = pkg.uuid
+		sandbox.revision = pkg.revision
 		
 		-- Call OnReload function
 		local reload = locals._reload
