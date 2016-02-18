@@ -424,7 +424,7 @@ function Hud:OnEnable()
 	
 	-- Clear the HUD on ENCOUNTER_END
 	-- This prevents bogus modules or encounters to keep the HUD open
-	--self:RegisterEvent("ENCOUNTER_END", "Clear")
+	self:RegisterEvent("ENCOUNTER_END", "ClearEncounter")
 	
 	self:UpdateGeometrySnapshot()
 end
@@ -554,6 +554,8 @@ do
 		point.attached = {}
 		point.num_attached = 0
 		
+		point.persistent = false
+		
 		-- Define the corresponding unit for this point
 		function point:SetUnit(unit)
 			self.unit = unit
@@ -582,7 +584,20 @@ do
 		-- An always_visible point is shown event if no show_all_points objects
 		-- are currently present
 		function point:AlwaysVisible(state)
+			if state == nil then
+				return self.always_visible
+			end
 			self.always_visible = state
+			return self
+		end
+		
+		-- Define the persistent flag
+		-- Persistent points are not removed on ENCOUNTER_END
+		function point:Persistent(state)
+			if state == nil then
+				return self.persistent
+			end
+			self.persistent = state
 			return self
 		end
 		
@@ -1253,6 +1268,16 @@ function HudObject:ShowAllPoints(state)
 	return self
 end
 
+-- Set the persistent flag
+function HudObject:Persistent(state)
+	if state == nil then
+		return self.persistent
+	end
+	
+	self.persistent = state
+	return self
+end
+
 -- Set fade flag
 -- If this flag is set, the object will be animated with a fade-in-out
 function HudObject:Fade(state)
@@ -1349,6 +1374,8 @@ function Hud:CreateObject(proto, use_tex)
 	self.objects[obj] = true
 	self.num_objs = self.num_objs + 1
 	
+	obj.persistent = false
+	
 	obj.frame = self:AllocObjFrame(use_tex)
 	obj.tex = obj.frame.tex
 	obj.attached = {}
@@ -1420,19 +1447,26 @@ function Hud:UpdateShowAllPoints()
 end
 
 -- Clear the whole scene
-function Hud:Clear()
+function Hud:Clear(soft)
 	-- Remove all points unrelated to raid units
 	-- This prevent bogus modules to keep invisible points on the scene forever
 	for name, point in self:IteratePoints() do
-		if not point.unit then
+		if not point.unit and (not soft or not point.persistent) then
 			point:Remove()
 		end
 	end
 	
 	-- Remove all objects
 	for obj in self:IterateObjects() do
-		obj:Remove()
+		if not soft or not obj.persistent then
+			obj:Remove()
+		end
 	end
+end
+
+-- Clear encounter object at ENCOUNTER_END
+function Hud:ClearEncounter()
+	self:Clear(true)
 end
 
 --------------------------------------------------------------------------------
@@ -2026,7 +2060,14 @@ do
 		function polygon:Fade(state)
 			for _, triangle in ipairs(triangles) do triangle:Fade(state) end
 			for _, line in ipairs(lines) do line:Fade(state) end
-			return self
+			return HudObject.Fade(self, state)
+		end
+		
+		-- Set Persistent flags
+		function polygon:Persistent(state)
+			for _, triangle in ipairs(triangles) do triangle:Persistent(state) end
+			for _, line in ipairs(lines) do line:Persistent(state) end
+			return HudObject.Persistent(self, state)
 		end
 		
 		-- Remove triangles and static points on polygon removal
