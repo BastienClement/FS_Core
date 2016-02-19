@@ -299,6 +299,8 @@ local hud_config = {
 	public_api = FS.Config:MakeDoc("Public API", 3000, {
 		{":Project ( x , y ) -> x , y", "Project the given game-world coordinates to on-screen coordinates, relative to the HUD center (player)."},
 		{":Unproject ( x , y , raw ) -> x , y", "Perform the inverse operation. If raw, will not consider the HUD zoom factor."},
+		{":DefaultPersistent ( state )", "Define the default persistent flag for future objects and points."},
+		{":Persistent ( fn , self )", "Execute the given function. During the function execution, all created objects and points will be persistent by default. The function receive `self` as first parameter."},
 		{":Clear ( )", "Remove every created objects from the HUD."},
 	}, "FS.Hud"),
 	points_api = FS.Config:MakeDoc("Points API", 3100, {
@@ -416,6 +418,9 @@ function Hud:OnInitialize()
 	self.objects = {}
 	self.num_objs = 0
 	
+	-- Default persistent status
+	self.default_persistent = false
+	
 	FS:GetModule("Config"):Register("Head-up display", hud_config)
 	FS:GetModule("Console"):RegisterCommand("hud", self)
 end
@@ -442,6 +447,21 @@ function Hud:OnSlash(arg1, arg2)
 	elseif arg1 == "test" then
 		hud_test()
 	end
+end
+
+function Hud:DefaultPersistent(state)
+	if state == nil then
+		return self.default_persistent
+	end
+	self.default_persistent = state
+end
+
+function Hud:Persistent(fn, this)
+	local prev = self.default_persistent
+	self.default_persistent = true
+	local ok, err = pcall(fn, this)
+	self.default_persistent = prev
+	if not ok then error(err) end
 end
 
 --------------------------------------------------------------------------------
@@ -556,7 +576,7 @@ do
 		point.attached = {}
 		point.num_attached = 0
 		
-		point.persistent = false
+		point.persistent = self.default_persistent
 		
 		-- Define the corresponding unit for this point
 		function point:SetUnit(unit)
@@ -1376,7 +1396,7 @@ function Hud:CreateObject(proto, use_tex)
 	self.objects[obj] = true
 	self.num_objs = self.num_objs + 1
 	
-	obj.persistent = false
+	obj.persistent = self.default_persistent
 	
 	obj.frame = self:AllocObjFrame(use_tex)
 	obj.tex = obj.frame.tex
