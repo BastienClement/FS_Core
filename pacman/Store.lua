@@ -90,7 +90,7 @@ do
 	-- Load enabled packages
 	local function CheckEnabled()
 		for uuid, pkg in Store:Packages() do
-			if not pkg.flags.Library then
+			if not pkg.flags.Library or status[uuid].loaded then
 				local uuid = pkg.uuid
 				if status[uuid].profile.enabled then
 					if not Store:HasLoadingFailed(pkg) then
