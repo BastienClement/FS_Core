@@ -148,7 +148,16 @@ function Sandbox:GetEnvironment(pkg)
 		end
 		
 		pkg = Store:Get(uuid)
+		
+		local rev_error = false
+		if pkg and rev and pkg.revision < rev then
+			pkg = nil
+			rev_error = true
+		end
+		
 		if not pkg then
+			if optional then return nil end
+			
 			local human_name = uuid
 			
 			-- Attempt to find a variable containing this UUID and use its name instead
@@ -159,7 +168,11 @@ function Sandbox:GetEnvironment(pkg)
 				end
 			end
 			
-			error(("Cannot find required package '%s'."):format(human_name), 2)
+			if rev_error then
+				error(("Cannot load required package '%s'. (revision is too old)"):format(human_name), 2)
+			else
+				error(("Cannot find required package '%s'."):format(human_name), 2)
+			end
 		end
 		
 		local ok, exports = Store:Load(pkg)
