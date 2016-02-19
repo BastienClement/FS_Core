@@ -403,6 +403,7 @@ do
 			window:SetTitle("Pacman Updater")
 			
 			local pkg = Store:Get(arg)
+			local shareable = pkg and (pkg.flags.Shareable or pkg.author_key == FS:PlayerKey())
 			local select_tab
 			
 			-- Package selector
@@ -445,7 +446,7 @@ do
 				function select_tab(tab)
 					tabs:SetTabs({
 						{ value = "search", text = "Search update" },
-						{ value = "push", text = "Push update", disabled = not pkg }
+						{ value = "push", text = "Push update", disabled = not pkg or not IsInGroup() }
 					})
 					tabs:SelectTab(tab)
 				end
@@ -507,6 +508,7 @@ do
 						end)
 						
 						list:AddChild(row)
+						return btn
 					end
 					
 					local function replace_placeholder(text)
@@ -579,6 +581,17 @@ do
 								pkg = Store:Get(pkg.uuid)
 								init_list("Scanning...")
 								
+								local btns = {}
+								local push_all
+								push_all = add_button("Push to all", function()
+									for _, btn in ipairs(btns) do
+										btn:SetDisabled(true)
+									end
+									push_all:SetDisabled(true)
+									Updater:Send({ push = Store:Export(pkg) }, "RAID")
+								end)
+								push_all:SetDisabled(true)
+								
 								local btn = push_btn()
 								btn:SetDisabled(true)
 								
@@ -588,20 +601,30 @@ do
 								end)
 								
 								local senders = {}
-								self:Listen("PROBE_RESULT", function(uuid, sender, rev, pushable)
+								self:Listen("PROBE_RESULT", function(uuid, sender, rev, enabled, pushable)
 									if pkg.uuid == uuid and not senders[sender] then
 										senders[sender] = true
-										if rev >= pkg.revision then pushable = false end
-										push_result(sender, rev, "Push", pushable, function()
+										
+										if rev >= pkg.revision or not shareable then pushable = false end
+										
+										if not enabled then
+											rev = rev .. " |cff999999(Disabled)"
+										end
+										
+										local btn = push_result(sender, rev, "Push", pushable, function()
 											Updater:Send({ push = Store:Export(pkg) }, sender)
 										end)
+										
+										if pushable then
+											table.insert(btns, btn)
+											push_all:SetDisabled(false)
+										end
 									end
 								end)
 								
-								local probe_obj = { probe = pkg.uuid }
-								
-								if IsInGuild() then Updater:Send(probe_obj, "GUILD") end
-								if IsInGroup() then Updater:Send(probe_obj, "RAID") end
+								--local probe_obj = { probe = pkg.uuid }
+								--if IsInGuild() then Updater:Send(probe_obj, "GUILD") end
+								if IsInGroup() then Updater:Send({ probe = pkg.uuid }, "RAID") end
 								
 								btn:SetCallback("OnRelease", function()
 									timer:Cancel()
@@ -811,6 +834,7 @@ function Updater:OnNetMessage(_, data, channel, sender)
 			self:Send({
 				probe_result = pkg.uuid,
 				revision = pkg.revision,
+				enabled = status.profile.enabled,
 				push = status.global.push
 			}, sender)
 		end
@@ -819,7 +843,7 @@ function Updater:OnNetMessage(_, data, channel, sender)
 	-- Package probing response
 	---------------------------------------------------------------------------
 	elseif data.probe_result then
-		self:Notify("PROBE_RESULT", data.probe_result, sender, data.revision, data.push)
+		self:Notify("PROBE_RESULT", data.probe_result, sender, data.revision, data.enabled, data.push)
 		
 	---------------------------------------------------------------------------
 	-- Package search request
