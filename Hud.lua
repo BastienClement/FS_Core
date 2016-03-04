@@ -43,8 +43,7 @@ local hud_defaults = {
 		offset_x = 0,
 		offset_y = 0,
 		smoothing = true,
-		smoothing_click = true,
-		fade = true
+		smoothing_click = true
 	}
 }
 
@@ -56,7 +55,7 @@ local function hud_test()
 	local s3 = Hud:CreateSnapshotPoint("player"):SetColor(0.8, 0.8, 0, 1)
 
 	local a1 = Hud:DrawArea(s1, 15)
-	local a2 = Hud:DrawTarget(s2, 10):Fade(false)
+	local a2 = Hud:DrawTarget(s2, 10)
 	local a3 = Hud:DrawTimer(s3, 10, 10):SetColor(0.8, 0.8, 0, 0.5)
 	local a4 = Hud:DrawRadius(s3, 20)
 	
@@ -250,19 +249,6 @@ local hud_config = {
 		end,
 		order = 61
 	},
-	fade = {
-		type = "toggle",
-		name = "Enable fade-in-out animations",
-		desc = "Enable animations on objects creation and removal.",
-		width = "full",
-		get = function()
-			return Hud.settings.fade
-		end,
-		set = function(_, value)
-			Hud.settings.fade = value
-		end,
-		order = 62
-	},
 	spacing_89 = {
 		type = "description",
 		name = "\n",
@@ -349,7 +335,6 @@ local hud_config = {
 		{":SetMarkerColor ( marker , a ) -> object", "Set the object color to match a raid marker color."},
 		{":ShowAllPoints ( state ) -> object", "If state is true, this object will make every points visible until removed."},
 		{":Persistent ( state ) -> point", "Define the persistent flag. Persistent objects are not removed on ENCOUNTER_END."},
-		{":Fade ( state ) -> object", "If state is false, fade-in-out animations will be disabled for this object."},
 		{":Register ( name ) -> object", "Define a name for this object. If another object already exists with this name, it is removed."},
 		{":Remove ( )", "Remove the object."},
 		{":OnUpdate ( )", "You can implement this method to be notified when the object has been updated."},
@@ -471,9 +456,10 @@ do
 	local pool = {}
 	
 	local function normalize(frame, use_tex)
+		frame:Hide()
 		frame:SetFrameStrata("BACKGROUND")
-		frame:SetAlpha(1)
 		frame:ClearAllPoints()
+		frame:SetAlpha(1)
 		
 		frame.tex:SetAllPoints()
 		frame.tex:SetDrawLayer("ARTWORK")
@@ -486,7 +472,6 @@ do
 			frame.tex:Hide()
 		end
 		
-		--frame:Show()
 		return frame
 	end
 	
@@ -750,22 +735,8 @@ do
 			Hud.points[self.name] = nil
 			
 			-- Remove attached objects
-			local do_ghost = false
 			for obj in pairs(self.attached) do
-				if obj.fade then do_ghost = true end
 				obj:Remove()
-			end
-			
-			if do_ghost then
-				local ghost_start = GetTime()
-				local ticker
-				ticker = C_Timer.NewTicker(0.033, function()
-					point.x, point.y = Hud:Project(point.world_x, point.world_y)
-					if GetTime() - ghost_start > 0.5 then
-						ticker:Cancel()
-						ticker = nil
-					end
-				end)
 			end
 			
 			-- Remove handler
@@ -1046,7 +1017,7 @@ do
 	function Hud:RefreshRaidPoints()
 		-- Prevent more than one raid point refresh per frame
 		if refresh_done then return end
-		C_Timer.After(0, function() refresh_done = false end)
+		C_Timer.After(0.002, function() refresh_done = false end)
 		refresh_done = true
 		
 		-- Create the player point if not already done
@@ -1301,21 +1272,8 @@ function HudObject:Persistent(state)
 end
 
 -- Set fade flag
--- If this flag is set, the object will be animated with a fade-in-out
-function HudObject:Fade(state)
-	if state == nil then
-		return self.fade
-	end
-	
-	-- Prevent setting the fade flags if globally disabled
-	if not Hud.settings.fade then return self end
-	
-	if not state and self.fade_init then
-		self.frame:SetAlpha(1)
-		self.frame:Show()
-	end
-	
-	self.fade = state
+-- Deprecated
+function HudObject:Fade()
 	return self
 end
 
@@ -1356,28 +1314,11 @@ function HudObject:Remove()
 	-- Call the remove handler if defined
 	if self.OnRemove then self:OnRemove() end
 	
-	-- Fade out animation
-	if self.fade then
-		if self.fade_in then
-			self.fade_in:Cancel()
-		end
-		
-		local start = GetTime()
-		local ticker
-		ticker = C_Timer.NewTicker(0.01, function()
-			local pct = (GetTime() - start) / 0.20
-			if pct > 1 then
-				self.frame:SetAlpha(0)
-				ticker:Cancel()
-				ticker = nil
-				do_remove()
-			else
-				self.frame:SetAlpha(1 - pct)
-			end
-		end)
-	else
-		do_remove()
-	end
+	Hud.objects[self] = nil
+	Hud.num_objs = Hud.num_objs - 1
+	
+	-- Release the wrapper frame of this object
+	Hud:ReleaseObjFrame(self.frame)
 	
 	-- Check if we still need to show all points
 	if self.show_all_points then
@@ -1401,36 +1342,20 @@ function Hud:CreateObject(proto, use_tex)
 	obj.frame = self:AllocObjFrame(use_tex)
 	obj.tex = obj.frame.tex
 	obj.attached = {}
-	obj.fade = Hud.settings.fade
 	
-	obj.fade_init = true
-	obj.frame:SetAlpha(0)
-	obj.frame:Hide()
-	
-	-- Fade in if not disabled
+	-- Display the object
+	-- Show() may cause some weird side effects, call it on tick later
 	C_Timer.After(0, function()
-		obj.fade_init = false
-		if obj.fade then
-			local created = GetTime()
-			obj.frame:SetAlpha(0)
-			obj.fade_in = C_Timer.NewTicker(0.01, function()
-				local pct = (GetTime() - created) / 0.20
-				if pct > 1 then
-					obj.frame:SetAlpha(1)
-					obj.fade_in:Cancel()
-					obj.fade_in = nil
-				else
-					obj.frame:SetAlpha(pct)
+		if not obj._destroyed then
+			obj:Update()
+			C_Timer.After(0, function()
+				if not obj._destroyed then
+					obj.frame:Show()
 				end
 			end)
-		else
-			obj.frame:SetAlpha(1)
+			Hud:Show()
 		end
-		obj.frame:Show()
 	end)
-	
-	-- Show() may cause some weird side effects, call it on tick later
-	C_Timer.After(0, function() Hud:Show() end)
 	
 	return obj
 end
@@ -2079,10 +2004,9 @@ do
 		end
 		
 		-- Set Fade flags
-		function polygon:Fade(state)
-			for _, triangle in ipairs(triangles) do triangle:Fade(state) end
-			for _, line in ipairs(lines) do line:Fade(state) end
-			return HudObject.Fade(self, state)
+		-- Deprecated
+		function polygon:Fade()
+			return self
 		end
 		
 		-- Set Persistent flags
