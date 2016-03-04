@@ -1966,16 +1966,6 @@ do
 			return self:SetFillColor(...)
 		end
 		
-		function polygon:SetMarkerColor(marker, a)
-			local color = Makers_Color[marker]
-			if color then
-				local r, g, b = unpack(color)
-				return self:SetColor(r, g, b, a)
-			else
-				return self
-			end
-		end
-		
 		-- Set the color of all triangles composing this polygon
 		function polygon:SetFillColor(...)
 			for _, triangle in ipairs(triangles) do triangle:SetColor(...) end
