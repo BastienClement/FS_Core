@@ -332,6 +332,7 @@ local hud_config = {
 	}, "FS.Hud"),
 	obj_instance_api = FS.Config:MakeDoc("Generic HudObject instance API", 3600, {
 		{":SetColor ( r , g , b , a ) -> object", "Set the object color."},
+		{":SetAlpha ( a ) -> object", "Set the object alpha."},
 		{":SetMarkerColor ( marker , a ) -> object", "Set the object color to match a raid marker color."},
 		{":ShowAllPoints ( state ) -> object", "If state is true, this object will make every points visible until removed."},
 		{":Persistent ( state ) -> point", "Define the persistent flag. Persistent objects are not removed on ENCOUNTER_END."},
@@ -1233,6 +1234,12 @@ function HudObject:SetColor(r, g, b, a)
 	return self
 end
 
+-- Set the obejct alpha
+function HudObject:SetAlpha(a)
+	self.frame:SetAlpha(a)
+	return self
+end
+
 function HudObject:SetMarkerColor(marker, a)
 	local color = Makers_Color[marker]
 	if color then
@@ -1246,6 +1253,11 @@ end
 -- Get the object color
 function HudObject:GetColor()
 	return self.tex:GetVertexColor()
+end
+
+-- Get the object alpha
+function HudObject:GetAlpha()
+	return self.frame:GetAlpha()
 end
 
 -- Set the show_all_points flag of this object
@@ -1991,6 +2003,24 @@ do
 		function polygon:GetBorderColor()
 			if not border then return end
 			return lines[1]:GetColor()
+		end
+		
+		-- Set both the triangles alpha and the border alpha
+		function polygon:SetAlpha(...)
+			if border then self:SetBorderColor(...) end
+			return self:SetFillColor(...)
+		end
+		
+		-- Set the alpha of all triangles composing this polygon
+		function polygon:SetFillAlpha(...)
+			for _, triangle in ipairs(triangles) do triangle:SetAlpha(...) end
+			return self
+		end
+		
+		-- Set the alpha of the border
+		function polygon:SetBorderAlpha(...)
+			for _, line in ipairs(lines) do line:SetAlpha(...) end
+			return self
 		end
 		
 		-- Set Fade flags
