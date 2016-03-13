@@ -455,6 +455,7 @@ end
 
 do
 	local pool = {}
+	local nop = function() end
 	
 	local function normalize(frame, use_tex)
 		frame:Hide()
@@ -471,6 +472,11 @@ do
 			frame.tex:Show()
 		else
 			frame.tex:Hide()
+		end
+		
+		if frame._Show then
+			frame.Show = frame._Show
+			frame._Show = nil
 		end
 		
 		return frame
@@ -490,6 +496,10 @@ do
 	-- Put the given frame back in the pool
 	function Hud:ReleaseObjFrame(frame)
 		frame:Hide()
+		if not frame._Show then
+			frame._Show = frame.Show
+			frame.Show = nop
+		end
 		table.insert(pool, frame)
 	end
 end
