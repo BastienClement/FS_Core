@@ -265,6 +265,15 @@ function Pacman:OnEnable()
 	Pacman.Store = Store
 end
 
+function Pacman:NotifyLoaded(name)
+	C_Timer.After(1, function()
+		for _, frame in ipairs({ GetFramesRegisteredForEvent("ADDON_LOADED") }) do
+			local handler = frame:GetScript("OnEvent")
+			if handler then handler(frame, "ADDON_LOADED", name) end
+		end
+	end)
+end
+
 -------------------------------------------------------------------------------
 -- Package list
 -------------------------------------------------------------------------------
@@ -514,7 +523,7 @@ local function create_package_gui(pkg, valid)
 	
 	if pkg.flags.Configurable and status.loaded then
 		local env = Pacman.Sandbox:GetEnvironment(pkg)
-		local conf_table = env.locals._config
+		local conf_table = env.locals.config
 		if conf_table then
 			o.pkg_conf = {
 				type = "group",

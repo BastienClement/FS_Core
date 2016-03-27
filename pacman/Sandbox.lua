@@ -73,9 +73,10 @@ function Sandbox:GetEnvironment(pkg)
 		sandbox.db = Store:Status(pkg).db
 		sandbox.uuid = pkg.uuid
 		sandbox.revision = pkg.revision
+		Pacman:NotifyLoaded("Pacman:" .. id)
 		
 		-- Call OnReload function
-		local reload = locals._reload
+		local reload = locals.reload
 		if type(reload) == "function" then
 			local ok, exports = pcall(reload)
 			if not ok then

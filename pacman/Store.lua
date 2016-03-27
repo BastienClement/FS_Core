@@ -137,9 +137,9 @@ if db.enabled == nil then
   db.enabled = false
 end
 
--- If your package has the Configurable flag, the content of the '_config'
+-- If your package has the Configurable flag, the content of the 'config'
 -- variable will be treated as an Ace3 options table.
-_config = {
+config = {
   enable = {
     type = "toggle",
     name = "Enable",
@@ -157,7 +157,7 @@ end
 
 -- If your package has the Reloadable flag, this function will be called
 -- when the package is updated.
-function _reload()
+function reload()
   load("main.lua", true) -- Use true here to force re-evaluation
 end]===]
 
@@ -396,6 +396,7 @@ do
 			loaded_revision[uuid] = pkg.revision
 			exports_cache[uuid] = exports
 			status[uuid].loaded = true
+			Pacman:NotifyLoaded("Pacman:" .. pkg.id)
 		end
 		
 		return ok, exports
