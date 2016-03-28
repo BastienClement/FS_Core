@@ -126,13 +126,13 @@ function Network:OnInitialize()
 	-- Settings
 	self.db = FS.db:RegisterNamespace("Network", network_default)
 	self.settings = self.db.profile
-	
+
 	RegisterAddonMessagePrefix("FS")
-	
+
 	self.versions = {}
 	self.keys = {}
 	self.guids = {}
-	
+
 	FS:GetModule("Config"):Register("Network", version_gui)
 	FS:GetModule("Config"):Register("Versions", version_check)
 end
@@ -140,13 +140,13 @@ end
 -- Broadcast version on enable
 function Network:OnEnable()
 	PLAYER_GUID = UnitGUID("player")
-	
+
 	self:RegisterMessage("FS_MSG_$NET", "OnControlMessage")
 	self:RegisterEvent("GROUP_ROSTER_UPDATE", "BroadcastAnnounce")
 	self:RegisterEvent("CHAT_MSG_ADDON")
-	
+
 	self:BroadcastAnnounce()
-	
+
 	if self.settings.burst then
 		ChatThrottleLib.MAX_CPS = 2000
 		ChatThrottleLib.BURST = 16000
@@ -173,7 +173,7 @@ do
 	-- Last arguments can be Priority (string), Multicast (table) or Callback (function)
 	function Network:Send(label, data, channel, a, b, c)
 		local target
-		
+
 		-- Guess prio, multicast and callback from 3 last args
 		local prio, multicast, callback
 		do
@@ -189,13 +189,13 @@ do
 			end
 			guess(a) guess(b) guess(c)
 		end
-		
+
 		-- Multicast given and channel is nil
 		if type(channel) == "table" then
 			multicast = channel
 			channel = nil
 		end
-		
+
 		-- Fix missing channel or whisper
 		if not channel then
 			if IsInGroup() then
@@ -215,7 +215,7 @@ do
 		if self.guids[target] then
 			target = self.guids[target]
 		end
-		
+
 		-- Serialize and compress data
 		local serialized = self:Serialize(label, data, multicast)
 		serialized = Compress:CompressHuffman(serialized)
@@ -260,7 +260,7 @@ end
 do
 	local spool = {}
 	local compost = setmetatable({}, { __mode = "k" })
-	
+
 	local function new()
 		local t = next(compost)
 		if t then
@@ -281,7 +281,7 @@ do
 	function Network:OnReceiveMultipartNext(message, distribution, sender)
 		local key = distribution .. "\t" .. sender
 		local olddata = spool[key]
-		
+
 		if not olddata then
 			return
 		end
@@ -299,13 +299,13 @@ do
 	function Network:OnReceiveMultipartLast(message, distribution, sender)
 		local key = distribution .. "\t" .. sender
 		local olddata = spool[key]
-		
+
 		if not olddata then
 			return
 		end
 
 		spool[key] = nil
-		
+
 		if type(olddata) == "table" then
 			tinsert(olddata, message)
 			Network:OnCommReceived(tconcat(olddata, ""), distribution, sender)
@@ -322,11 +322,11 @@ function Network:OnCommReceived(text, channel, source)
 	text = CompressEncode:Decode(text)
 	text = Compress:Decompress(text)
 	if not text then return end
-	
+
 	-- Deserialize
 	local res, label, data, multicast = self:Deserialize(text)
 	if not res then return end
-	
+
 	-- Check multicast recipients
 	if type(multicast) == "table" then
 		local me = false
@@ -339,7 +339,7 @@ function Network:OnCommReceived(text, channel, source)
 		end
 		if not me then return end
 	end
-	
+
 	-- Emit
 	self:SendMessage("FS_MSG", label, data or EMPTY_TABLE, channel, source)
 	self:SendMessage("FS_MSG_" .. label:upper(), data or EMPTY_TABLE, channel, source)
@@ -352,10 +352,10 @@ end
 -- Broadcast FS Core ANNOUNCE message
 do
 	local delay
-	
+
 	local function do_broadcast()
 		delay = nil
-		
+
 		local msg = {
 			"ANNOUNCE",
 			{
@@ -364,22 +364,22 @@ do
 				guid = PLAYER_GUID
 			}
 		}
-		
+
 		-- Guild mates
 		if IsInGuild() then
 			Network:Send("$NET", msg, "GUILD", "BULK")
 		end
-		
+
 		-- Raid or party members
 		if IsInGroup() then
 			Network:Send("$NET", msg, "RAID", "BULK")
 		end
-		
+
 		-- Instance chat
 		if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
 			Network:Send("$NET", msg, "INSTANCE_CHAT", "BULK")
 		end
-		
+
 		-- Ourselves
 		--Network:Send("$NET", msg, nil, "BULK")
 	end
@@ -401,7 +401,7 @@ function Network:OnControlMessage(_, msg, channel, sender)
 		self.keys[data.key] = sender
 		self.guids[data.guid] = sender
 		self.versions[data.key] = data.version
-		
+
 		-- TODO: rework
 		version_check.last_updated.name = "Last updated: " .. date()
 		version_check.versions.args[sender] = {
@@ -427,7 +427,7 @@ do
 			return false
 		end
 		request_cooldown = now + 30
-		
+
 		local msg = { "REQ_ANNOUNCE" }
 		if IsInGuild() then self:Send("$NET", msg, "GUILD", "BULK") end
 		if IsInGroup() then self:Send("$NET", msg, "RAID", "BULK") end
