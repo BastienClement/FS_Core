@@ -170,7 +170,6 @@ function Roster:RosterUpdate(_, guid, unit, info)
 		self:SendMessage("FS_ROSTER_JOINED", guid, unit)
 		self.group[guid] = true
 	end
-	FS:Dump(info)
 	self:SendMessage("FS_ROSTER_UPDATE", guid, unit, info)
 end
 
