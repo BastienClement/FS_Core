@@ -31,13 +31,14 @@ libs\indents.lua
 
 Core.lua
 Config.lua
-Roster.lua
-Geometry.lua
 
+Geometry.lua
 Format.lua
 Network.lua
 Console.lua
 Map.lua
+
+Roster.lua
 Arrow.lua
 BigWigs.lua
 Tracker.lua
