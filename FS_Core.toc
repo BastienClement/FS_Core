@@ -31,7 +31,7 @@ libs\indents.lua
 
 Core.lua
 Config.lua
-
+Roster.lua
 Geometry.lua
 
 Format.lua

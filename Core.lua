@@ -38,11 +38,11 @@ do
 	function Core:ENCOUNTER_START(id, name, difficulty, size)
 		self.encounter = { id = id, name = name, difficulty = difficulty, size = size }
 	end
-	
+
 	function Core:ENCOUNTER_END()
 		self.encounter = nil
 	end
-	
+
 	function Core:EncounterInProgress()
 		return self.encounter
 	end
@@ -65,6 +65,7 @@ do
 		end
 	end
 
+	-- DEPREACTED
 	function Core:IterateGroup()
 		return function(_, last)
 			if not IsInGroup() then
@@ -78,11 +79,11 @@ do
 			end
 		end
 	end
-	
+
 	function Core:UnitIsInGuild(unit)
 		return guild_members[UnitName(unit) or unit] or false
 	end
-	
+
 	function Core:UnitIsTrusted(unit)
 		return UnitIsUnit("player", unit)
 			or UnitIsGroupLeader(unit)
@@ -96,9 +97,9 @@ do
 	for i = 48, 57 do chars[#chars + 1] = string.char(i) end
 	for i = 65, 90 do chars[#chars + 1] = string.char(i) end
 	for i = 97, 122 do chars[#chars + 1] = string.char(i) end
-	
+
 	local floor, random = math.floor, math.random
-	
+
 	function Core:UUID(length)
 		if not length then length = 64 end
 		local uuid = ""
@@ -122,7 +123,7 @@ function Core:Dump(t)
 		local prefix = "|cff00ff96"
 		local suffix = "|r"
 		local tpe = type(v)
-		
+
 		if tpe == "string" then
 			prefix = "|cfffff569\""
 			suffix = "\"|r"
@@ -133,7 +134,7 @@ function Core:Dump(t)
 		elseif tpe == "function" then
 			prefix = "|cff69ccf0"
 		end
-		
+
 		return prefix .. tostring(v) .. suffix
 	end
 	local function sub_dump(t, indent)
