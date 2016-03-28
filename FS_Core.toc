@@ -44,4 +44,5 @@ BigWigs.lua
 Tracker.lua
 Hud.lua
 
+cooldowns\Cooldowns.xml
 pacman\Pacman.xml
