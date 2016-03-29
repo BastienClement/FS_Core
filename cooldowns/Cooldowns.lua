@@ -109,39 +109,43 @@ function Cooldowns:RegisterSpells(class, cooldowns)
 	end
 
 	for id, data in pairs(cooldowns) do
-		data.id = id
+		if GetSpellInfo(id) then
+			data.id = id
 
-		if class and not data.class then data.class = class end
-		if not data.cooldown then data.cooldown = 1.5 end
+			if class and not data.class then data.class = class end
+			if not data.cooldown then data.cooldown = 1.5 end
 
-		local tag_queue = {}
-		local tags = {}
-		local level = 1
+			local tag_queue = {}
+			local tags = {}
+			local level = 1
 
-		local function drain()
-			while #tag_queue > 0 do
-				local tag = table.remove(tag_queue, 1)
-				if not tags[tag] then
-					tags[tag] = level
-					level = level + 1
+			local function drain()
+				while #tag_queue > 0 do
+					local tag = table.remove(tag_queue, 1)
+					if not tags[tag] then
+						tags[tag] = level
+						level = level + 1
 
-					if tag_aliases[tag] then
-						for _, alias in ipairs(tag_aliases[tag]) do
-							table.insert(tag_queue, alias)
+						if tag_aliases[tag] then
+							for _, alias in ipairs(tag_aliases[tag]) do
+								table.insert(tag_queue, alias)
+							end
 						end
 					end
 				end
 			end
+
+			for _, tag in ipairs(data.tags or { data.tag }) do
+				table.insert(tag_queue, tag)
+			end
+
+			drain()
+
+			data.tags = tags
+			self.spells[id] = data
+		else
+			self:Printf("|cffffff00Unknown spell: #%s", id)
 		end
-
-		for _, tag in ipairs(data.tags or { data.tag }) do
-			table.insert(tag_queue, tag)
-		end
-
-		drain()
-
-		data.tags = tags
-		self.spells[id] = data
 	end
 end
 
@@ -319,6 +323,10 @@ do
 		return self.used < self:MaxCharges() and self:Invoke("ready", target) ~= false
 	end
 
+	function Cooldown:IsCoolingDown()
+		return GetTime() < self.cooldown
+	end
+
 	function Cooldown:Cooldown()
 		return self:Timings(self.cooldown)
 	end
@@ -463,8 +471,8 @@ do
 			and match(spell.available) then
 				if not cd then
 					cd = Cooldown:New(unit, spell)
-					cd:Emit("FS_COOLDOWNS_GAINED")
 					unit.cooldowns[id] = cd
+					cd:Emit("FS_COOLDOWNS_GAINED")
 				end
 				cd:Update()
 			elseif cd then
