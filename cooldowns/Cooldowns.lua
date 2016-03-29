@@ -75,6 +75,7 @@ function Cooldowns:OnEnable()
 	self:RegisterMessage("FS_ROSTER_LEFT")
 	self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 	self:RegisterEvent("ENCOUNTER_END")
+	self:RegisterMessage("FS_MSG_COOLDOWNS")
 end
 
 function Cooldowns:OnDisable()
@@ -227,7 +228,7 @@ do
 	end
 
 	function Unit:Dispose()
-		for _, cd in self.cooldown do
+		for _, cd in self:IterateCooldowns() do
 			cd:Dispose()
 		end
 	end
@@ -504,15 +505,35 @@ function Cooldowns:FS_ROSTER_LEFT(_, guid)
 	end
 end
 
-function Cooldowns:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, _, source, _, _, _, target, _, _, _, spell, spellname)
-	if event == "SPELL_CAST_SUCCESS" then
-		local unit = self.units[source]
+do
+	local debounce = {}
+
+	local function SpellCasted(source, target, spell, broadcast)
+		local unit = Cooldowns.units[source]
 		if not unit then return end
 
 		local cd = unit.cooldowns[spell]
 		if not cd then return end
 
 		cd:Trigger(target)
+
+		local key = source .. ":" .. target .. ":" .. spell
+		debounce[key] = GetTime()
+
+		if broadcast then
+			FS:Send("COOLDOWNS", { source = source, target = target, spell = spell, key = key }, "RAID")
+		end
+	end
+
+	function Cooldowns:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, _, source, _, _, _, target, _, _, _, spell)
+		if event == "SPELL_CAST_SUCCESS" then SpellCasted(source, target, spell, true) end
+	end
+
+	function Cooldowns:FS_MSG_COOLDOWNS(_, data)
+		local time = debounce[data.key]
+		if not time or (GetTime() - time > 1) then
+			SpellCasted(data.source, data.target, data.spell, false)
+		end
 	end
 end
 
