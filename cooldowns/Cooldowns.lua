@@ -14,9 +14,14 @@ local cooldowns_config = {
 	},
 	desc = {
 		type = "description",
-		name = "Track group members' spell cooldowns.\n",
+		name = "Tracks spells and cooldowns from allied units.\n",
 		fontSize = "medium",
 		order = 1
+	},
+	notice = {
+		type = "description",
+		name = "|cff999999This module only provides low-level tracking for developers.\nIf you want a visual cooldown tracker, take a look at FSCooldowns2.\n",
+		order = 6
 	},
 	ref = {
 		type = "header",
@@ -24,8 +29,33 @@ local cooldowns_config = {
 		order = 1000
 	},
 	docs = FS.Config:MakeDoc("Public API", 2000, {
+		{ ":GetCooldown ( guid , spell ) -> Cooldown", "Returns the cooldowns object for the given spell from the player."},
+		{ ":IsCooldownReady ( guid , spell ) -> boolean", "Checks if a given player can use the requested spell."},
+		{ ":GetUnit ( guid ) -> Unit", "Returns the unit object corresponding to the given player."},
+		{ ":IterateUnits ( ) -> [ guid , Unit ]", "Iterates over every tracked units."},
 	}, "FS.Cooldowns"),
+	unit_api = FS.Config:MakeDoc("Unit API", 2100, {
+		{ ":HasGlyph ( glyphid ) -> boolean", "Checks if the unit has the requested glyph."},
+		{ ":HasTalent ( talentid ) -> boolean", "Checks if the unit has the requested talent."},
+		{ ":UnitID ( ) -> unitid", "Returns the last known unitid for this unit."},
+		{ ":GetCooldown ( spell , target ) -> Cooldown", "Returns the cooldowns object for the given spell."},
+		{ ":IsCooldownReady ( spell , target ) -> boolean", "Checks if the unit can use the requested spell."},
+		{ ":IterateCooldowns ( ) -> [ spellid , Cooldown ]", "Iterates over every cooldown for this unit."},
+	}, "Unit"),
+	cd_api = FS.Config:MakeDoc("Cooldown API", 2200, {
+		{ ":IsActive ( ) -> boolean", "Returns TRUE if this spell effect is still active."},
+		{ ":Duration ( ) -> number, number, number", "Returns elapsed, left and total time information about the active effect of this spell."},
+		{ ":MaxCharges ( ) -> unitid", "Returns the max number of charges available for this spell."},
+		{ ":IsReady ( unitid ) -> boolean", "Returns if this spell can be cast on the given target, optional."},
+		{ ":Cooldown ( ) -> number, number, number", "Returns elapsed, left and total time information about the cooldown of this spell."},
+	}, "Cooldown"),
 	events = FS.Config:MakeDoc("Emitted events", 3000, {
+		{ "_GAINED ( guid , spellid )", "Emitted when a unit gains a new spell with a cooldown."},
+		{ "_LOST ( guid , spellid )", "Emitted when a unit loses a spell."},
+		{ "_USED ( guid , spellid , duration )", "Emitted when a unit uses a spell.\nThe duration is the duration of the active effect."},
+		{ "_START ( guid , spellid , cooldown )", "Emitted when a spell's cooldown begins.\nThe cooldown is the duration of the cooldown."},
+		{ "_READY ( guid , spellid )", "Emitted when a spell is ready to be cast again."},
+		{ "_RESET ( guid , spellid )", "Emitted when the cooldown is reset at the end of a raid encounter."},
 	}, "FS_COOLDOWNS")
 }
 
@@ -159,7 +189,7 @@ do
 		return self.infos.lku
 	end
 
-	function Unit:GetCooldown(spell)
+	function Unit:GetCooldown(spell, target)
 		if type(spell) == "number" then
 			return self.cooldowns[spell], 1
 		elseif type(spell) == "string" then
@@ -167,7 +197,7 @@ do
 			for _, cd in self:IterateCooldowns() do
 				local cd_score = cd.spell.tags[spell]
 				if cd_score and (not cooldown or cd_score < score or not ready) then
-					local cd_ready = cd:IsReady()
+					local cd_ready = cd:IsReady(target)
 					if not cooldown or (cd_ready and not ready) or (cd_score < score and cd_ready == ready) then
 						cooldown = cd
 						score = cd_score
@@ -179,10 +209,10 @@ do
 		end
 	end
 
-	function Unit:IsCooldownReady(spell)
-		local cd, score, ready = self:GetCooldown(spell)
+	function Unit:IsCooldownReady(spell, target)
+		local cd, score, ready = self:GetCooldown(spell, target)
 		if not cd then return false, 0 end
-		if ready == nil then ready = cd:IsReady() end
+		if ready == nil then ready = cd:IsReady(target) end
 		return ready, score
 	end
 
@@ -301,6 +331,7 @@ do
 		end
 
 		self:Invoke("onupdate")
+		self:Emit("FS_COOLDOWNS_UPDATE")
 	end
 
 	function Cooldown:CancelTimer()
@@ -374,7 +405,7 @@ do
 
 	function Cooldown:Dispose()
 		self:CancelTimer()
-		self:Emit("FS_COOLDOWNS_LOST", duration)
+		self:Emit("FS_COOLDOWNS_LOST")
 		self:Invoke("ondispose")
 	end
 
@@ -386,7 +417,7 @@ do
 		if not unit then
 			unit = Unit:New(guid, info)
 			self.units[guid] = unit
-		else
+		elseif info then
 			unit.info = info
 		end
 
@@ -447,14 +478,14 @@ end
 -- Query
 -------------------------------------------------------------------------------
 
-function Cooldowns:GetCooldown(guid, spell)
+function Cooldowns:GetCooldown(guid, spell, target)
 	local unit = self:GetUnit(guid)
-	if unit then return unit:GetCooldown(spell) end
+	if unit then return unit:GetCooldown(spell, target) end
 end
 
-function Cooldowns:IsCooldownReady(guid, spell)
+function Cooldowns:IsCooldownReady(guid, spell, target)
 	local unit = self:GetUnit(guid)
-	if unit then return unit:IsCooldownReady(spell) end
+	if unit then return unit:IsCooldownReady(spell, target) end
 end
 
 -------------------------------------------------------------------------------
@@ -488,5 +519,11 @@ end
 function Cooldowns:ENCOUNTER_END()
 	for guid, unit in Cooldowns:IterateUnits() do
 		unit:Reset()
+	end
+end
+
+function Cooldowns:UpdateAll()
+	for guid, unit in Cooldowns:IterateUnits() do
+		self:UpdateUnit(guid)
 	end
 end

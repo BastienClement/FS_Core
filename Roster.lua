@@ -15,7 +15,7 @@ local roster_config = {
 	},
 	desc = {
 		type = "description",
-		name = "Track group members' specs and talents.\n",
+		name = "Tracks spec and talents from allied units.\n",
 		fontSize = "medium",
 		order = 1
 	},
