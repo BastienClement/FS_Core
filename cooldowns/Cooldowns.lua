@@ -148,11 +148,11 @@ do
 	end
 
 	function Unit:HasGlyph(gid)
-		return self.infos.glyphs[gid] ~= nil
+		return self.info.glyphs[gid] ~= nil
 	end
 
 	function Unit:HasTalent(tid)
-		return self.infos.talents[tid] ~= nil
+		return self.info.talents[tid] ~= nil
 	end
 
 	function Unit:UnitID()
@@ -416,9 +416,6 @@ do
 				-- Must match one key of the table
 				return value[criterion] ~= nil
 			else
-				if not (criterion == value) then
-					print(criterion, value)
-				end
 				return criterion == value
 			end
 		end
