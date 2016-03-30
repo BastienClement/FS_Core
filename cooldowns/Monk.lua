@@ -1,8 +1,8 @@
 local _, FS = ...
 local Cooldowns = FS:GetModule("Cooldowns")
 
-local SPEC_MIST = 270
 local SPEC_BREW = 0
+local SPEC_MIST = 270
 local SPEC_WIND = 0
 
 Cooldowns:RegisterSpells("MONK", {

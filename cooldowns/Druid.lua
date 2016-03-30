@@ -1,10 +1,10 @@
 local _, FS = ...
 local Cooldowns = FS:GetModule("Cooldowns")
 
-local SPEC_RESTO = 105
-local SPEC_GUARDIAN = 0
-local SPEC_FERAL = 0
 local SPEC_BALANCE = 0
+local SPEC_FERAL = 0
+local SPEC_GUARDIAN = 0
+local SPEC_RESTO = 105
 
 Cooldowns:RegisterSpells("DRUID", {
 	[740] = { -- Tranquility
@@ -29,6 +29,7 @@ Cooldowns:RegisterSpells("DRUID", {
 	},
 	[106898] = { -- Stampeding Roar
 		cooldown = 120,
-		duration = 8
+		duration = 8,
+		alias = 77761 -- Bear
 	},
 })

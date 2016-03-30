@@ -1,9 +1,9 @@
 local _, FS = ...
 local Cooldowns = FS:GetModule("Cooldowns")
 
+local SPEC_ARMS = 71
+local SPEC_FURY = 72
 local SPEC_PROT = 0
-local SPEC_ARMS = 71 -- Maybe swapped
-local SPEC_FURY = 72 -- Maybe swapped
 
 Cooldowns:RegisterSpells("WARRIOR", {
 	[97462] = { -- Rallying Cry

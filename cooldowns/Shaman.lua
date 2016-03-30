@@ -1,9 +1,9 @@
 local _, FS = ...
 local Cooldowns = FS:GetModule("Cooldowns")
 
-local SPEC_RESTO = 264
-local SPEC_ENH = 0
 local SPEC_ELEM = 0
+local SPEC_ENH = 0
+local SPEC_RESTO = 264
 
 Cooldowns:RegisterSpells("SHAMAN", {
 	[108280] = { -- Healing Tide Totem

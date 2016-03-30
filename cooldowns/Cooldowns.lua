@@ -65,6 +65,7 @@ local cooldowns_config = {
 
 Cooldowns.spells = {}
 Cooldowns.units = {}
+Cooldowns.aliases = {}
 
 function Cooldowns:OnInitialize()
 	FS.Config:Register("Cooldowns Tracker", cooldowns_config)
@@ -143,6 +144,16 @@ function Cooldowns:RegisterSpells(class, cooldowns)
 
 			data.tags = tags
 			self.spells[id] = data
+
+			if data.alias then
+				if type(data.alias) == "number" then
+					self.aliases[data.alias] = id
+				elseif type(data.alias) == "table" then
+					for _, alias in ipairs(data.alias) do
+						self.aliases[alias] = id
+					end
+				end
+			end
 		else
 			self:Printf("|cffffff00Unknown spell: #%s", id)
 		end
@@ -196,6 +207,9 @@ do
 
 	function Unit:GetCooldown(spell, target)
 		if type(spell) == "number" then
+			if Cooldowns.aliases[spell] then
+				spell = Cooldowns.aliases[spell]
+			end
 			return self.cooldowns[spell], 1
 		elseif type(spell) == "string" then
 			local cooldown, score, ready
@@ -517,10 +531,10 @@ do
 	local debounce = {}
 
 	local function SpellCasted(source, target, spell, broadcast)
-		local unit = Cooldowns.units[source]
+		local unit = Cooldowns:GetUnit(source)
 		if not unit then return end
 
-		local cd = unit.cooldowns[spell]
+		local cd = unit:GetCooldown(spell)
 		if not cd then return end
 
 		cd:Trigger(target)
