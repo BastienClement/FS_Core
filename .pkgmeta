@@ -1,9 +1,8 @@
 externals:
-	LibStub: svn://svn.wowace.com/wow/libstub/mainline/trunk
-	CallbackHandler-1.0: svn://svn.wowace.com/wow/callbackhandler/mainline/trunk
-	Ace3: svn://svn.wowace.com/wow/ace3/mainline/trunk
-	LibGroupInSpecT-1.1: svn://svn.wowace.com/wow/libgroupinspect/mainline/trunk
-	LibStrataFix: svn://svn.wowace.com/wow/libstratafix/mainline/trunk
-	LibSharedMedia-3.0: svn://svn.wowace.com/wow/libsharedmedia-3-0/mainline/trunk
-	AceGUI-3.0-SharedMediaWidgets: svn://svn.wowace.com/wow/ace-gui-3-0-shared-media-widgets/mainline/trunk
-	LibCompress: svn://svn.wowace.com/wow/libcompress/mainline/trunk
+	libs/Ace3: svn://svn.wowace.com/wow/ace3/mainline/trunk
+	libs/LibGroupInSpecT-1.1: svn://svn.wowace.com/wow/libgroupinspect/mainline/trunk
+	libs/LibStrataFix: svn://svn.wowace.com/wow/libstratafix/mainline/trunk
+	libs/LibSharedMedia-3.0: svn://svn.wowace.com/wow/libsharedmedia-3-0/mainline/trunk
+	libs/AceGUI-3.0-SharedMediaWidgets: svn://svn.wowace.com/wow/ace-gui-3-0-shared-media-widgets/mainline/trunk
+	libs/LibCompress: svn://svn.wowace.com/wow/libcompress/mainline/trunk
+	libs/LibDualSpec-1.0: git://git.wowace.com/wow/libdualspec-1-0/mainline.git
