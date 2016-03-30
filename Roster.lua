@@ -25,7 +25,7 @@ local roster_config = {
 		order = 1000
 	},
 	docs = FS.Config:MakeDoc("Public API", 2000, {
-		{":Iterate ( sorted ) -> [ unit ]", "Returns an iterator over the group members.\nIf sorted is given and you are in a raid group, units are sorted by role."},
+		{":Iterate ( sorted , limit ) -> [ unit ]", "Returns an iterator over the group members.\nIf sorted is given and you are in a raid group, units are sorted by role."},
 		{":GetUnit ( guid ) -> unit", "Returns the unitid for a given GUID, if known."},
 		{":GetInfo ( guid ) -> InfoTable", "Returns talents and glyphs information for a player. See LibGroupInSpec_T for more information."}
 	}, "FS.Roster"),
@@ -82,33 +82,36 @@ do
 		end
 	end
 
-	local function raid_iterator(sorted)
-		local i = 0
-		local limit = 40
+	local function raid_iterator(sorted, limit)
 		local order
+
+		if type(limit) ~= "number" then
+			limit = 40
+		end
 
 		if sorted then
 			order = {}
-			local role = {}
-			local idx = {}
+			local roles = {}
+			local indices = {}
 
-			for unit, idx in Roster:IterateRoster() do
+			for unit, idx in Roster:Iterate() do
 				table.insert(order, unit)
 				local info = Roster:GetInfo(UnitGUID(unit))
-				role[unit] = info and info.spec_role_detailed or "unknown"
-				idx[unit] = idx
+				roles[unit] = info and info.spec_role_detailed or "unknown"
+				indices[unit] = idx
 			end
 
 			table.sort(order, function(a, b)
-				if role[a] ~= role[b] then
-					return role_order[role[a]] < role_order[role[b]]
+				if roles[a] ~= roles[b] then
+					return role_order[roles[a]] < role_order[roles[b]]
 				else
-					return idx[a] < idx[b]
+					return indices[a] < indices[b]
 				end
 			end)
 		end
 
-		local function it()
+		local i = 0
+		return function()
 			i = i + 1
 			local unit
 
@@ -126,29 +129,15 @@ do
 				return unit, i
 			end
 		end
-
-		local function check_state()
-			if i ~= 0 then
-				error("Cannot change iterator state once iteration started")
-			end
-		end
-
-		function it:Limit(n)
-			check_state()
-			limit = n
-			return self
-		end
-
-		return it
 	end
 
-	function Roster:Iterate(sorted)
+	function Roster:Iterate(sorted, limit)
 		if not IsInGroup() then
 			return solo_iterator()
 		elseif not IsInRaid() then
 			return party_iterator()
 		else
-			return raid_iterator(sorted)
+			return raid_iterator(sorted, limit)
 		end
 	end
 end
