@@ -12,7 +12,7 @@ do
 		49143, -- Frost Stike
 		49020, -- Obliterate
 		55090, -- Scourge Strike
-		
+
 		-- Druid
 		22568, -- Ferocious Bite
 		5221, -- Shred
@@ -23,7 +23,7 @@ do
 		80313, -- Pulverize
 		22570, -- Maim
 		1822, -- Rake
-		
+
 		-- Monk
 		100780, -- Jab
 		115693, -- Jab
@@ -38,14 +38,14 @@ do
 		107428, -- Rising Sun Kick
 		116095, -- Disable
 		122470, -- Touch of Karma
-		
+
 		-- Paladin
 		35395, -- Crusader Strike
 		96231, -- Rebuke
 		53595, -- Hammer of the Righteous
 		85256, -- Templar's Verdict
 		53600, -- Shield of the Righteousw
-		
+
 		-- Rogue
 		1752, -- Sinister Strike
 		2098, -- Eviscerate
@@ -63,12 +63,12 @@ do
 		1329, -- Mutilate
 		84617, -- Revealing Strike
 		1943, -- Rupture
-		
+
 		-- Shaman
 		73899, -- Primal Strike
 		60103, -- Lava Lash
 		17364, -- Stormstrike
-		
+
 		-- Warrior
 		78, -- Heroic Strike
 		34428, -- Victory Rush
@@ -85,7 +85,7 @@ do
 		6572, -- Revenge
 		100130, -- Wild Strike
 	}
-	
+
 	local aoe = {
 		53595,  -- Hammer of the Righteous
 		106785, -- Swipe
@@ -100,11 +100,11 @@ do
 		6544, -- Heroic Leap
 		46924, -- Blade Storm
 	}
-	
+
 	for i = 1, #melee do
 		MELEE_SPELLS[melee[i]] = true
 	end
-	
+
 	for i = 1, #aoe do
 		SMALL_AOES[aoe[i]] = true
 	end
@@ -128,7 +128,7 @@ local tracker_default = {
 local tracker_config = {
 	title = {
 		type = "description",
-		name = "|cff64b4ffHostile Tracker",
+		name = "|cff64b4ffHostile tracker",
 		fontSize = "large",
 		order = 0
 	},
@@ -200,7 +200,7 @@ local tracker_config = {
 		{":GetUnit ( guid ) -> unitid", "Return a unitid for the given mob, if known."},
 		{":GetPosition ( guid ) -> x , y , good", "Return an estimated position for the given mob, if known.\n" ..
 			"Also return a flag indicating if this estimation is accurate."},
-			
+
 		{":ParseGUID ( guid ) -> ...", "Parse a GUID string and return components."},
 	}, "FS.Tracker"),
 	events = FS.Config:MakeDoc("Emitted events", 3000, {
@@ -217,16 +217,16 @@ local tracker_config = {
 function Tracker:OnInitialize()
 	Distance = FS.Geometry.Distance
 	SmallestEnclosingCircle = FS.Geometry.SmallestEnclosingCircle
-	
+
 	self.db = FS.db:RegisterNamespace("Tracker", tracker_default)
 	self.settings = self.db.profile
-	
+
 	self:SetEnabledState(self.settings.enable)
-	
+
 	self.mobs = {}
 	self.mobs_id = {}
-	
-	FS.Config:Register("Hostile Tracker", tracker_config)
+
+	FS.Config:Register("Hostile tracker", tracker_config)
 end
 
 function Tracker:OnEnable()
@@ -248,7 +248,7 @@ function Tracker:GetMob(guid, timestamp)
 	if not mob and timestamp then
 		local unit_type, zero, s, i, z, m, w = self:ParseGUID(guid)
 		if unit_type ~= "Creature" then return end
-		
+
 		mob = {
 			guid = guid,
 			server = s,
@@ -265,13 +265,13 @@ function Tracker:GetMob(guid, timestamp)
 			near_updated = false,
 			near_last = 0
 		}
-		
+
 		if not self.mobs_id[m] then
 			self.mobs_id[m] = { guid }
 		else
 			table.insert(self.mobs_id[m], guid)
 		end
-		
+
 		self.mobs[guid] = mob
 		self:SendMessage("FS_TRACKER_FOUND", guid, m)
 	elseif timestamp and timestamp > mob.ping then
@@ -283,10 +283,10 @@ end
 function Tracker:RemoveMob(guid)
 	local data = self.mobs[guid]
 	if not data then return end
-	
+
 	local id = data.id
 	self.mobs[guid] = nil
-	
+
 	local list = self.mobs_id[id]
 	for i, g in ipairs(list) do
 		if g == guid then
@@ -294,11 +294,11 @@ function Tracker:RemoveMob(guid)
 			break
 		end
 	end
-	
+
 	if #list == 0 then
 		self.mobs_id[id] = nil
 	end
-	
+
 	self:SendMessage("FS_TRACKER_REMOVE", guid, data.id)
 end
 
@@ -333,7 +333,7 @@ end
 function Tracker:GetUnit(guid, mob)
 	if not mob then mob = self:GetMob(guid) end
 	if not mob then return end
-	
+
 	for unit in pairs(mob.unitids) do
 		if UnitGUID(unit) == guid then
 			return unit
@@ -345,11 +345,11 @@ end
 
 do
 	local S = {}
-	
+
 	local function S_Accessor(i)
 		return S[i].x, S[i].y
 	end
-	
+
 	local function purge(max_dist, x, y)
 		-- Check points too far away
 		local updated = false
@@ -359,16 +359,16 @@ do
 				updated = true
 			end
 		end
-		
+
 		return updated
 	end
-	
+
 	local function ComputePosition(guid, mob, final)
 		local x, y = SmallestEnclosingCircle(S_Accessor, #S)
-		
+
 		-- If this is the last iteration, do not try to enhance the result
 		if final then return x, y end
-		
+
 		-- Attempt to be smart by finding the tank
 		-- We also check that this tank is *near* the target
 		local unitid = Tracker:GetUnit(guid)
@@ -378,7 +378,7 @@ do
 			if target_data then
 				-- Drop unit more than 50% away than the tank
 				local max_dist = max(Distance(target_data.x, target_data.y, x, y), 5) * 1.5
-				
+
 				if purge(max_dist, x, y) then
 					-- At least one unit was removed, recompute
 					return ComputePosition(guid, mob, true)
@@ -387,18 +387,18 @@ do
 				end
 			end
 		end
-		
+
 		-- Be a bit less smart and check based on average distance
 		local sum = 0
 		local count = 0
-		
+
 		for _, data in ipairs(S) do
 			sum = sum + Distance(data.x, data.y, x, y)
 			count = count + 1
 		end
-		
+
 		local max_dist = max((sum / count), 5) * 1.5
-		
+
 		if purge(max_dist, x, y) then
 			-- At least one unit was removed, recompute
 			return ComputePosition(guid, mob, true)
@@ -406,21 +406,21 @@ do
 			return x, y
 		end
 	end
-	
+
 	function Tracker:GetPosition(guid, mob)
 		if not mob then mob = self:GetMob(guid) end
 		if not mob then return end
-		
+
 		if mob.near_updated then
 			local now = GetTime()
 			if now - mob.near_last > 0.1 then
 				-- Register now as last refresh of mob position
 				mob.near_last = now
 				mob.near_updated = false
-				
+
 				-- Wipe the near units set
 				wipe(S)
-				
+
 				for guid, data in pairs(mob.near) do
 					if now - data.t < 3 then
 						S[#S + 1] = data
@@ -428,7 +428,7 @@ do
 						mob.near[guid] = nil
 					end
 				end
-				
+
 				if #S > 0 then
 					mob.near_good = true
 					mob.x, mob.y = ComputePosition(guid, mob)
@@ -437,7 +437,7 @@ do
 				end
 			end
 		end
-			
+
 		return mob.x, mob.y, mob.near_good
 	end
 end
@@ -456,9 +456,9 @@ do
 	local function update_near(near, guid, name, ts)
 		local near_data = near[guid]
 		if near_data and (ts - near_data.t) < 0.5 then return false end
-		
+
 		name = Ambiguate(name, "short")
-		
+
 		if UnitExists(name) then
 			local x, y = UnitPosition(name)
 			if near_data then
@@ -474,10 +474,10 @@ do
 				}
 			end
 		end
-		
+
 		return true
 	end
-	
+
 	function Tracker:SWING_DAMAGE(source, sourceName, _, _, dest, destName)
 		local source_t = self:ParseGUID(source, true)
 		local dest_t = self:ParseGUID(dest, true)
@@ -497,7 +497,7 @@ do
 			end
 		end
 	end
-	
+
 	function Tracker:SPELL_DAMAGE(source, sourceName, _, _, dest, destName, _, _, spell)
 		if not Tracker.settings.use_aoe then return end
 		if SMALL_AOES[spell] then
@@ -532,10 +532,10 @@ Tracker.UNIT_DESTROYED = Tracker.UNIT_DIED
 function Tracker:UNIT_TARGET(_, unit)
 	local target = unit .. "target"
 	if not UnitExists(target) then return end
-	
+
 	local target_guid = UnitGUID(target)
 	local target_type = self:ParseGUID(target_guid, true)
-	
+
 	if target_type == "Creature" then
 		local mob = self:GetMob(target_guid, GetTime())
 		mob.unitids[target] = true

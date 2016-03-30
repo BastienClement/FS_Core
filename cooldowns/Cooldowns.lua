@@ -8,7 +8,7 @@ local Cooldowns = FS:RegisterModule("Cooldowns")
 local cooldowns_config = {
 	title = {
 		type = "description",
-		name = "|cff64b4ffCooldowns Tracker",
+		name = "|cff64b4ffCooldowns tracker",
 		fontSize = "large",
 		order = 0
 	},
@@ -68,7 +68,7 @@ Cooldowns.units = {}
 Cooldowns.aliases = {}
 
 function Cooldowns:OnInitialize()
-	FS.Config:Register("Cooldowns Tracker", cooldowns_config)
+	FS.Config:Register("Cooldowns tracker", cooldowns_config)
 end
 
 function Cooldowns:OnEnable()

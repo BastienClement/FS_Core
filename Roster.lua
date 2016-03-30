@@ -9,7 +9,7 @@ local LGIST = LibStub:GetLibrary("LibGroupInSpecT-1.1")
 local roster_config = {
 	title = {
 		type = "description",
-		name = "|cff64b4ffRoster Tracker",
+		name = "|cff64b4ffRoster tracker",
 		fontSize = "large",
 		order = 0
 	},
@@ -39,7 +39,7 @@ local roster_config = {
 --------------------------------------------------------------------------------
 
 function Roster:OnInitialize()
-	FS.Config:Register("Roster Tracker", roster_config)
+	FS.Config:Register("Roster tracker", roster_config)
 	self.group = {}
 	LGIST.RegisterCallback(self, "GroupInSpecT_Update", "RosterUpdate")
 	LGIST.RegisterCallback(self, "GroupInSpecT_Remove", "RosterRemove")
