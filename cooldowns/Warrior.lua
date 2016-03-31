@@ -6,6 +6,10 @@ local SPEC_FURY = 72
 local SPEC_PROT = 0
 
 Cooldowns:RegisterSpells("WARRIOR", {
+	[6552] = { -- Pummel
+		cooldown = 15,
+		duration = 4
+	},
 	[97462] = { -- Rallying Cry
 		cooldown = 180,
 		duration = 10,

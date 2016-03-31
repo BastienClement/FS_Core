@@ -26,8 +26,7 @@ Cooldowns:RegisterSpells("PALADIN", {
 	},
 	[642] = { -- Divine Shield
 		cooldown = UnbreakableSpirit(300),
-		duration = 8,
-		tag = "IMMUNE"
+		duration = 8
 	},
 	[1044] = { -- Hand of Freedom
 		cooldown = 25,

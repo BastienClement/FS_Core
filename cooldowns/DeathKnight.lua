@@ -15,4 +15,16 @@ Cooldowns:RegisterSpells("DEATHKNIGHT", {
 		cooldown = 60,
 		talent = 19230
 	},
+	[49576] = { -- Death Grip
+		cooldown = 25,
+		duration = 3
+	},
+	[47528] = { -- Mind freeze
+		cooldown = 15,
+		duration = 4
+	},
+	[48707] = { -- Anti-magic shell
+		cooldown = 60,
+		duration = 5
+	},
 })

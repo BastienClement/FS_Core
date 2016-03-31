@@ -6,6 +6,13 @@ local SPEC_MIST = 270
 local SPEC_WIND = 0
 
 Cooldowns:RegisterSpells("MONK", {
+	[119996] = { -- Transcendence: Transert
+		cooldown = 25
+	},
+
+	--
+	-- Mistsweaver
+	--
 	[115310] = { -- Revival
 		cooldown = 180,
 		spec = SPEC_MIST

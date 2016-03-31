@@ -93,9 +93,9 @@ end
 -- to the same spell, this process is recursive.
 local tag_aliases = {
 	["IMMUNE"] = { "IMMUNE_MAGICAL", "IMMUNE_PHYSICAL", "REDUCE_HUGE" },
-	["REDUCE_HUGE"] = { "REDUCE_HUGE_MAGICAL", "REDUCE_HUGE_PHYSICAL", "REDUCE_BIG" },
-	["REDUCE_BIG"] = { "REDUCE_BIG_MAGICAL", "REDUCE_BIG_PHYSICAL", "REDUCE_SMALL" },
-	["REDUCE_SMALL"] = { "REDUCE_SMALL_MAGICAL", "REDUCE_SMALL_PHYSICAL" },
+	["REDUCE_HUGE"] = { "REDUCE_HUGE_MAGICAL", "REDUCE_HUGE_PHYSICAL", "REDUCE_BIG" },  -- 90%
+	["REDUCE_BIG"] = { "REDUCE_BIG_MAGICAL", "REDUCE_BIG_PHYSICAL", "REDUCE_SMALL" }, -- 50%
+	["REDUCE_SMALL"] = { "REDUCE_SMALL_MAGICAL", "REDUCE_SMALL_PHYSICAL" }, -- 30%
 
 	["IMMUNE_MAGICAL"] = { "REDUCE_HUGE_MAGICAL" },
 	["REDUCE_HUGE_MAGICAL"] = { "REDUCE_BIG_MAGICAL" },
@@ -106,6 +106,7 @@ local tag_aliases = {
 	["REDUCE_BIG_PHYSICAL"] = { "REDUCE_SMALL_PHYSICAL" },
 
 	["SILENCE"] = { "INTERRUPT" },
+	["AOE_STUN"] = { "STUN" }
 }
 
 -- Registers a new spell in the tracker database
@@ -183,7 +184,7 @@ function Cooldowns:GetSpell(spell, guid, target)
 		local unit = self:GetUnit(guid)
 		if unit then
 			local cd = unit:GetCooldown(spell, target)
-			return cd and cd:GetSpell() or nil
+			return cd and cd.spell or nil
 		end
 	else
 		return self.spells[spell]
@@ -365,11 +366,12 @@ end
 -- Computes timing informations for both Duration and Cooldown
 function Cooldown:Timings(begin, deadline, which)
 	local time_elapsed, time_left, time_total
+	local now = GetTime()
 
 	if now < deadline then
-		time_left = deadline - GetTime()
+		time_left = deadline - now
 		time_total = deadline - begin
-		time_elapsed = total_time - time_left
+		time_elapsed = time_total - time_left
 	else
 		time_left = 0
 		time_total = 0
@@ -398,16 +400,6 @@ end
 -- Emits a spell event
 function Cooldown:Emit(event, ...)
 	Cooldowns:SendMessage(event, self.unit.guid, self.spell.id, ...)
-end
-
--- Returns the Unit object owning this cooldown
-function Cooldown:Owner()
-	return self.unit
-end
-
--- Returns the spell description table (scoped to this unit)
-function Cooldown:GetSpell()
-	return self.spell
 end
 
 -- Maximum number of charges available for this cooldown
@@ -522,7 +514,7 @@ function Cooldown:Trigger(target, spell, cooldown)
 		local duration = self.spell.duration or 0
 		self.cast = now
 		self.expire = now + duration
-		self:Emit("FS_COOLDOWNS_USED", duration)
+		self:Emit("FS_COOLDOWNS_USED", duration, target, spell)
 
 		-- If the spell was off cooldown, begin the first cooldown
 		if self.used == 1 then
