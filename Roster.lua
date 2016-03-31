@@ -56,10 +56,13 @@ end
 do
 	local role_order = {
 		["tank"] = 1,
+		["TANK"] = 1,
 		["melee"] = 2,
-		["ranged"] = 3,
-		["healer"] = 4,
-		["unknown"] = 5
+		["DAMAGER"] = 3,
+		["ranged"] = 4,
+		["HEALER"] = 5,
+		["healer"] = 5,
+		["unknown"] = 6
 	}
 
 	local function solo_iterator()
@@ -82,7 +85,7 @@ do
 		end
 	end
 
-	local function raid_iterator(sorted, limit)
+	local function raid_iterator(limit, sorted)
 		local order
 
 		if type(limit) ~= "number" then
@@ -94,10 +97,10 @@ do
 			local roles = {}
 			local indices = {}
 
-			for unit, idx in Roster:Iterate() do
+			for unit, idx in Roster:Iterate(limit) do
 				table.insert(order, unit)
 				local info = Roster:GetInfo(UnitGUID(unit))
-				roles[unit] = info and info.spec_role_detailed or "unknown"
+				roles[unit] = info and (info.spec_role_detailed or info.spec_role) or "unknown"
 				indices[unit] = idx
 			end
 
@@ -131,13 +134,13 @@ do
 		end
 	end
 
-	function Roster:Iterate(sorted, limit)
+	function Roster:Iterate(limit, sorted)
 		if not IsInGroup() then
 			return solo_iterator()
 		elseif not IsInRaid() then
 			return party_iterator()
 		else
-			return raid_iterator(sorted, limit)
+			return raid_iterator(limit, sorted)
 		end
 	end
 end
