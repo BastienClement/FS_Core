@@ -659,7 +659,7 @@ do
 		local key = source .. ":" .. target .. ":" .. spell
 		debounce[key] = GetTime()
 
-		if broadcast then
+		if broadcast and IsInGroup() then
 			FS:Send("COOLDOWNS", { source = source, target = target, spell = spell, key = key }, "RAID")
 		end
 	end
