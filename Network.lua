@@ -165,6 +165,7 @@ do
 		["BATTLEGROUND"] = true,
 		["GUILD"] = true,
 		["OFFICER"] = true,
+		["PARTY"] = true,
 		["RAID"] = true,
 		["INSTANCE_CHAT"] = true
 	}
@@ -214,6 +215,14 @@ do
 		-- Fix whisper to GUID
 		if self.guids[target] then
 			target = self.guids[target]
+		end
+
+		-- If channel is RAID in we are in LFG group, fix it
+		-- Use RAID_STRICT to skip this behavior
+		if channel == "RAID" and IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
+			channel = "INSTANCE_CHAT"
+		elseif channel == "RAID_STRICT" then
+			channel = "RAID"
 		end
 
 		-- Serialize and compress data
@@ -373,11 +382,6 @@ do
 		-- Raid or party members
 		if IsInGroup() then
 			Network:Send("$NET", msg, "RAID", "BULK")
-		end
-
-		-- Instance chat
-		if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
-			Network:Send("$NET", msg, "INSTANCE_CHAT", "BULK")
 		end
 
 		-- Ourselves
