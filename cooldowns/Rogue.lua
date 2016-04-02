@@ -1,9 +1,9 @@
 local _, FS = ...
 local Cooldowns = FS:GetModule("Cooldowns")
 
-local SPEC_ASSA = 0
-local SPEC_OUTLAW = 0
-local SPEC_SUB = 0
+local SPEC_ASSASSINATION = 259
+local SPEC_OUTLAW = 260
+local SPEC_SUBTLETY = 261
 
 Cooldowns:RegisterSpells("ROGUE", {
 	[1766] = { -- Kick

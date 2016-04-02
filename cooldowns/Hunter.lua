@@ -1,9 +1,9 @@
 local _, FS = ...
 local Cooldowns = FS:GetModule("Cooldowns")
 
-local SPEC_BEAST = 0
-local SPEC_MARKSMAN = 0
-local SPEC_SURVIVAL = 0
+local SPEC_BEASTMASTER = 253
+local SPEC_MARKMANSHIP = 254
+local SPEC_SURVIVAL = 255
 
 Cooldowns:RegisterSpells("HUNTER", {
 	[5384] = { -- Feign Death

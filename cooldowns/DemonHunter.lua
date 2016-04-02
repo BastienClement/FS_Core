@@ -1,12 +1,12 @@
 local _, FS = ...
 local Cooldowns = FS:GetModule("Cooldowns")
 
-local SPEC_HAVOC = 0
-local SPEC_VENG = 0
-
 if select(4, GetBuildInfo()) < 70000 then
 	return
 end
+
+local SPEC_HAVOC = 577
+local SPEC_VENGEANCE = 581
 
 Cooldowns:RegisterSpells("DEMONHUNTER", {
 	[188499] = { -- Blur

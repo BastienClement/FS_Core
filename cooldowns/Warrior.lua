@@ -3,7 +3,7 @@ local Cooldowns = FS:GetModule("Cooldowns")
 
 local SPEC_ARMS = 71
 local SPEC_FURY = 72
-local SPEC_PROT = 0
+local SPEC_PROTECTION = 73
 
 Cooldowns:RegisterSpells("WARRIOR", {
 	[6552] = { -- Pummel

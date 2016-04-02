@@ -1,9 +1,9 @@
 local _, FS = ...
 local Cooldowns = FS:GetModule("Cooldowns")
 
-local SPEC_ARCANE = 0
-local SPEC_FIRE = 0
-local SPEC_FROST = 0
+local SPEC_ARCANE = 62
+local SPEC_FIRE = 63
+local SPEC_FROST = 64
 
 Cooldowns:RegisterSpells("MAGE", {
 	[45438] = { -- Ice block

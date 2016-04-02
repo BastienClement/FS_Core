@@ -1,10 +1,10 @@
 local _, FS = ...
 local Cooldowns = FS:GetModule("Cooldowns")
 
-local SPEC_BALANCE = 0
-local SPEC_FERAL = 0
-local SPEC_GUARDIAN = 0
-local SPEC_RESTO = 105
+local SPEC_BALANCE = 102
+local SPEC_FERAL = 103
+local SPEC_GUARDIAN = 104
+local SPEC_RESTORATION = 105
 
 Cooldowns:RegisterSpells("DRUID", {
 	[106898] = { -- Stampeding Roar
@@ -23,7 +23,7 @@ Cooldowns:RegisterSpells("DRUID", {
 	[740] = { -- Tranquility
 		cooldown = 180,
 		duration = 8,
-		spec = SPEC_RESTO
+		spec = SPEC_RESTORATION
 	},
 	[33891] = { -- Incarnation: Tree of Life
 		cooldown = 180,
@@ -33,7 +33,7 @@ Cooldowns:RegisterSpells("DRUID", {
 	[102342] = { -- Ironbark
 		cooldown = 60,
 		duration = 12,
-		spec = SPEC_RESTO
+		spec = SPEC_RESTORATION
 	},
 	[124974] = { -- Nature's Vigil
 		cooldown = 90,

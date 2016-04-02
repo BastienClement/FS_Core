@@ -1,9 +1,9 @@
 local _, FS = ...
 local Cooldowns = FS:GetModule("Cooldowns")
 
-local SPEC_BLOOD = 0
-local SPEC_FROST = 0
-local SPEC_UNHOLY = 0
+local SPEC_BLOOD = 250
+local SPEC_FROST = 251
+local SPEC_UNHOLY = 252
 
 Cooldowns:RegisterSpells("DEATHKNIGHT", {
 	[51052] = { -- Anti-Magic Zone

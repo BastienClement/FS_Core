@@ -1,9 +1,9 @@
 local _, FS = ...
 local Cooldowns = FS:GetModule("Cooldowns")
 
-local SPEC_ELEM = 0
-local SPEC_ENH = 0
-local SPEC_RESTO = 264
+local SPEC_ELEMENTAL = 262
+local SPEC_ENHANCEMENT = 263
+local SPEC_RESTORATION = 264
 
 Cooldowns:RegisterSpells("SHAMAN", {
 	[8143] = { -- Tremor Totem
@@ -30,7 +30,7 @@ Cooldowns:RegisterSpells("SHAMAN", {
 	[108280] = { -- Healing Tide Totem
 		cooldown = 180,
 		duration = 10,
-		spec = SPEC_RESTO
+		spec = SPEC_RESTORATION
 	},
 	[98008] = { -- Spirit Link Totem
 		cooldown = 180,
@@ -38,12 +38,12 @@ Cooldowns:RegisterSpells("SHAMAN", {
 		charges = function(unit)
 			return unit:HasTalent(19273) and 2 or 1
 		end,
-		spec = SPEC_RESTO
+		spec = SPEC_RESTORATION
 	},
 	[114052] = { -- Ascendance
 		cooldown = 180,
 		duration = 15,
-		spec = SPEC_RESTO
+		spec = SPEC_RESTORATION
 	},
 	[108281] = { -- Ancestral Guidance
 		cooldown = 120,

@@ -2,8 +2,8 @@ local _, FS = ...
 local Cooldowns = FS:GetModule("Cooldowns")
 
 local SPEC_HOLY = 65
-local SPEC_PROT = 0
-local SPEC_RET  = 0
+local SPEC_PROTECTION = 66
+local SPEC_RETRIBUTION  = 70
 
 local function Clemency(unit)
 	return unit:HasTalent(17593) and 2 or 1
