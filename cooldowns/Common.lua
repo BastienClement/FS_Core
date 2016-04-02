@@ -11,21 +11,18 @@ Cooldowns:RegisterSpells({
 		race = "BloodElf",
 		alias = { 50613, 202719, 80483, 129597, 155145, 25046, 69179 }
 	},
-	[26297] = { -- Berserking
-		cooldown = 180,
-		duration = 10,
-		race = "Troll",
-	},
 	[33697] = { -- Blood Fury
 		cooldown = 120,
 		duration = 15,
 		race = "Orc",
-		alias = { 33702, 20572 }
+		alias = { 33702, 20572 },
+		disabled = true
 	},
 	[20577] = { -- Cannibalize
 		cooldown = 120,
 		duration = 10,
-		race = "Undead"
+		race = "Undead",
+		disabled = true
 	},
 	[68992] = { -- Darkflight
 		cooldown = 120,
@@ -54,15 +51,18 @@ Cooldowns:RegisterSpells({
 	},
 	[69041] = { -- Rocket Barrage
 		cooldown = 90,
-		race = "Goblin"
+		race = "Goblin",
+		disabled = true
 	},
 	[69070] = { -- Rocket Jump
 		cooldown = 90,
-		race = "Goblin"
+		race = "Goblin",
+		disabled = true
 	},
 	[58984] = { -- Shadowmeld
 		cooldown = 120,
-		race = "NightElf"
+		race = "NightElf",
+		disabled = true
 	},
 	[20594] = { -- Stoneform
 		cooldown = 120,

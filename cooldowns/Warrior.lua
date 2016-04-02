@@ -10,11 +10,6 @@ Cooldowns:RegisterSpells("WARRIOR", {
 		cooldown = 15,
 		duration = 4
 	},
-	[97462] = { -- Rallying Cry
-		cooldown = 180,
-		duration = 10,
-		spec = { SPEC_ARMS, SPEC_FURY }
-	},
 	[114030] = { -- Vigilance
 		cooldown = 120,
 		duration = 12,
@@ -23,5 +18,50 @@ Cooldowns:RegisterSpells("WARRIOR", {
 	[3411] = { -- Intervene
 		cooldown = 30,
 		duration = 10
+	},
+	[1719] = { -- Battle Cry
+		cooldown = 60,
+		duration = 5
+	},
+	[18499] = { -- Berserker Rage
+		cooldown = 60,
+		duration = 6
+	},
+
+	-- Fury
+	[184364] = { -- Enraged Regenration
+		cooldown = 120,
+		duration = 8,
+		spec = SPEC_FURY
+	},
+
+	-- Protection
+	[1160] = { -- Demoralizing Shout
+		cooldown = 90,
+		duration = 8,
+		spec = SPEC_PROTECTION
+	},
+	[198304] = { -- Intercept
+		cooldown = 20,
+		duration = 10,
+		spec = SPEC_PROTECTION
+	},
+	[12975] = { -- Last Stand
+		cooldown = 180,
+		duration = 15,
+		spec = SPEC_PROTECTION
+	},
+
+	-- Shared
+	[97462] = { -- Rallying Cry
+		-- Legion: Commanding Shout
+		cooldown = 180,
+		duration = 10,
+		spec = { SPEC_ARMS, SPEC_FURY }
+	},
+	[5246] = { -- Intimidating Shout
+		cooldown = 90,
+		duration = 8,
+		spec = { SPEC_ARMS, SPEC_FURY }
 	},
 })

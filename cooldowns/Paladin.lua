@@ -17,10 +17,8 @@ local function UnbreakableSpirit(base)
 end
 
 Cooldowns:RegisterSpells("PALADIN", {
-	--
-	-- Shared
-	--
 	[498] = { -- Divine Protection
+		-- Legion: not available to Prot
 		cooldown = UnbreakableSpirit(60),
 		duration = 8
 	},
@@ -39,14 +37,17 @@ Cooldowns:RegisterSpells("PALADIN", {
 		charges = Clemency
 	},
 	[6940] = { -- Hand of Sacrifice
+		-- Legion: not available to Prot
 		cooldown = 120,
 		duration = 12,
 		charges = Clemency,
 	},
+	[853] = { -- Hammer of Justice
+		cooldown = 60,
+		duration = 6
+	},
 
-	--
 	-- Holy
-	--
 	[31842] = { -- Avenging Wrath (Holy)
 		cooldown = function(unit)
 			return unit:HasGlyph(162604) and 90 or 180
@@ -58,6 +59,7 @@ Cooldowns:RegisterSpells("PALADIN", {
 		reset = true
 	},
 	[31821] = { -- Devotion Aura
+		-- Legion: Aura Mastery
 		cooldown = 180,
 		duration = 6,
 		spec = SPEC_HOLY
@@ -66,5 +68,70 @@ Cooldowns:RegisterSpells("PALADIN", {
 		cooldown = 30,
 		duration = 6,
 		talent = 17589,
+	},
+
+	-- Protection
+	[31850] = { -- Ardent Defender
+		cooldown = 120,
+		duration = 8,
+		spec = SPEC_PROTECTION
+	},
+	[31935] = { -- Avenger's Shield
+		cooldown = 15,
+		duration = 3,
+		spec = SPEC_PROTECTION
+	},
+	[4987] = { -- Cleanse
+		cooldown = 8,
+		spec = SPEC_HOLY
+	},
+	[190784] = { -- Divine Steed
+		cooldown = 60,
+		duration = 4,
+		spec = SPEC_PROTECTION
+	},
+	[86659] = { -- Guardian of Ancient Kings
+		cooldown = 300,
+		duration = 8, -- TODO
+		spec = SPEC_PROTECTION
+	},
+	[184092] = { -- Light of the Protector
+		cooldown = 15,
+		spec = SPEC_PROTECTION
+	},
+	[53600] = { -- Shield of the Righteous
+		cooldown = 12,
+		duration = 4.5,
+		charges = 3,
+		spec = SPEC_PROTECTION,
+		disabled = true
+	},
+
+	-- Retribution
+	[183218] = { -- Hand of Hindrance
+		cooldown = 30,
+		duration = 10,
+		spec = SPEC_RETRIBUTION
+	},
+	[184662] = { -- Shield of Vemgeance
+		cooldown = 120,
+		duration = 15,
+		spec = SPEC_RETRIBUTION
+	},
+
+	-- Shared
+	[31884] = { -- Avenging Wrath (Prot / Ret)
+		cooldown = 120,
+		duration = 20,
+		spec = { SPEC_PROTECTION, SPEC_RETRIBUTION }
+	},
+	[213644] = { -- Cleanse Toxins
+		cooldown = 8,
+		spec = { SPEC_PROTECTION, SPEC_RETRIBUTION }
+	},
+	[96231] = { -- Rebuke
+		cooldown = 15,
+		duration = 4,
+		spec = { SPEC_PROTECTION, SPEC_RETRIBUTION }
 	},
 })
