@@ -109,6 +109,8 @@ local tag_aliases = {
 	["AOE_STUN"] = { "STUN" }
 }
 
+local LEGION = select(4, GetBuildInfo()) >= 70000
+
 -- Registers a new spell in the tracker database
 function Cooldowns:RegisterSpells(class, cooldowns)
 	-- No class given
@@ -119,7 +121,9 @@ function Cooldowns:RegisterSpells(class, cooldowns)
 
 	for id, data in pairs(cooldowns) do
 		-- Ensure the spell is availabe in this build of the game
-		if GetSpellInfo(id) then
+		if data.disabled or (not LEGION and (id > 178000 or data.legion)) then
+			-- Ignore
+		elseif GetSpellInfo(id) then
 			-- Save the id in the spell definition for later reference
 			data.id = id
 
