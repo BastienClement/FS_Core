@@ -88,4 +88,15 @@ Cooldowns:RegisterSpells("ROGUE", {
 		charges = 1,
 		spec = { SPEC_ASSASSINATION, SPEC_SUBTLETY }
 	},
+
+	-- Talents
+	[185767] = { -- Cannonball Barrage
+		cooldown = 60,
+		duration = 3,
+		talent = true
+	},
+	[195457] = { -- Grappling Hook
+		cooldown = 30,
+		talent = true
+	},
 })

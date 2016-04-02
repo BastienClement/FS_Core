@@ -130,4 +130,44 @@ Cooldowns:RegisterSpells("DRUID", {
 		charges = 2,
 		spec = { SPEC_FERAL, SPEC_GUARDIAN }
 	},
+
+	-- Talents
+	[102280] = { -- Displacer Beast
+		cooldown = 30,
+		duration = 4,
+		talent = true
+	},
+	[205636] = { -- Force of Nature
+		cooldown = 60,
+		duration = 10,
+		talent = true
+	},
+	[204066] = { -- Lunar Beam
+		cooldown = 90,
+		duration = 8,
+		talent = true
+	},
+	[102359] = { -- Mass Entanglement
+		cooldown = 30,
+		duration = 20,
+		talent = true
+	},
+	[5211] = { -- Mighty Bash
+		cooldown = 50,
+		duration = 5,
+		talent = true
+	},
+	[108238] = { -- Renewal
+		cooldown = 120,
+		talent = true
+	},
+	[132469] = { -- Typhoon
+		cooldown = 30,
+		duration = 6,
+		talent = true
+	},
+	[102401] = { -- Wild Charge
+		cooldown = 15,
+		talent = true
+	},
 })

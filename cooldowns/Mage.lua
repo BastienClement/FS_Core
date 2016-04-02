@@ -83,4 +83,35 @@ Cooldowns:RegisterSpells("MAGE", {
 		duration = 20,
 		spec = { SPEC_FIRE, SPEC_FROST }
 	},
+
+	-- Talents
+	[157981] = { -- Blash Wave
+		cooldown = 25,
+		duration = 4,
+		talent = true
+	},
+	[157997] = { -- Ice Nove
+		cooldown = 25,
+		duration = 2,
+		talent = true
+	},
+	[205021] = { -- Ray of Frost
+		cooldown = 60,
+		duration = 10,
+		talent = true
+	},
+	[113724] = { -- Ring of Frost
+		cooldown = 45,
+		duration = 10,
+		talent = true
+	},
+	[116011] = { -- Rune of Power
+		cooldown = 45,
+		duration = 10,
+		talent = true
+	},
+	[157980] = { -- Supernove
+		cooldown = 25,
+		talent = true
+	},
 })

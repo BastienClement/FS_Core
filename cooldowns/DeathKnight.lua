@@ -98,4 +98,72 @@ Cooldowns:RegisterSpells("DEATHKNIGHT", {
 		duration = 8,
 		spec = { SPEC_FROST, SPEC_UNHOLY }
 	},
+
+	-- Talents
+	[108194] = { -- Asphyxiate
+		cooldown = 120,
+		duration = 6,
+		talent = true
+	},
+	[207167] = { -- Blinding Sleet
+		cooldown = 60,
+		duration = 4,
+		talent = true
+	},
+	[207035] = { -- Blood Beasts
+		cooldown = 300,
+		duration = 15,
+		talent = true
+	},
+	[206977] = { -- Blood Mirror
+		cooldown = 120,
+		duration = 10,
+		talent = true
+	},
+	[194844] = { -- Bonestorm
+		cooldown = 60,
+		duration = 6,
+		talent = true
+	},
+	[152279] = { -- Breath of Sindragosa
+		cooldown = 120,
+		duration = 5,
+		talent = true
+	},
+	[206931] = { -- Consume Vitality
+		cooldown = 30,
+		duration = 5,
+		talent = true
+	},
+	[207319] = { -- Corpse Shield
+		cooldown = 60,
+		duration = 10,
+		talent = true
+	},
+	[152280] = { -- Defile
+		cooldown = 30,
+		duration = 10,
+		talent = true
+	},
+	[194837] = { -- Exhume
+		cooldown = 60,
+		duration = 5,
+		talent = true
+	},
+	[194832] = { -- Marhc of the Damned
+		cooldown = 90,
+		duration = 6,
+		talent = true
+	},
+	[206940] = { -- Mark of Blood
+		cooldown = 180,
+		duration = 20,
+		talent = true
+	},
+	[194679] = { -- Rune Tap
+		cooldown = 120,
+		duration = 3,
+		-- You may recast Rune Tap within 3 sec without triggering the full cooldown
+		talent = true
+	},
 })

@@ -76,11 +76,6 @@ Cooldowns:RegisterSpells("SHAMAN", {
 		duration = 15,
 		spec = SPEC_RESTORATION
 	},
-	[108281] = { -- Ancestral Guidance
-		cooldown = 120,
-		duration = 10,
-		talent = 19269
-	},
 	[5394] = { -- Healing Stream Totem
 		cooldown = 30,
 		duration = 15,
@@ -101,5 +96,37 @@ Cooldowns:RegisterSpells("SHAMAN", {
 	[51886] = { -- Cleanse Spirit
 		cooldown = 8,
 		spec = { SPEC_ELEMENTAL, SPEC_ENHANCEMENT }
+	},
+
+	-- Talents
+	[108281] = { -- Ancestral Guidance
+		cooldown = 120,
+		duration = 10,
+		talent = 19269
+	},
+	[207399] = { -- Ancestral Protection Totem
+		cooldown = 300,
+		duration = 30,
+		-- TODO: stop duration on first death
+		talent = true
+	},
+	[198838] = { -- Earthen Shield otem
+		cooldown = 60,
+		duration = 15,
+		talent = true
+	},
+	[51485] = { -- Earthgrab Totem
+		cooldown = 30,
+		duration = 20,
+		talent = true
+	},
+	[197214] = { -- Sundering
+		cooldown = 40,
+		talent = true
+	},
+	[192077] = { -- Wind Rush Totem
+		cooldown = 120,
+		duration = 15,
+		talent = true
 	},
 })

@@ -101,4 +101,58 @@ Cooldowns:RegisterSpells("MONK", {
 		duration = 4,
 		spec = { SPEC_BREWMASTER, SPEC_WINDWALKER }
 	},
+
+	-- Talents
+	[122278] = { -- Dampen Harm
+		cooldown = 120,
+		talent = true
+	},
+	[122783] = { -- Diffuse Magic
+		cooldown = 120,
+		duration = 6,
+		talent = true
+	},
+	[198664] = { -- Invoke Chi-Ji, the Red Crane
+		cooldown = 180,
+		duration = 45,
+		talent = true
+	},
+	[132578] = { -- Invoke Niuzao, the Black Ox
+		cooldown = 180,
+		duration = 45,
+		talent = true
+	},
+	[119381] = { -- Leg Sweep
+		cooldown = 45,
+		duration = 5,
+		talent = true
+	},
+	[197908] = { -- Mana Tea
+		cooldown = 90,
+		duration = 10,
+		talent = true
+	},
+	[197945] = { -- Mistwalk
+		cooldown = 20,
+		talent = true
+	},
+	[116844] = { -- Ring of Peave
+		cooldown = 45,
+		duration = 8,
+		talent = true
+	},
+	[152173] = { -- Serenity
+		cooldown = 90,
+		duration = 10,
+		talent = true
+	},
+	[198898] = { -- Song of Chi-Ji
+		cooldown = 30,
+		talent = true
+	},
+	[116841] = { -- Tiger's List
+		cooldown = 30,
+		duration = 6,
+		talent = true
+	},
 })

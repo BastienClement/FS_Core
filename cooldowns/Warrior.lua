@@ -64,4 +64,28 @@ Cooldowns:RegisterSpells("WARRIOR", {
 		duration = 8,
 		spec = { SPEC_ARMS, SPEC_FURY }
 	},
+
+	-- Talents
+	[107574] = { -- Avatag
+		cooldown = 90,
+		duration = 20,
+		talent = true
+	},
+	[118038] = { -- Bie by the Sword
+		cooldown = 120,
+		duration = 8,
+		-- Replaces Defensive Stance
+		talent = true
+	},
+	[46968] = { -- Shockwave
+		cooldown = 40,
+		duration = 4,
+		-- Cooldown reduced by 20 sec if it strikes at least 3 target
+		talent = true
+	},
+	[107570] = { -- Storm Bolt
+		cooldown = 30,
+		duration = 4,
+		talent = true
+	},
 })

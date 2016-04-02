@@ -134,4 +134,51 @@ Cooldowns:RegisterSpells("PALADIN", {
 		duration = 4,
 		spec = { SPEC_PROTECTION, SPEC_RETRIBUTION }
 	},
+
+	-- Talents
+	[204150] = { -- Aegis of Light
+		cooldown = 300,
+		duration = 6,
+		talent = true
+	},
+	[204013] = { -- Blessing of Salvation
+		cooldown = 60,
+		duration = 10,
+		talent = true
+	},
+	[204018] = { -- Blessing of Spellwarding
+		cooldown = 180,
+		duration = 10,
+		-- Replaces Blessing of Protection
+		talent = true
+	},
+	[115750] = { -- Blinding Light
+		cooldown = 90,
+		duration = 6,
+		talent = true
+	},
+	[205656] = { -- Divine Steed
+		cooldown = 60,
+		duration = 4,
+		talent = true
+	},
+	[210220] = { -- Equality
+		cooldown = 300,
+		talent = true
+	},
+	[114158] = { -- Light's Hammer
+		cooldown = 60,
+		duration = 14,
+		talent = true
+	},
+	[214202] = { -- Rule of Law
+		cooldown = 60,
+		duration = 10,
+		talent = true
+	},
+	[210191] = { -- Word of Glory
+		cooldown = 60,
+		charges = 2,
+		talent = true
+	},
 })

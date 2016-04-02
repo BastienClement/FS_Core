@@ -76,4 +76,40 @@ Cooldowns:RegisterSpells("DEMONHUNTER", {
 		duration = 3,
 		spec = SPEC_VENGEANCE
 	},
+
+	-- Talents
+	[212084] = { -- Fel Devastation
+		cooldown = 60,
+		talent = true
+	},
+	[211881] = { -- Fel Eruption
+		cooldown = 25,
+		duration = 2,
+		talent = true
+	},
+	[213241] = { -- Felblade
+		cooldown = 15,
+		talent = true
+	},
+	[206491] = { -- Nemesis
+		cooldown = 120,
+		duration = 60,
+		talent = true
+	},
+	[207810] = { -- Nether Bond
+		cooldown = 120,
+		duration = 15,
+		talent = true
+	},
+	[196555] = { -- Netherwalk
+		cooldown = 90,
+		duration = 5,
+		-- Replaces Blur
+		talent = true
+	},
+	[207684] = { -- Sigil of Misery
+		cooldown = 60,
+		duration = 2,
+		talent = true
+	},
 })

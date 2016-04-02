@@ -164,6 +164,11 @@ function Cooldowns:RegisterSpells(class, cooldowns)
 
 			data.tags = tags
 
+			if data.talent == true then
+				data.talent_spell = id
+				data.talent = nil
+			end
+
 			-- Register the spell definition
 			self.spells[id] = data
 
@@ -567,7 +572,7 @@ function Cooldowns:UpdateUnit(guid, info)
 	end
 
 	-- Matches spell definition criteria with current unit
-	local function match(criterion, value, op)
+	local function match(criterion, value, key)
 		if criterion == nil then
 			-- No criterion in the spell definition
 			return true
@@ -589,8 +594,19 @@ function Cooldowns:UpdateUnit(guid, info)
 			-- No value to match against
 			return false
 		elseif type(value) == "table" then
-			-- Must match one key of the table
-			return value[criterion] ~= nil
+			if key then
+				-- Must match one value of one subkey
+				for _, candidate in pairs(value) do
+					local candidate_value = candidate[key]
+					if match(criterion, candidate_value) then
+						return true
+					end
+				end
+				return false
+			else
+				-- Must match one key of the table
+				return value[criterion] ~= nil
+			end
 		else
 			return criterion == value
 		end
@@ -604,6 +620,7 @@ function Cooldowns:UpdateUnit(guid, info)
 		and match(spell.spec,   info.global_spec_id)
 		and match(spell.glyph,  info.glyphs)
 		and match(spell.talent, info.talents)
+		and match(spell.talent_spell, info.talents, "spell_id")
 		and match(spell.available) then
 			if not cd then
 				cd = Cooldown:New(unit, spell)

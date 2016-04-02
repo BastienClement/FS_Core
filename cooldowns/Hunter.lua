@@ -96,4 +96,26 @@ Cooldowns:RegisterSpells("HUNTER", {
 		duration = 8,
 		spec = SPEC_RANGED
 	},
+
+	-- Talents
+	[109248] = { -- Binding Shot
+		cooldown = 45,
+		duration = 10,
+		talent = true
+	},
+	[19577] = { -- Intimidation
+		cooldown = 60,
+		duration = 5,
+		talent = true
+	},
+	[200108] = { -- Ranger's Net
+		cooldown = 60,
+		duration = 3,
+		talent = true
+	},
+	[191241] = { -- Sticky Bomb
+		cooldown = 30,
+		duration = 3,
+		talent = true
+	},
 })

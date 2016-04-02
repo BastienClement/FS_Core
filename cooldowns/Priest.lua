@@ -90,4 +90,37 @@ Cooldowns:RegisterSpells("PRIEST", {
 		spec = { SPEC_DISCIPLINE, SPEC_SHADOW },
 		disabled = true
 	},
+
+	-- Talents
+	[200183] = { -- Apotheosis
+		cooldown = 180,
+		duration = 30,
+		talent = true
+	},
+	[10060] = { -- Power Infusion
+		cooldown = 120,
+		duration = 20,
+		talent = true
+	},
+	[204263] = { -- Shining Force
+		cooldown = 60,
+		duration = 3,
+		talent = true
+	},
+	[193223] = { -- Surrender to Madness
+		cooldown = 600,
+		talent = true
+	},
+	[64901] = { -- Symbol of Hope
+		cooldown = 360,
+		duration = 10,
+		talent = true,
+		legion = true
+	},
+	[205369] = { -- Mind Bomb
+		cooldown = 30,
+		duration = 4,
+		-- Replaces Psychic Scream
+		talent = true
+	},
 })

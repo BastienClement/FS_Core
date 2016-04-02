@@ -10,4 +10,26 @@ Cooldowns:RegisterSpells("WARLOCK", {
 		cooldown = 180,
 		duration = 8
 	},
+
+	-- Talents
+	[108416] = { -- Dark Pact
+		cooldown = 60,
+		duration = 20,
+		talent = true
+	},
+	[5484] = { -- Howl of Terror
+		cooldown = 40,
+		duration = 20,
+		talent = true
+	},
+	[6789] = { -- Mortal Coil
+		cooldown = 45,
+		duration = 3,
+		talent = true
+	},
+	[30283] = { -- Shadowfury
+		cooldown = 30,
+		duration = 3,
+		talent = true
+	},
 })
