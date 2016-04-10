@@ -119,6 +119,9 @@ function BW:OnEnable()
 		LoadAddOn("BigWigs_Core")
 		if BigWigs then
 			BigWigs:Enable()
+			BigWigs:RegisterMessage("BigWigs_CoreDisabled", function(...)
+				BigWigs:Enable()
+			end)
 		else
 			BW:Disable()
 		end
