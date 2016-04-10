@@ -62,7 +62,7 @@ do
 		["ranged"] = 4,
 		["HEALER"] = 5,
 		["healer"] = 5,
-		["unknown"] = 6
+		["NONE"] = 6
 	}
 
 	local function solo_iterator()
@@ -100,7 +100,7 @@ do
 			for unit, idx in Roster:Iterate(limit) do
 				table.insert(order, unit)
 				local info = Roster:GetInfo(UnitGUID(unit))
-				roles[unit] = info and (info.spec_role_detailed or info.spec_role) or "unknown"
+				roles[unit] = info and (info.spec_role_detailed or info.spec_role) or UnitGroupRolesAssigned(unit)
 				indices[unit] = idx
 			end
 
