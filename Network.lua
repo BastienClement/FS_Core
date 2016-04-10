@@ -29,6 +29,7 @@ local MSG_ESCAPE = "\004"
 local network_default = {
 	profile = {},
 	global = {
+		disabled = false,
 		burst = false
 	}
 }
@@ -46,9 +47,19 @@ local version_gui = {
 		fontSize = "medium",
 		order = 1,
 	},
+	enable = {
+		type = "toggle",
+		name = "Disable",
+		order = 2,
+		get = function() return Network.settings.disabled end,
+		set = function(_, v)
+			Network.settings.disabled = v
+			Network:Print("Enabling/Disabling the network module requires a /reload to take effect.")
+		end
+	},
 	burst = {
 		type = "toggle",
-		name = "Enable network burst",
+		name = "Network burst",
 		desc = "Increase addon message rate. May cause disconnect.",
 		order = 1.5,
 		get = function() return Network.settings.burst end,
@@ -127,19 +138,21 @@ function Network:OnInitialize()
 	self.db = FS.db:RegisterNamespace("Network", network_default)
 	self.settings = self.db.profile
 
-	RegisterAddonMessagePrefix("FS")
-
 	self.versions = {}
 	self.keys = {}
 	self.guids = {}
 
 	FS:GetModule("Config"):Register("Network", version_gui)
 	FS:GetModule("Config"):Register("Versions", version_check)
+
+	if self.settings.disabled then return end
+	RegisterAddonMessagePrefix("FS")
 end
 
 -- Broadcast version on enable
 function Network:OnEnable()
 	PLAYER_GUID = UnitGUID("player")
+	if self.settings.disabled then return end
 
 	self:RegisterMessage("FS_MSG_$NET", "OnControlMessage")
 	self:RegisterEvent("GROUP_ROSTER_UPDATE", "BroadcastAnnounce")
@@ -173,6 +186,7 @@ do
 	-- Send message to players
 	-- Last arguments can be Priority (string), Multicast (table) or Callback (function)
 	function Network:Send(label, data, channel, a, b, c)
+		if self.settings.disabled then return end
 		local target
 
 		-- Guess prio, multicast and callback from 3 last args
@@ -389,6 +403,7 @@ do
 	end
 
 	function Network:BroadcastAnnounce()
+		if self.settings.disabled then return end
 		if delay then delay:Cancel() end
 		delay = C_Timer.NewTimer(5, do_broadcast)
 	end
@@ -425,6 +440,8 @@ end
 do
 	local request_cooldown = 0
 	function Network:RequestVersions()
+		if self.settings.disabled then return end
+
 		local now = GetTime()
 		if now < request_cooldown then
 			self:Printf("Cannot request version broadcast right now, try again in %s seconds", math.ceil(request_cooldown - now))
