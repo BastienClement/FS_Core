@@ -3,7 +3,7 @@ local BW = FS:RegisterModule("BigWigs")
 
 --------------------------------------------------------------------------------
 -- Spell name and icon extractors
--- Take from BigWigs
+-- Taken from BigWigs
 
 local spells = setmetatable({}, {__index =
 	function(self, key)
@@ -37,13 +37,18 @@ local icons = setmetatable({}, {__index =
 					value = false
 				end
 			end
-		else
+		elseif not key:find("\\") then
 			value = "Interface\\Icons\\" .. key
+		else
+			value = key
 		end
 		self[key] = value
 		return value
 	end
 })
+
+BW.spells = spells
+BW.icons = icons
 
 --------------------------------------------------------------------------------
 -- Config infos
@@ -104,13 +109,13 @@ local bigwigs_config = {
 function BW:OnInitialize()
 	self.db = FS.db:RegisterNamespace("BigWigs", bigwigs_default)
 	self.settings = self.db.profile
-	
+
 	FS:GetModule("Config"):Register("BigWigs", bigwigs_config)
 end
 
 function BW:OnEnable()
 	-- Force BigWigs loading
-	C_Timer.After(15, function()
+	C_Timer.After(0, function()
 		LoadAddOn("BigWigs_Core")
 		if BigWigs then
 			BigWigs:Enable()
@@ -118,7 +123,7 @@ function BW:OnEnable()
 			BW:Disable()
 		end
 	end)
-	
+
 	self:RegisterMessage("FS_MSG_BIGWIGS")
 	self:RegisterEvent("ENCOUNTER_END")
 end
@@ -126,6 +131,8 @@ end
 function BW:ENCOUNTER_END()
 	self:CancelAllActions()
 	self:CloseProximity()
+
+	if not BigWigs then return end
 	BigWigs:SendMessage("BigWigs_StopBars", nil)
 end
 
@@ -140,7 +147,7 @@ do
 		if not key then
 			key = "none"
 		end
-		
+
 		-- The action timer
 		local timer
 		local args = { ... }
@@ -148,15 +155,15 @@ do
 			actions[timer] = nil
 			fn(unpack(args))
 		end)
-		
+
 		-- Register the timer
 		actions[timer] = key
 	end
-	
+
 	function BW:CancelActions(key)
 		-- Timer to cancel
 		local canceling
-		
+
 		-- Search for timer with matching key
 		for timer, akey in pairs(actions) do
 			if akey == key then
@@ -164,10 +171,10 @@ do
 				table.insert(canceling, timer)
 			end
 		end
-		
+
 		-- No timer found
 		if not canceling then return end
-		
+
 		-- Timer to cancel
 		for _, timer in ipairs(canceling) do
 			timer:Cancel()
@@ -186,15 +193,21 @@ end
 --------------------------------------------------------------------------------
 -- BigWigs bindings
 
-function BW:Message(key, msg, color)
+function BW:Message(key, msg, color, sound)
+	if not BigWigs then return end
 	BigWigs:SendMessage("BigWigs_Message", nil, key, msg, color)
+	if sound then self:Sound(key, sound) end
 end
 
-function BW:Emphasized(key, msg, r, g, b)
+function BW:Emphasized(key, msg, r, g, b, sound)
+	if not BigWigs then return end
 	BigWigs:SendMessage("BigWigs_EmphasizedMessage", msg, r, g, b)
+	if sound then self:Sound(key, sound) end
 end
 
+-- Long, Info, Alert, Alarm, Warning
 function BW:Sound(key, sound)
+	if not BigWigs then return end
 	BigWigs:SendMessage("BigWigs_Sound", nil, key, sound)
 end
 
@@ -202,18 +215,30 @@ function BW:Say(key, what, channel, target)
 	SendChatMessage(what, channel or "SAY", nil, target)
 end
 
+function BW:Flash(key)
+	if not BigWigs then return end
+	BigWigs:SendMessage("BigWigs_Flash", nil, key)
+end
+
+function BW:Pulse(key, icon)
+	if not BigWigs then return end
+	BigWigs:SendMessage("BigWigs_Pulse", nil, key, icons[icon])
+end
+
 -- Bars
 do
 	local bar_text = {}
-	
+
 	function BW:Bar(key, length, text, icon)
+		if not BigWigs then return end
+
 		-- Determine bar text
 		local textType = type(text)
 		local text = textType == "string" and text or spells[text or key]
-		
+
 		-- Create BW bar
 		BigWigs:SendMessage("BigWigs_StartBar", nil, key, text, length, icons[icon or textType == "number" and text or key])
-		
+
 		-- Save the text for canceling
 		bar_text[key] = text
 		self:ScheduleAction(key, length, function()
@@ -222,6 +247,7 @@ do
 	end
 
 	function BW:StopBar(key)
+		if not BigWigs then return end
 		local text = bar_text[key] or key
 		BigWigs:SendMessage("BigWigs_StopBar", nil, type(text) == "number" and spells[text] or text)
 	end
@@ -238,6 +264,7 @@ do
 	end
 
 	function BW:Countdown(key, time)
+		if not BigWigs then return end
 		for i = 5, 1, -1 do
 			schedule_number(key, time, i)
 		end
@@ -246,6 +273,7 @@ end
 
 -- Proximity
 function BW:Proximity(key, range, player, isReverse)
+	if not BigWigs then return end
 	if type(key) == "number" then
 		BigWigs:SendMessage("BigWigs_ShowProximity", "fs", range, key, player, isReverse, spells[key], icons[key])
 	else
@@ -254,6 +282,7 @@ function BW:Proximity(key, range, player, isReverse)
 end
 
 function BW:CloseProximity(key)
+	if not BigWigs then return end
 	BigWigs:SendMessage("BigWigs_HideProximity", "fs")
 end
 
@@ -278,7 +307,7 @@ do
 	function BW:FS_MSG_BIGWIGS(_, data, channel, sender)
 		if not self.settings.allow_remote then return end
 		if not FS:UnitIsTrusted(sender) or type(data) ~= "table" then return end
-		
+
 		if type(data[1]) == "table" then
 			for i = 1, #data do
 				schedule_action(data[i])
