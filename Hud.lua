@@ -1047,7 +1047,7 @@ do
 			player_pt:AlwaysVisible(true)
 
 			-- The player point should be drawn over everything else
-			player_pt.frame:SetFrameStrata("HIGH")
+			player_pt.frame:SetFrameStrata("MEDIUM")
 		end
 
 		-- Refresh units of all raid points
