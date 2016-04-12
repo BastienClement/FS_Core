@@ -121,7 +121,7 @@ function Cooldowns:RegisterSpells(class, cooldowns)
 
 	for id, data in pairs(cooldowns) do
 		-- Ensure the spell is availabe in this build of the game
-		if data.disabled or (not LEGION and (id > 178000 or data.legion)) then
+		if data.disabled or (not LEGION and (id > 178000 or data.legion)) or (LEGION and data.legion == false) then
 			-- Ignore
 		elseif GetSpellInfo(id) then
 			-- Save the id in the spell definition for later reference

@@ -8,7 +8,8 @@ local SPEC_RESTORATION = 264
 Cooldowns:RegisterSpells("SHAMAN", {
 	[8143] = { -- Tremor Totem
 		cooldown = 60,
-		duration = 10
+		duration = 10,
+		legion = false
 	},
 	[108271] = { -- Astral Shift
 		cooldown = 90,

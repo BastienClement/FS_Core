@@ -68,6 +68,7 @@ Cooldowns:RegisterSpells("PALADIN", {
 		cooldown = 30,
 		duration = 6,
 		talent = 17589,
+		legion = false
 	},
 
 	-- Protection
