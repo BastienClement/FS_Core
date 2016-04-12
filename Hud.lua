@@ -902,6 +902,7 @@ do
 		pt.guid = guid
 
 		local lx, ly = -1, -1
+		local once_valid = false
 
 		function pt:Position(force)
 			if self.num_attached < 1 and not force then
@@ -910,17 +911,20 @@ do
 
 			local x, y = Tracker:GetPosition(guid)
 			if not x then
-				C_Timer.After(0, function() self:Remove() end)
+				if once_valid then
+					C_Timer.After(0, function() self:Remove() end)
+				end
 				return lx, ly
+			else
+				once_valid = true
 			end
 
-			if lx then
-				local dx = x - lx
-				local dy = y - ly
-				if (dx * dx + dy * dy) < 2500 then
-					x = lx + dx / 5
-					y = ly + dy / 5
-				end
+			local dx = x - lx
+			local dy = y - ly
+
+			if (dx * dx + dy * dy) < 2500 then
+				x = lx + dx / 5
+				y = ly + dy / 5
 			end
 
 			lx, ly = x, y
