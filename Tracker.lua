@@ -232,6 +232,7 @@ end
 function Tracker:OnEnable()
 	self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 	self:RegisterEvent("UNIT_TARGET")
+	self:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 	self.gc = C_Timer.NewTicker(5, function() self:GC() end)
 end
 
@@ -336,7 +337,7 @@ function Tracker:GetUnit(guid, mob)
 	if not mob then return end
 
 	for unit in pairs(mob.unitids) do
-		if UnitGUID(unit) == guid then
+		if UnitExists(unit) and UnitGUID(unit) == guid then
 			return unit
 		else
 			mob.unitids[unit] = nil
@@ -540,5 +541,15 @@ function Tracker:UNIT_TARGET(_, unit)
 	if target_type == "Creature" then
 		local mob = self:GetMob(target_guid, GetTime())
 		mob.unitids[target] = true
+	end
+end
+
+function Tracker:NAME_PLATE_UNIT_ADDED(_, nameplate)
+	local nameplate_guid = UnitGUID(nameplate)
+	local nameplate_type = self:ParseGUID(nameplate_guid, true)
+
+	if nameplate_type == "Creature" then
+		local mob = self:GetMob(nameplate_guid, GetTime())
+		mob.unitids[nameplate] = true
 	end
 end
