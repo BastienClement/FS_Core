@@ -221,22 +221,17 @@ function Encounters:ENCOUNTER_START(_, id, name, diff_id, size)
 	self:Printf("Pulling |cff64b4ff%s |cff999999(%i, %i, %i)", name, id, diff_id, size)
 	encounterInProgress = true
 
-	if self.settings.transcriptor and Transcriptor then
-
-		if self.settings.last_encounter ~= id and self.settings.auto_remove then
-			self.settings.last_encounter = id
-			Transcriptor:ClearAll()
-		end
-		Transcriptor:StartLog()
-	end
-
-	local mods = encounters[id]
-	if not mods then return end
-
 	encounter = id
 	encounterName = name
 	difficulty = diff_id
 	raidSize = size
+
+	if self.settings.transcriptor and Transcriptor then
+		self:TranscriptorStart(id)
+	end
+
+	local mods = encounters[id]
+	if not mods then return end
 
 	self:UpdateData()
 
