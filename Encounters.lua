@@ -1,5 +1,5 @@
 local _, FS = ...
-local Encounters = FS:RegisterModule("Encounters")
+local Encounters = FS:RegisterModule("Encounters", "AceTimer-3.0")
 
 local Roster, Map, Network, BigWigs
 
@@ -20,19 +20,34 @@ local encounters_config = {
 		fontSize = "medium",
 		order = 1
 	},
-	enable = {
+	transcriptor = {
 		type = "toggle",
 		name = "Enable Transcriptor integration",
 		order = 2,
 		width = "full",
 		disabled = function() return not Transcriptor end,
-		get = function() return Encounters.settings.disabled end,
-		set = function(_, v) Encounters.settings.disabled = v end
+		get = function() return Encounters.settings.transcriptor end,
+		set = function(_, v) Encounters.settings.transcriptor = v end
 	},
-	enable_desc = {
+	transcriptor_desc = {
 		type = "description",
 		name = "|cff999999Transcriptor recording will be started and stopped automatically on boss pull / wipe.\n",
 		order = 2.5,
+		width = "full"
+	},
+	autoremove = {
+		type = "toggle",
+		name = "Automatically delete old transcripts",
+		order = 4,
+		width = "full",
+		disabled = function() return not Transcriptor end,
+		get = function() return Encounters.settings.auto_remove end,
+		set = function(_, v) Encounters.settings.auto_remove = v end
+	},
+	autoremove_desc = {
+		type = "description",
+		name = "|cff999999When engaging a new encounter, transcripts from old ones are automatically removed.\n",
+		order = 5,
 		width = "full"
 	},
 	ref = {
@@ -90,6 +105,7 @@ local encounters_config = {
 local encounters_default = {
 	profile = {
 		transcriptor = false,
+		auto_remove = true,
 		last_encounter = 0,
 	}
 }
@@ -120,6 +136,9 @@ local encounters = {}
 local actives = {}
 
 local encounterInProgress = false
+local playerRegenEnabled = true
+local transcriptorLogging = false
+
 local encounter = 0
 local encounterName = ""
 local difficulty = 0
@@ -155,6 +174,9 @@ end
 function Encounters:OnEnable()
 	self:RegisterEvent("ENCOUNTER_START")
 	self:RegisterEvent("ENCOUNTER_END")
+	self:RegisterEvent("BOSS_KILL")
+	self:RegisterEvent("PLAYER_REGEN_ENABLED")
+	self:RegisterEvent("PLAYER_REGEN_DISABLED")
 end
 
 function Encounters:OnDisable()
@@ -191,13 +213,17 @@ function Encounters:UpdateData()
 end
 
 function Encounters:ENCOUNTER_START(_, id, name, diff_id, size)
-	if encounterInProgress then return end
+	if encounterInProgress then
+		-- Fake an ENCOUNTER_END event if a new _START is detected
+		self:ENCOUNTER_END(_, encounter, encounterName, difficulty, raidSize, 0)
+	end
 
 	self:Printf("Pulling |cff64b4ff%s |cff999999(%i, %i, %i)", name, id, diff_id, size)
 	encounterInProgress = true
 
 	if self.settings.transcriptor and Transcriptor then
-		if self.settings.last_encounter ~= id then
+
+		if self.settings.last_encounter ~= id and self.settings.auto_remove then
 			self.settings.last_encounter = id
 			Transcriptor:ClearAll()
 		end
@@ -210,7 +236,7 @@ function Encounters:ENCOUNTER_START(_, id, name, diff_id, size)
 	encounter = id
 	encounterName = name
 	difficulty = diff_id
-	raidSize =
+	raidSize = size
 
 	self:UpdateData()
 
@@ -227,15 +253,8 @@ function Encounters:ENCOUNTER_END(_, id, name, diff_id, size, kill)
 	self:Printf("%s |cff64b4ff%s |cff999999(%i, %i, %i)", kill and "Killed" or "Wiped on", name, id, diff_id, size)
 	encounterInProgress = false
 
-	if self.settings.transcriptor and Transcriptor then
-		local name = Transcriptor:StopLog()
-		if name then
-			local log = Transcriptor:Get(name)
-			if #log.total == 0 or tonumber(log.total[#log.total]:match("^<(.-)%s")) < 30 then
-				Transcriptor:Clear(name)
-				self:Printf("Removed < 30 sec Transcript")
-			end
-		end
+	if transcriptorLogging then
+		self:TranscriptorEnd(true)
 	end
 
 	for mod in pairs(actives) do
@@ -266,6 +285,61 @@ function Encounters:ENCOUNTER_END(_, id, name, diff_id, size, kill)
 	wipe(aceRegistered)
 	wipe(allowedCleu)
 	wipe(allowedMsg)
+end
+
+
+function Encounters:BOSS_KILL(_, id, name)
+	self:ENCOUNTER_END("ENCOUNTER_END", id, name, difficulty, raidSize, 1)
+end
+
+function Encounters:PLAYER_REGEN_DISABLED()
+	playerRegenEnabled = false
+end
+
+function Encounters:PLAYER_REGEN_ENABLED()
+	playerRegenEnabled = true
+	if not encounterInProgress then return end
+	self:ScheduleTimer("CheckForWipe", 2)
+end
+
+function Encounters:CheckForWipe()
+	if not encounterInProgress or not playerRegenEnabled then return end
+	if not IsEncounterInProgress() then
+		self:ENCOUNTER_END("ENCOUNTER_END", encounter, encounterName, difficulty, raidSize, 0)
+	else
+		self:ScheduleTimer("CheckForWipe", 2)
+	end
+end
+
+function Encounters:TranscriptorStart(id)
+	if transcriptorLogging then self:TranscriptorEnd(false) end
+	transcriptorLogging = true
+
+	if self.settings.last_encounter ~= id and self.settings.auto_remove then
+		self.settings.last_encounter = id
+		Transcriptor:ClearAll()
+	end
+
+	Transcriptor:StartLog()
+end
+
+function Encounters:TranscriptorEnd(delayed)
+	if not transcriptorLogging then return end
+	if delayed then
+		C_Timer.After(3, function()
+			self:TranscriptorEnd(false)
+		end)
+	else
+		transcriptorLogging = false
+		local name = Transcriptor:StopLog()
+		if name then
+			local log = Transcriptor:Get(name)
+			if #log.total == 0 or tonumber(log.total[#log.total]:match("^<(.-)%s")) < 30 then
+				Transcriptor:Clear(name)
+				self:Printf("Removed a < 30 sec transcript")
+			end
+		end
+	end
 end
 
 do
