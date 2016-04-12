@@ -319,6 +319,7 @@ end
 
 function Tracker:ParseGUID(guid, only_type)
 	local offset = guid:find("-")
+	if not offset then return guid end
 	local unit_type = guid:sub(1, offset - 1)
 	if only_type then return unit_type end
 	if unit_type == "Player" then
