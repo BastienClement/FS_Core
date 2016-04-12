@@ -4,6 +4,97 @@ local Encounters = FS:RegisterModule("Encounters")
 local Roster, Map, Network, BigWigs
 
 -------------------------------------------------------------------------------
+-- Encounters config
+--------------------------------------------------------------------------------
+
+local encounters_config = {
+	title = {
+		type = "description",
+		name = "|cff64b4ffEncounters",
+		fontSize = "large",
+		order = 0
+	},
+	desc = {
+		type = "description",
+		name = "Framework for building boss encounter mods in Pacman.\n",
+		fontSize = "medium",
+		order = 1
+	},
+	enable = {
+		type = "toggle",
+		name = "Enable Transcriptor integration",
+		order = 2,
+		width = "full",
+		disabled = function() return not Transcriptor end,
+		get = function() return Encounters.settings.disabled end,
+		set = function(_, v) Encounters.settings.disabled = v end
+	},
+	enable_desc = {
+		type = "description",
+		name = "|cff999999Transcriptor recording will be started and stopped automatically on boss pull / wipe.\n",
+		order = 2.5,
+		width = "full"
+	},
+	ref = {
+		type = "header",
+		name = "Module reference",
+		order = 1000
+	},
+	docs = FS.Config:MakeDoc("Public API", 2000, {
+		{":RegisterEncounter ( name , id ) -> mod", "Registers a new boss module bound to the given encounter id. If a new module is registered with the same name, the previous one is remplaced."},
+	}, "FS.Encounters"),
+	events = FS.Config:MakeDoc("Mod API", 3000, {
+		{":OnEngage ( id , name , difficulty , size )", ""},
+		{":OnReset ( kill )", ""},
+		{":CombatLog ( event , handler , [ spells ... ] )", ""},
+		{":Event ( event , handler , [ firstArgs ... ] )", ""},
+		{":Death ( handler , [ mobIds ... ] )", ""},
+		{":NetEvent ( event , handler )", ""},
+		{":AceEvent ( event , handler )", ""},
+		{":Message ( key , msg , color , sound )", ""},
+		{":Emphasized ( key , msg , r , g , b , sound )", ""},
+		{":Sound ( key , sound )", ""},
+		{":Bar ( key , length , text , icon )", ""},
+		{":StopBar ( key )", ""},
+		{":Say ( key , msg , channel , target )", ""},
+		{":Countdown ( key , time )", ""},
+		{":Proximity ( key , range , player , isReverse )", ""},
+		{":CloseProximity ( key )", ""},
+		{":Flash ( key )", ""},
+		{":Pusle ( key , icon )", ""},
+		{":ScheduleAction ( key , delay , fn , ... )", ""},
+		{":CancelAction ( key )", ""},
+		{":CancelAllActions ( )", ""},
+		{":Send ( event , data , target )", ""},
+		{":Emit ( msg , ... )", ""},
+		{":Difficulty ( ) -> number", ""},
+		{":LFR ( ) -> boolean", ""},
+		{":Easy ( ) -> boolean", ""},
+		{":Normal ( ) -> boolean", ""},
+		{":Heroic ( ) -> boolean", ""},
+		{":Mythic ( ) -> boolean", ""},
+		{":RaidSize ( ) -> number", ""},
+		{":MobId ( mobGUID ) -> number", ""},
+		{":Me ( unitGUID ) -> boolean", ""},
+		{":Range ( playerA [, playerB ] ) -> number", ""},
+		{":Role ( [ player ] ) -> tank | healer | melee | ranged", ""},
+		{":Melee ( [ player ] ) -> boolean", ""},
+		{":Ranged ( [ player ] ) -> boolean", ""},
+		{":Tank ( [ player ] ) -> boolean", ""},
+		{":Healer ( [ player ] ) -> boolean", ""},
+		{":Damager ( [ player ] ) -> boolean", ""},
+		{":IterateGroup ( [ limit [, sorted ]] ) -> [ units ]", ""},
+	}, "mod")
+}
+
+local encounters_default = {
+	profile = {
+		transcriptor = false,
+		last_encounter = 0,
+	}
+}
+
+-------------------------------------------------------------------------------
 -- Helpers
 -------------------------------------------------------------------------------
 
@@ -55,6 +146,10 @@ function Encounters:OnInitialize()
 	Map = FS.Map
 	Network = FS.Network
 	BigWigs = FS.BigWigs
+
+	self.db = FS.db:RegisterNamespace("Encounters", encounters_default)
+	self.settings = self.db.profile
+	FS.Config:Register("Encounters", encounters_config)
 end
 
 function Encounters:OnEnable()
@@ -101,6 +196,14 @@ function Encounters:ENCOUNTER_START(_, id, name, diff_id, size)
 	self:Printf("Pulling |cff64b4ff%s |cff999999(%i, %i, %i)", name, id, diff_id, size)
 	encounterInProgress = true
 
+	if self.settings.transcriptor and Transcriptor then
+		if self.settings.last_encounter ~= id then
+			self.settings.last_encounter = id
+			Transcriptor:ClearAll()
+		end
+		Transcriptor:StartLog()
+	end
+
 	local mods = encounters[id]
 	if not mods then return end
 
@@ -123,6 +226,17 @@ function Encounters:ENCOUNTER_END(_, id, name, diff_id, size, kill)
 	kill = kill == 1
 	self:Printf("%s |cff64b4ff%s |cff999999(%i, %i, %i)", kill and "Killed" or "Wiped on", name, id, diff_id, size)
 	encounterInProgress = false
+
+	if self.settings.transcriptor and Transcriptor then
+		local name = Transcriptor:StopLog()
+		if name then
+			local log = Transcriptor:Get(name)
+			if #log.total == 0 or tonumber(log.total[#log.total]:match("^<(.-)%s")) < 30 then
+				Transcriptor:Clear(name)
+				self:Printf("Removed < 30 sec Transcript")
+			end
+		end
+	end
 
 	for mod in pairs(actives) do
 		mod:Reset(kill)
