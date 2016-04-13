@@ -38,6 +38,7 @@ local options = {
 					name = function()
 						return "|cffffd100\nPlayer key:\n|r" .. FS:Wrap(FS:PlayerKey(), 40)
 					end,
+					hidden = true,
 					order = 4
 				}
 			}
@@ -70,29 +71,29 @@ function Config:MakeDoc(title, order, fields, prefix)
 		order = order,
 		args = {}
 	}
-	
+
 	local order = 1
 	for _, field in ipairs(fields) do
 		local title_order = order
 		local desc_order = order + 1
 		order = order + 2
-		
+
 		local title = prefix and "|cffff7d0a" .. prefix or ""
 		title = title .. "|cfffff569" .. field[1]:gsub("[()<>%-%[%],%.]+", "|cffaaaaaa%0|cfffff569")
-		
+
 		output.args["item_" .. title_order] = {
 			type = "description",
 			name = title,
 			fontSize = "medium",
 			order = title_order
 		}
-		
+
 		output.args["item_" .. desc_order] = {
 			type = "description",
 			name = field[2] .. "\n",
 			order = desc_order
 		}
 	end
-	
+
 	return output
 end
