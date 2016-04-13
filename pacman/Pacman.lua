@@ -6,8 +6,10 @@ local AceConfigDialog = LibStub("AceConfigDialog-3.0")
 local AceGUI = LibStub("AceGUI-3.0")
 
 LibStub("AceSerializer-3.0"):Embed(Pacman)
+local Compress = LibStub:GetLibrary("LibCompress")
 
 local Store
+local string_char, bit_band, bit_lshift, bit_rshift = string.char, bit.band, bit.lshift, bit.rshift
 
 -------------------------------------------------------------------------------
 -- Utils
@@ -15,6 +17,85 @@ local Store
 
 function Pacman.printf(str, ...)
 	print(("|cffffd200" .. str):format(...))
+end
+
+local bytetoB64 = {
+	[0]="a","b","c","d","e","f","g","h",
+	"i","j","k","l","m","n","o","p",
+	"q","r","s","t","u","v","w","x",
+	"y","z","A","B","C","D","E","F",
+	"G","H","I","J","K","L","M","N",
+	"O","P","Q","R","S","T","U","V",
+	"W","X","Y","Z","0","1","2","3",
+	"4","5","6","7","8","9","(",")"
+}
+
+local B64tobyte = {
+	a =  0,  b =  1,  c =  2,  d =  3,  e =  4,  f =  5,  g =  6,  h =  7,
+	i =  8,  j =  9,  k = 10,  l = 11,  m = 12,  n = 13,  o = 14,  p = 15,
+	q = 16,  r = 17,  s = 18,  t = 19,  u = 20,  v = 21,  w = 22,  x = 23,
+	y = 24,  z = 25,  A = 26,  B = 27,  C = 28,  D = 29,  E = 30,  F = 31,
+	G = 32,  H = 33,  I = 34,  J = 35,  K = 36,  L = 37,  M = 38,  N = 39,
+	O = 40,  P = 41,  Q = 42,  R = 43,  S = 44,  T = 45,  U = 46,  V = 47,
+	W = 48,  X = 49,  Y = 50,  Z = 51,["0"]=52,["1"]=53,["2"]=54,["3"]=55,
+	["4"]=56,["5"]=57,["6"]=58,["7"]=59,["8"]=60,["9"]=61,["("]=62,[")"]=63
+}
+
+-- This code is based on the Encode7Bit algorithm from LibCompress
+-- Credit goes to Galmok (galmok@gmail.com)
+local encodeB64Table = {};
+
+local function encodeB64(str)
+	local B64 = encodeB64Table
+	local remainder = 0
+	local remainder_length = 0
+	local encoded_size = 0
+	local l=#str
+	local code
+	for i=1,l do
+		code = str:byte(i)
+		remainder = remainder + bit_lshift(code, remainder_length)
+		remainder_length = remainder_length + 8
+		while(remainder_length) >= 6 do
+			encoded_size = encoded_size + 1
+			B64[encoded_size] = bytetoB64[bit_band(remainder, 63)]
+			remainder = bit_rshift(remainder, 6)
+			remainder_length = remainder_length - 6
+		end
+	end
+	if remainder_length > 0 then
+		encoded_size = encoded_size + 1
+		B64[encoded_size] = bytetoB64[remainder]
+	end
+	return table.concat(B64, "", 1, encoded_size)
+end
+
+local decodeB64Table = {}
+
+local function decodeB64(str)
+	local bit8 = decodeB64Table
+	local decoded_size = 0
+	local ch
+	local i = 1
+	local bitfield_len = 0
+	local bitfield = 0
+	local l = #str
+	while true do
+		if bitfield_len >= 8 then
+			decoded_size = decoded_size + 1
+			bit8[decoded_size] = string_char(bit_band(bitfield, 255))
+			bitfield = bit_rshift(bitfield, 8)
+			bitfield_len = bitfield_len - 8
+		end
+		ch = B64tobyte[str:sub(i, i)]
+		bitfield = bitfield + bit_lshift(ch or 0, bitfield_len)
+		bitfield_len = bitfield_len + 6
+		if i > l then
+			break
+		end
+		i = i + 1
+	end
+	return table.concat(bit8, "", 1, decoded_size)
 end
 
 -------------------------------------------------------------------------------
@@ -139,7 +220,7 @@ local pacman_updates = {
 
 local pacman_new = {
 	name = "Create package",
-	desc = "Create a newp package",
+	desc = "Create a new package",
 	order = 3,
 	type = "group",
 	args = {
@@ -173,12 +254,54 @@ local pacman_new = {
 	}
 }
 
+local import_data = ""
+local pacman_import = {
+	name = "Import package",
+	desc = "Import a package from text data",
+	order = 4,
+	type = "group",
+	args = {
+		title = {
+			type = "description",
+			name = "|cff64b4ffImport package",
+			fontSize = "large",
+			order = 0
+		},
+		source = {
+			order = 2,
+			name = "Package code",
+			type = "input",
+			width = "full",
+			multiline = 20,
+			validate = function(_, src)
+				src = decodeB64(src)
+				src = Compress:Decompress(src)
+				local res, pkg = Pacman:Deserialize(src)
+				import_data = pkg
+				if not res then
+					return "Invalid data"
+				elseif not Store:IsValid(pkg) then
+					return "Invalid package."
+				else
+					local mine = Store:Get(pkg.id)
+					if mine and mine.uuid ~= pkg.uuid then
+						return "A package with this ID already exists."
+					else
+						return true
+					end
+				end
+			end,
+			set = function() Pacman.Updater:Upgrade(import_data) end
+		},
+	}
+}
+
 local pacman_options = {
 	name = "Options",
 	order = 10,
 	type = "group",
 	args = {
-		
+
 	}
 }
 
@@ -198,6 +321,7 @@ local pacman_gui = {
 	packages = pacman_installed,
 	--updates = pacman_updates,
 	new = pacman_new,
+	import = pacman_import,
 	--options = pacman_options
 }
 
@@ -245,13 +369,13 @@ function Pacman:OnInitialize()
 	-- Settings
 	self.db = FS.db:RegisterNamespace("Pacman", pacman_default)
 	self.settings = self.db.profile
-	
+
 	-- Initialize Store
 	Store:OnInitialize()
-	
+
 	-- Profile switch
 	pacman_gui.profile = LibStub("AceDBOptions-3.0"):GetOptionsTable(FS.db)
-	
+
 	-- Register options table
 	AceConfig:RegisterOptionsTable("Pacman", { type = "group", args = pacman_gui })
 	FS.Config:Register("Pacman", pacman_fs_opts)
@@ -260,7 +384,7 @@ end
 function Pacman:OnEnable()
 	self:RegisterMessage("PACMAN_STORE_UPDATED", "UpdatePackageList")
 	Store:OnEnable()
-	
+
 	-- TODO: Remove
 	Pacman.Store = Store
 end
@@ -280,7 +404,7 @@ end
 
 local function create_package_gui(pkg, valid)
 	local own = pkg.author_key == FS:PlayerKey()
-	
+
 	if not valid then
 		return {
 			title = {
@@ -307,8 +431,9 @@ local function create_package_gui(pkg, valid)
 			}
 		}
 	end
-	
+
 	local status = Store:Status(pkg)
+	local exported = false
 	local o
 	o = {
 		title = {
@@ -351,6 +476,81 @@ local function create_package_gui(pkg, valid)
 					"Note that it may use lazy loading to defer actual loading until needed.\n",
 			order = 4
 		},]]
+		operations = {
+			type = "group",
+			inline = true,
+			name = "Operations",
+			order = 11,
+			args = {
+				edit = {
+					type = "execute",
+					name = function() return own and "Edit" or "View" end,
+					desc = "Open the package editor to view and edit its content",
+					order = 0,
+					width = "half",
+					func = function() Pacman.Editor:Open(pkg, not own, pkg.id) end
+				},
+				share = {
+					type = "execute",
+					name = "Share",
+					desc = "Link this package to other players",
+					order = 2,
+					width = "half",
+					hidden = not pkg.flags.Shareable and not own,
+					func = function() Pacman.Updater:SharePackage(pkg) end
+				},
+				export = {
+					type = "execute",
+					name = "Export",
+					desc = "Export this package as text",
+					order = 10,
+					order = 2.5,
+					width = "half",
+					hidden = not pkg.flags.Shareable and not own,
+					func = function() exported = not exported end
+				},
+				update = {
+					type = "execute",
+					name = "Update",
+					desc = "Open the update manager to update, push or view other players' package version",
+					order = 3,
+					width = "half",
+					func = function() Pacman.Updater:Queue("updater", pkg.id) end
+				},
+				remove = {
+					type = "execute",
+					name = "Remove",
+					desc = "Remove this package from your game",
+					order = 10,
+					width = "half",
+					confirm = true,
+					confirmText = "The package '|cff64b4ff" .. pkg.id .. "|r' will be removed",
+					func = function() Store:RemovePackage(pkg) end
+				},
+			}
+		},
+		export = {
+			type = "group",
+			inline = true,
+			name = "Export",
+			order = 15,
+			hidden = function() return not exported or (not pkg.flags.Shareable and not own) end,
+			args = {
+				data = {
+					type = "input",
+					name = "",
+					multiline = true,
+					width = "full",
+					get = function()
+						exported = false
+						local cln = Store:Export(pkg)
+						local serialized = Pacman:Serialize(cln)
+						serialized = Compress:CompressHuffman(serialized)
+						return encodeB64(serialized)
+					end
+				}
+			}
+		},
 		meta = {
 			type = "group",
 			inline = true,
@@ -396,49 +596,6 @@ local function create_package_gui(pkg, valid)
 					fontSize = "small",
 					order = 25
 				}
-			}
-		},
-		operations = {
-			type = "group",
-			inline = true,
-			name = "Operations",
-			order = 11,
-			args = {
-				edit = {
-					type = "execute",
-					name = "Edit",
-					desc = "Open the package editor to view and edit its content.",
-					order = 0,
-					width = "half",
-					func = function() Pacman.Editor:Open(pkg, not own, pkg.id) end
-				},
-				share = {
-					type = "execute",
-					name = "Share",
-					desc = "Link this package to other players.",
-					order = 2,
-					width = "half",
-					hidden = not pkg.flags.Shareable and not own,
-					func = function() Pacman.Updater:SharePackage(pkg) end
-				},
-				update = {
-					type = "execute",
-					name = "Update",
-					desc = "Open the update manager to update, push or view other players' package version.",
-					order = 3,
-					width = "half",
-					func = function() Pacman.Updater:Queue("updater", pkg.id) end
-				},
-				remove = {
-					type = "execute",
-					name = "Remove",
-					desc = "Remove this package from your game.",
-					order = 10,
-					width = "half",
-					confirm = true,
-					confirmText = "The package '|cff64b4ff" .. pkg.id .. "|r' will be removed",
-					func = function() Store:RemovePackage(pkg) end
-				},
 			}
 		},
 		trusted = {
@@ -520,7 +677,7 @@ local function create_package_gui(pkg, valid)
 			}
 		}
 	}
-	
+
 	if pkg.flags.Configurable and status.loaded then
 		local env = Pacman.Sandbox:GetEnvironment(pkg)
 		local conf_table = env.locals.config
@@ -539,14 +696,14 @@ local function create_package_gui(pkg, valid)
 			}]]
 		end
 	end
-	
+
 	return o
 end
 
 function Pacman:UpdatePackageList()
 	local pkgs = {}
 	for k, v in pairs(pacman_installed_base) do pkgs[k] = v end
-	
+
 	local suffix = 0
 	local function push(node, key, pkg, prefix)
 		local head, tail = key:match("([^.]+)%.(.+)")
@@ -564,7 +721,7 @@ function Pacman:UpdatePackageList()
 			push(sub_node.args, tail, pkg, prefix .. head .. ".")
 		else
 			suffix = suffix + 1
-			
+
 			local valid = Store:IsValid(pkg)
 			local color = "|cff999999"
 			if not valid then
@@ -572,7 +729,7 @@ function Pacman:UpdatePackageList()
 			elseif Store:IsEnabled(pkg) then
 				color = "|cff64b4ff"
 			end
-			
+
 			node[key .. suffix] = {
 				type = "group",
 				name = color .. key,
@@ -581,11 +738,11 @@ function Pacman:UpdatePackageList()
 			}
 		end
 	end
-	
+
 	for uuid, pkg in Store:Packages() do
 		push(pkgs, pkg.id, pkg, "")
 	end
-	
+
 	pacman_installed.args = pkgs
 end
 
