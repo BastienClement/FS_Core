@@ -115,6 +115,8 @@ function Sandbox:GetEnvironment(pkg)
 				-- Value returned replace the previous exports
 				Store:UpdateExports(pkg, exports)
 			end
+		else
+			sandbox.load("main.lua", true)
 		end
 	end
 
