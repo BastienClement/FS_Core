@@ -225,10 +225,10 @@ function Sandbox:GetEnvironment(pkg)
 		__index = function(_, k)
 			if k == "_G" then
 				return sandbox
-			elseif k == "_L" then
+			elseif k == "_P" then
 				return locals
 			elseif blocked[k] then
-				return blocked_warn
+				return blocked_warn()
 			elseif override[k] then
 				return override[k]
 			else
