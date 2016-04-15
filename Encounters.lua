@@ -682,6 +682,101 @@ function Module:IterateGroup(...)
 end
 
 -------------------------------------------------------------------------------
+-- Configuration generator
+-------------------------------------------------------------------------------
+
+do
+	local function config_builder(t)
+		local order = 0
+		local builder = {}
+
+		function builder:Add(ct)
+			order = order + 1
+			ct.order = order
+			t["_opt" .. order] = ct
+		end
+
+		return builder
+	end
+
+	function Module:Options(env)
+		local db = env.db
+		if not db.opts then db.opts = {} end
+		local opts = db.opts
+
+		return function(confs)
+			local config = {}
+			env.config = config
+			local builder = config_builder(config)
+
+			-- Options defaults to true
+			for key in pairs(confs) do
+				local optional = key:sub(1, 1) == "_"
+				local default = optional and false or true
+				if optional then key = key:sub(2) end
+
+				if opts[key] == nil then
+					opts[key] = true
+				end
+			end
+
+			-- Build option table
+			for key, data in pairs(confs) do
+				if key:sub(1, 1) == "_" then key = key:sub(2) end
+				local spell, suffix, desc = unpack(data)
+
+				if type(spell) ~= "number" then
+					desc = suffix
+					suffix = spell
+					spell = nil
+				end
+
+				if not desc then
+					desc = suffix
+					suffix = nil
+				end
+
+				local name
+				if spell then
+					local spellname, _, icon = GetSpellInfo(spell)
+					name = (" |T%s:18|t %s"):format(icon, spellname)
+				else
+					name = " " .. suffix
+					suffix = nil
+				end
+
+				if suffix then
+					name = name .. " (" .. suffix .. ")"
+				end
+
+				builder:Add({
+					type = "toggle",
+					name = name,
+					width = "full",
+					desc = GetSpellDescription(spell),
+					get = function() return opts[key] end,
+					set = function(_, v) opts[key] = v end
+				})
+
+				builder:Add({
+					type = "description",
+					name = "|cff999999" .. desc .. "\n"
+				})
+			end
+
+			-- Cleanup
+			for key, value in pairs(opts) do
+				if key:sub(1, 1) == "_" then key = key:sub(2) end
+				if not confs[key] then
+					opts[key] = nil
+				end
+			end
+
+			return opts
+		end
+	end
+end
+-------------------------------------------------------------------------------
 -- Encounter definition
 -------------------------------------------------------------------------------
 
