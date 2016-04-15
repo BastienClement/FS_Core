@@ -623,6 +623,7 @@ function Module:RaidSize()
 end
 
 function Module:MobId(guid)
+	if UnitExists(guid) then guid = UnitGUID(guid) end
 	if not guid then return 1 end
 	local _, _, _, _, _, id = strsplit("-", guid)
 	return tonumber(id) or 1
