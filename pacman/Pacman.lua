@@ -603,6 +603,7 @@ local function create_package_gui(pkg, valid)
 			inline = true,
 			name = "Trusted players",
 			order = 25,
+			hidden = function() return not next(status.global.trusted) end,
 			args = {
 				list = {
 					type = "description",
