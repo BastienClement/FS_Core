@@ -1,7 +1,7 @@
 local _, FS = ...
 local Geometry = FS:RegisterModule("Geometry")
 
-local sin, cos, atan2, abs = math.sin, math.cos, math.atan2
+local sin, cos, atan2 = math.sin, math.cos, math.atan2
 local abs, floor, min, max = math.abs, math.floor, math.min, math.max
 local pi2, pi_2 = math.pi * 2, math.pi / 2
 local Infinity = math.huge
@@ -20,18 +20,18 @@ local function RotatePoint(x, y, a, cx, cy, sina, cosa)
 		x = x - cx
 		y = y - cy
 	end
-	
+
 	if not sina then sina = sin(a) end
 	if not cosa then cosa = cos(a) end
-	
+
 	local rx = x * cosa + y * sina
 	local ry = -x * sina + y * cosa
-	
+
 	if cx and cy then
 		rx = rx + cx
 		ry = ry + cy
 	end
-	
+
 	return rx, ry
 end
 
@@ -44,13 +44,13 @@ end
 local function PointVectorProject(x, y, sx, sy, ex, ey)
 	local dx = ex - sx
 	local dy = ey - sy
-	
+
 	local l2 = Distance(sx, sy, ex, ey, true)
 	local t = ((x - sx) * dx + (y - sy) * dy) / l2
-	
+
 	local px = sx + t * dx
 	local py = sy + t * dy
-	
+
 	return px, py, t, l2
 end
 
@@ -60,16 +60,16 @@ local function PointVectorDistance(x, y, sx, sy, ex, ey, extend)
 	-- 0 -> segment
 	-- 1 -> ray
 	-- 2 -> line
-	
+
 	local px, py, t, l2 = PointVectorProject(x, y, sx, sy, ex, ey)
-		
+
 	-- Outside the vector
 	if l2 < 0.01 or (t < 0 and extend ~= 2) then
 		return Distance(sx, sy, x, y), true
 	elseif t > 1 and extend ~= 1 and extend ~= 2 then
 		return Distance(ex, ey, x, y), true
 	end
-	
+
 	-- On the vector
 	return Distance(x, y, px, py), false
 end
@@ -77,20 +77,20 @@ end
 -- Check if a point is inside a triangle
 local function PointInTriangle(x, y, x1, y1, x2, y2, x3, y3)
 	-- http://stackoverflow.com/a/20861130
-	
+
 	local s = y1 * x3 - x1 * y3 + (y3 - y1) * x + (x1 - x3) * y
 	local t = x1 * y2 - y1 * x2 + (y1 - y2) * x + (x2 - x1) * y
-	
+
 	if (s < 0) ~= (t < 0) then return false end
-	
+
 	local A = -y2 * x3 + y1 * (x3 - x2) + x1 * (y2 - y3) + x2 * y3
-	
+
 	if A < 0 then
 		s = -s
 		t = -t
 		A = -A
 	end
-	
+
 	return s > 0 and t > 0 and (s + t) < A
 end
 
@@ -98,7 +98,7 @@ end
 local function PointInPolygon(x, y, vertex, nvert)
 	-- http://www.ecse.rpi.edu/~wrf/Research/Short_Notes/pnpoly.html
 	local inside = false
-	
+
 	for i = 1, nvert do
 		local ix, iy = vertex(i)
 		local jx, jy = vertex(i - 1)
@@ -106,7 +106,7 @@ local function PointInPolygon(x, y, vertex, nvert)
 			inside = not inside
 		end
 	end
-	
+
 	return inside
 end
 
@@ -115,7 +115,7 @@ local SmallestEnclosingCircle
 do
 	local ws = {}
 	local ws_len = 0
-	
+
 	local function ws_add(x, y)
 		ws_len = ws_len + 1
 		local point = ws[ws_len]
@@ -126,76 +126,76 @@ do
 			ws[ws_len] = { x, y }
 		end
 	end
-	
+
 	local function ws_remove(i)
 		if i < ws_len then
 			ws[i] = ws[ws_len]
 		end
 		ws_len = ws_len - 1
 	end
-	
+
 	local function ws_get(i)
 		local point = ws[i]
 		if not point then return end
 		return point[1], point[2]
 	end
-	
+
 	local cx, cy, cr
-	
+
 	local function is_in_circle(px, py)
 		return cx and Distance(cx, cy, px, py) < cr + 1e-12
 	end
-	
+
 	local function cross_product(x0, y0, x1, y1, x2, y2)
 		return (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0)
 	end
-	
+
 	local function make_circumcircle(ax, ay, bx, by, cx, cy)
 		local d = (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by)) * 2
 		if d == 0 then return end
-		
+
 		local a2 = ax * ax + ay * ay
 		local b2 = bx * bx + by * by
 		local c2 = cx * cx + cy * cy
-		
+
 		local x = (a2 * (by - cy) + b2 * (cy - ay) + c2 * (ay - by)) / d
 		local y = (a2 * (cx - bx) + b2 * (ax - cx) + c2 * (bx - ax)) / d
-		
+
 		return x, y, Distance(x, y, ax, ay)
 	end
-	
+
 	function SmallestEnclosingCircle(point, npts)
 		ws_len = 0
-		
+
 		for i = 1, npts do
 			ws_add(point(i))
 		end
-		
+
 		if npts < 1 then
 			error("You need at least 1 point to compute the smallest enclosing circle")
 		end
-		
+
 		cx = nil
-		
+
 		-- Progressively add points to circle or recompute circle
 		for i = 1, npts do
 			local px, py = ws_get(i)
-			
+
 			if not is_in_circle(px, py) then
 				-- makeCircleOnePoint
 				cx, cy, cr = px, py, 0
-				
+
 				for j = 1, i do
 					local qx, qy = ws_get(j)
-					
+
 					if not is_in_circle(qx, qy) then
 						local _cr = cr
-						
+
 						-- makeDiameter
 						cx = (px + qx) / 2
 						cy = (py + qy) / 2
 						cr = Distance(px, py, qx, qy) / 2
-						
+
 						if _cr > 0 then
 							-- makeCircleTwoPoints
 							local contains_all = true
@@ -206,17 +206,17 @@ do
 									break
 								end
 							end
-							
+
 							if not contains_all then
 								local lx, ly, lr
 								local rx, ry, rr
-								
+
 								for k = 1, j do
 									local tx, ty = ws_get(k)
-									
+
 									local cross = cross_product(px, py, qx, qy, tx, ty)
 									local wx, wy, wr = make_circumcircle(px, py, qx, qy, tx, ty)
-									
+
 									if wx then
 										if cross > 0 and (not lx or cross_product(px, py, qx, qy, wx, wy) > cross_product(px, py, qx, qy, lx, ly)) then
 											lx, ly, lr = wx, wy, wr
@@ -225,7 +225,7 @@ do
 										end
 									end
 								end
-								
+
 								if not rx or (lx and lr <= rr) then
 									cx, cy, cr = lx, ly, lr
 								else
@@ -237,7 +237,7 @@ do
 				end
 			end
 		end
-		
+
 		return cx, cy, cr
 	end
 end
@@ -245,11 +245,11 @@ end
 -- Distance between all points
 local function DistanceBetweenAllPoints(points, squared)
 	local dists = {}
-	
+
 	for i = 1, #points do
 		dists[i] = {}
 	end
-	
+
 	for i = 1, #points do
 		for j = i, #points do
 			local d = Distance(points[i].x, points[i].y, points[j].x, points[j].y, squared)
@@ -257,7 +257,7 @@ local function DistanceBetweenAllPoints(points, squared)
 			dists[j][i] = d
 		end
 	end
-	
+
 	return dists
 end
 
@@ -268,32 +268,32 @@ do
 	local wipe = wipe
 	local tinsert, tremove = table.insert, table.remove
 	local yield, wrap = coroutine.yield, coroutine.wrap
-	
+
 	-- Manage connected components and their active state
 	local function CreateUnionFind(cardinality)
 		local UF = {}
-		
+
 		local component = {}
 		local component_cadinality = {}
-		
+
 		local components_list = {}
 		local active_components = {}
 		local active_count = cardinality
-		
+
 		-- Initialize
 		for i = 1, cardinality do
 			component[i] = i
 			component_cadinality[i] = 1
-			
+
 			components_list[i] = true
 			active_components[i] = true
 		end
-		
+
 		-- Join two vertices in the same component
 		function UF.Union(a, b)
 			ca = component[a]
 			cb = component[b]
-			
+
 			if ca ~= cb then
 				-- Change components
 				for i = 1, cardinality do
@@ -301,10 +301,10 @@ do
 						component[i] = ca
 					end
 				end
-				
+
 				-- Update cardinality
 				component_cadinality[ca] = component_cadinality[ca] + component_cadinality[cb]
-				
+
 				-- Remove old component
 				component_cadinality[cb] = 0
 				if active_components[cb] then
@@ -312,11 +312,11 @@ do
 				end
 				components_list[cb] = nil
 				active_components[cb] = nil
-				
+
 				-- Update active state
 				local ca_active = component_cadinality[ca] % 2 == 1
 				local cur_active = active_components[ca] or false
-				
+
 				if ca_active ~= cur_active then
 					if ca_active then
 						active_components[ca] = true
@@ -328,51 +328,51 @@ do
 				end
 			end
 		end
-		
+
 		-- Return the component ID of a vertex
 		function UF.Component(a)
 			return component[a]
 		end
-		
+
 		-- Return the active status of a component
 		function UF.IsActive(c)
 			return active_components[c] or false
 		end
-		
+
 		-- Return the active status of a component
 		function UF.ComponentCardinality(c)
 			return component_cadinality[c]
 		end
-		
+
 		-- Return the number of active components
 		function UF.ActiveComponents()
 			return active_count
 		end
-		
+
 		-- Iterate over all components
 		function UF.IterateComponents()
 			return pairs(components_list)
 		end
-		
+
 		-- Iterate over all active components
 		function UF.IterateActiveComponents()
 			return pairs(active_components)
 		end
-		
+
 		return UF
 	end
-	
+
 	-- Manage a set of edges (a forest)
 	local function CreateForest(cardinality)
 		local Forest = {}
-		
+
 		local F = {}
 		local P = {}
-		
+
 		for i = 1, cardinality do
 			F[i] = {}
 		end
-		
+
 		-- Add edge to the forest
 		function Forest.Add(i, j)
 			if j > i then i, j = j, i end
@@ -380,13 +380,13 @@ do
 			F[i][j] = true
 			P[#P + 1] = { i, j }
 		end
-		
+
 		-- Check if edge is in the forest
 		function Forest.Has(i, j)
 			if j > i then i, j = j, i end
 			return F[i][j] or false
 		end
-	
+
 		-- Iterator
 		do
 			local function iterator()
@@ -394,22 +394,22 @@ do
 					yield(pair[1], pair[2])
 				end
 			end
-			
+
 			function Forest.Iterate()
 				return wrap(iterator)
 			end
 		end
-		
+
 		-- Add every edge of another forest into this one
 		function Forest.Union(f)
 			for a, b in f.Iterate() do
 				Forest.Add(a, b)
 			end
 		end
-		
+
 		return Forest
 	end
-	
+
 	-- Find shortest path
 	local Dijkstra
 	do
@@ -417,40 +417,40 @@ do
 		local lambda = {}
 		local pred = {}
 		local done = {}
-			
+
 		function Dijkstra(cardinality, start, UF, F, dists)
 			local IsActive, Component, Has = UF.IsActive, UF.Component, F.Has
-			
+
 			wipe(pred)
 			wipe(done)
 			wipe(path)
-			
+
 			for i = 1, cardinality do
 				lambda[i] = i == start and 0 or Infinity
 			end
-			
+
 			local cur = start
 			while cur and (cur == start or Component(cur) == Component(start) or not IsActive(Component(cur))) do
 				done[cur] = true
-				
+
 				local cur_cost = lambda[cur]
 				local cur_dists = dists[cur]
-				
+
 				for i = 1, cardinality do
 					if not done[i] then
 						local cost = Has(cur, i) and 0 or cur_dists[i]
 						local tentative = cur_cost + cost
-						
+
 						if lambda[i] > tentative then
 							lambda[i] = tentative
 							pred[i] = cur
 						end
 					end
 				end
-				
+
 				cur = nil
 				local lambda_min = Infinity
-				
+
 				for i = 1, cardinality do
 					if not done[i] then
 						local lambda_i = lambda[i]
@@ -461,62 +461,62 @@ do
 					end
 				end
 			end
-			
+
 			while cur do
 				tinsert(path, 1, cur)
 				cur = pred[cur]
 			end
-			
+
 			if #path < 2 then
 				error("Path is shorter than 2")
 			end
-			
+
 			return path
 		end
 	end
-	
+
 	-- Find min-weight matching between points
 	function PerfectMinWeightMatching(points, trace)
 		local cardinality = #points
-		
+
 		-- Construct basic structures
 		local dists = DistanceBetweenAllPoints(points, true)
 		local UF = CreateUnionFind(cardinality)
 		local F = CreateForest(cardinality)
-		
+
 		local UF_Union, IterateComponents, Component = UF.Union, UF.IterateComponents, UF.Component
 		local ActiveComponents, IterateActiveComponents = UF.ActiveComponents, UF.IterateActiveComponents
 		local F_Union, F_Iterate = F.Union, F.Iterate
-		
+
 		-- Main loop
 		while ActiveComponents() > 1 do
 			local E = CreateForest(cardinality)
 			local E_Add = E.Add
-			
+
 			for c in IterateActiveComponents() do
 				local p = Dijkstra(#points, c, UF, F, dists)
 				for i = 1, #p - 1 do
 					E_Add(p[i], p[i + 1])
 				end
 			end
-			
+
 			for a, b in E.Iterate() do
 				UF_Union(a, b)
 			end
-			
+
 			F_Union(E)
 		end
-		
+
 		if trace then trace("FOREST", points, F) end
-		
+
 		-- Construct matching
 		local M = CreateForest(cardinality)
 		local M_Add = M.Add
-		
+
 		for c in IterateComponents() do
 			local edges = {}
 			local vertices = {}
-			
+
 			-- Find edges and vertices in the component
 			for a, b in F_Iterate() do
 				if Component(a) == c then
@@ -524,29 +524,29 @@ do
 						tinsert(vertices, a)
 						edges[a] = {}
 					end
-					
+
 					if not edges[b] then
 						tinsert(vertices, b)
 						edges[b] = {}
 					end
-					
+
 					local edge = { a = a, b = b, used = 0 }
 					tinsert(edges[a], edge)
 					tinsert(edges[b], edge)
 				end
 			end
-			
+
 			-- Cardinality of component
 			local card = #vertices
 			local odd = card % 2 == 1
-			
+
 			-- Remove farthest point if odd cardinality
 			-- Only if more than 10 vertices; we have cached matchings for odd cardinalities
 			-- and the result is sometimes better than when removing the farthest leaf.
 			if odd and card > 10 then
 				local farthest, farthest_edge, farthest_other
 				local distance = -1
-				
+
 				for _, vertex in ipairs(vertices) do
 					if #edges[vertex] == 1 then
 						local edge = edges[vertex][1]
@@ -560,19 +560,19 @@ do
 						end
 					end
 				end
-				
+
 				if trace then trace("IGNORED", points, farthest) end
-				
+
 				card = card - 1
 				odd = false
-				
+
 				for i, edge in ipairs(edges[farthest_other]) do
 					if edge == farthest_edge then
 						tremove(edges[farthest_other], i)
 						break
 					end
 				end
-				
+
 				for i, vertex in ipairs(vertices) do
 					if vertex == farthest then
 						tremove(vertices, i)
@@ -580,36 +580,36 @@ do
 					end
 				end
 			end
-			
+
 			-- Single point
 			if card < 2 then
 				-- Ignore
-				
+
 			-- Trivial case
 			elseif card == 2 then
 				M_Add(vertices[1], vertices[2])
-				
+
 			-- Cardinality is low, use brute force
 			elseif card <= 10 then
 				if trace then trace("EXHAUSTIVE_SEARCH", points, card) end
-				
+
 				local best = Infinity
 				local best_matching
-				
+
 				-- Search best matching
 				for i, matching in ipairs(matchings[card]) do
 					local weight = 0
-					
+
 					for i, j in pairs(matching) do
 						weight = weight + dists[vertices[i]][vertices[j]]
 					end
-					
+
 					if weight < best then
 						best = weight
 						best_matching = i
 					end
 				end
-				
+
 				-- Find ignored vertex
 				local search_ignored = odd and trace
 				local ignored
@@ -619,44 +619,44 @@ do
 						ignored[vertices[i]] = true
 					end
 				end
-				
+
 				-- Add edges in matching
 				for i, j in pairs(matchings[card][best_matching]) do
 					local a = vertices[i]
 					local b = vertices[j]
-					
+
 					if search_ignored then
 						ignored[a] = nil
 						ignored[b] = nil
 					end
-					
+
 					M_Add(a, b)
 				end
-				
+
 				if search_ignored then
 					ignored = next(ignored)
 					if ignored then
 						trace("IGNORED", points, ignored)
 					end
 				end
-			
+
 			-- Construct Eulerian cycle and then shortcut into Hamiltonian cycle
 			-- This defines two matchings, take the best of two (approximate solution)
 			else
 				if trace then trace("APPROXIMATING", points, card) end
-				
+
 				local path = {}
 				local visited = {}
-				
+
 				local cur = vertices[1]
 				while cur do
 					if not visited[cur] then
 						tinsert(path, cur)
 						visited[cur] = true
 					end
-					
+
 					local choice_zero, choice_one
-					
+
 					for i, edge in ipairs(edges[cur]) do
 						if edge.used == 0 then
 							choice_zero = edge
@@ -665,49 +665,49 @@ do
 							choice_one = edge
 						end
 					end
-					
+
 					if not choice_zero and not choice_one then
 						break
 					end
-					
+
 					local choice = choice_zero or choice_one
 					choice.used = choice.used + 1
 					cur = choice.a == cur and choice.b or choice.a
 				end
-			
+
 				tinsert(path, vertices[1])
 				if trace then trace("HAMILTONIAN_CYCLE", points, path) end
-				
+
 				-- Compute matching costs
 				local matching_a_cost = 0
 				local matching_b_cost = 0
-				
+
 				for i = 1, #path - 1 do
 					local a = path[i]
 					local b = path[i + 1]
 					local d = dists[a][b]
-					
+
 					if i % 2 == 1 then
 						matching_a_cost = matching_a_cost + d
 					else
 						matching_b_cost = matching_b_cost + d
 					end
 				end
-				
+
 				-- Take best of two
 				local best_choice = matching_a_cost < matching_b_cost and 1 or 0;
-			
+
 				for i = 1, #path - 1 do
 					local a = path[i]
 					local b = path[i + 1]
-					
+
 					if i % 2 == best_choice then
 						M_Add(a, b)
 					end
 				end
 			end
 		end
-		
+
 		-- Return iterator over matching
 		return wrap(function()
 			for a, b in M.Iterate() do
@@ -715,7 +715,7 @@ do
 			end
 		end)
 	end
-	
+
 	-- AUTO-GENERATED
 	matchings = {
 		[3] = {{[1]=2},{[1]=3}},

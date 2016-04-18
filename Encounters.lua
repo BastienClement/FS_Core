@@ -747,7 +747,7 @@ do
 				end
 
 				if suffix then
-					name = name .. " (" .. suffix .. ")"
+					name = name .. " |cffff7d0a(" .. suffix .. ")"
 				end
 
 				builder:Add({
