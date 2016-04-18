@@ -1603,6 +1603,7 @@ do
 		obj.frame.text:SetFont(args.font, args.size, args.outline)
 		obj.frame.text:SetText(text)
 		obj.frame.text:SetTextColor(unpack(args.color))
+		obj.frame.text:ClearAllPoints()
 		obj.frame.text:SetPoint("CENTER", unpack(args.offset))
 		obj.frame.text:Show()
 
