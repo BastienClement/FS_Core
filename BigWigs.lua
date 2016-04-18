@@ -225,7 +225,7 @@ end
 
 function BW:Pulse(key, icon)
 	if not BigWigs then return end
-	BigWigs:SendMessage("BigWigs_Pulse", nil, key, icons[icon])
+	BigWigs:SendMessage("BigWigs_Pulse", nil, key, icons[icon or key])
 end
 
 -- Bars
