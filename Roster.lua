@@ -148,7 +148,13 @@ end
 --------------------------------------------------------------------------------
 
 function Roster:GetUnit(guid)
-	return LGIST:GuidToUnit(guid)
+	local unit = LGIST:GuidToUnit(guid)
+	if unit then return unit end
+	for unit in self:Iterate() do
+		if UnitGUID(unit) == guid then
+			return unit
+		end
+	end
 end
 
 function Roster:GetInfo(guid)
