@@ -54,6 +54,9 @@ local function hud_test()
 	local s2 = Hud:CreateStaticPoint(x+30, y):SetColor(0, 0.8, 0.8, 1)
 	local s3 = Hud:CreateSnapshotPoint("player"):SetColor(0.8, 0.8, 0, 1)
 
+	Hud:DrawText(s1, "Magenta")
+	Hud:DrawText(s2, "Cyan")
+
 	local a1 = Hud:DrawArea(s1, 15)
 	local a2 = Hud:DrawTarget(s2, 10)
 	local a3 = Hud:DrawTimer(s3, 10, 10):SetColor(0.8, 0.8, 0, 0.5)
@@ -111,6 +114,9 @@ local function hud_test()
 			self:SetBorderColor(0.8, 0.4, 0, 0.2)
 		end
 	end
+
+	local color = FS:GetClassColor("player")
+	Hud:DrawText("player", "|c" .. color .. UnitName("player"))
 end
 
 local hud_config = {
@@ -1422,19 +1428,28 @@ end
 
 -- Clear the whole scene
 function Hud:Clear(soft)
+	local pending_remove = {}
+
 	-- Remove all points unrelated to raid units
 	-- This prevent bogus modules to keep invisible points on the scene forever
 	for name, point in self:IteratePoints() do
 		if not point.unit and (not soft or not point.persistent) then
-			point:Remove()
+			table.insert(pending_remove, point)
 		end
+	end
+	for _, point in ipairs(pending_remove) do
+		point:Remove()
 	end
 
 	-- Remove all objects
+	wipe(pending_remove)
 	for obj in self:IterateObjects() do
 		if not soft or not obj.persistent then
-			obj:Remove()
+			table.insert(pending_remove, obj)
 		end
+	end
+	for _, obj in ipairs(pending_remove) do
+		obj:Remove()
 	end
 end
 
@@ -1553,53 +1568,62 @@ function Hud:DrawLine(from, to, width)
 end
 
 -- Text
-function DrawText(center, text, args)
-  local obj = Hud:CreateObject()
+do
+	local defaults = {
+		font = "Fonts\\FRIZQT__.TTF",
+		size = 14,
+		outline = "OUTLINE",
+		color = {1, 1, 1, 1},
+		offset = {0 , 15},
+	}
 
-  local default = {
-    font= "Friz Quadrata TT", 
-    size= 14, 
-    outline= "OUTLINE",
-    color={0.5,0.5,0.5,1.0},
-    offset={0,15},
-  }
+	function Hud:DrawText(center, text, args)
+		local obj = Hud:CreateObject()
 
-  for k,v in pairs(default) do
-    if args[k] == nil then 
-      args[k] = v
-    end
-  end
+		center = obj:UsePoint(center)
+		if not center then return end
 
-  center = obj:UsePoint(center)
-  if not center then return end
-  obj.frame:SetWidth (100)
-  obj.frame:SetHeight(100)
-  if not obj.frame.text then
-    obj.frame.text = obj.frame:CreateFontString(nil, "OVERLAY")
-  end
+		if type(args) ~= "table" then
+			args = defaults
+		else
+			for k, v in pairs(defaults) do
+				if args[k] == nil then
+					args[k] = v
+				end
+			end
+		end
 
-  obj.frame.text:SetFont(args.font, args.size, args.outline)
-  obj.frame.text:SetText(text)
-  obj.frame.text:SetTextColor(unpack(args.color))
-  obj.frame.text:SetPoint("CENTER", unpack(args.offset))
-  obj.frame.text:Show()
+		obj.frame:SetWidth(1)
+		obj.frame:SetHeight(1)
 
-  function obj:Update()
-    if self.OnUpdate then self:OnUpdate() end
-    self.frame:SetPoint("CENTER", center.x, center.y)
-  end
+		if not obj.frame.text then
+			obj.frame.text = obj.frame:CreateFontString(nil, "OVERLAY")
+		end
 
-  function obj:SetText(...)
-    self.frame.text:SetText(...)
-    return self
-  end
+		obj.frame.text:SetFont(args.font, args.size, args.outline)
+		obj.frame.text:SetText(text)
+		obj.frame.text:SetTextColor(unpack(args.color))
+		obj.frame.text:SetPoint("CENTER", unpack(args.offset))
+		obj.frame.text:Show()
 
-  function obj:Remove()
-    self.frame.text:SetText("")
-    self.frame.text:Hide()
-    HudObject.Remove(self)
-  end
-  return obj
+		function obj:Update()
+			if self.OnUpdate then self:OnUpdate() end
+			self.frame:SetPoint("CENTER", center.x, center.y)
+		end
+
+		function obj:SetText(...)
+			self.frame.text:SetText(...)
+			return self
+		end
+
+		function obj:Remove()
+			self.frame.text:SetText("")
+			self.frame.text:Hide()
+			HudObject.Remove(self)
+		end
+
+		return obj
+	end
 end
 
 -- Texture
