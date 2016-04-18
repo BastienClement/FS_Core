@@ -318,6 +318,7 @@ local hud_config = {
 		{":RemoveObject ( name )", "Remove an object with the given name. You must have called object:Register() on it."},
 		{":IterateObjects ( ) -> [ object ]", "Return an iterator over every created ojects."},
 		{":DrawLine ( from , to , width ) -> line_object", "Draw a line between points from and to. Width is optional and defaults to 64."},
+		{":DrawText ( center, text, args ) -> text_object", "Draw a text."},
 		{":DrawTexture ( center , width , height , texture ) -> tex_object", "Draw a texture. If height is not given, texture is supposed to be square."},
 		{":DrawMarker ( center , size , idx ) -> tex_object", "Draw a raid target marker texture with given size in yard."},
 		{":DrawCircle ( center , radius , tex ) -> circle_object", "Draw a circle texture with given radius in yard."},
@@ -1549,6 +1550,56 @@ function Hud:DrawLine(from, to, width)
 	end
 
 	return line
+end
+
+-- Text
+function DrawText(center, text, args)
+  local obj = Hud:CreateObject()
+
+  local default = {
+    font= "Friz Quadrata TT", 
+    size= 14, 
+    outline= "OUTLINE",
+    color={0.5,0.5,0.5,1.0},
+    offset={0,15},
+  }
+
+  for k,v in pairs(default) do
+    if args[k] == nil then 
+      args[k] = v
+    end
+  end
+
+  center = obj:UsePoint(center)
+  if not center then return end
+  obj.frame:SetWidth (100)
+  obj.frame:SetHeight(100)
+  if not obj.frame.text then
+    obj.frame.text = obj.frame:CreateFontString(nil, "OVERLAY")
+  end
+
+  obj.frame.text:SetFont(args.font, args.size, args.outline)
+  obj.frame.text:SetText(text)
+  obj.frame.text:SetTextColor(unpack(args.color))
+  obj.frame.text:SetPoint("CENTER", unpack(args.offset))
+  obj.frame.text:Show()
+
+  function obj:Update()
+    if self.OnUpdate then self:OnUpdate() end
+    self.frame:SetPoint("CENTER", center.x, center.y)
+  end
+
+  function obj:SetText(...)
+    self.frame.text:SetText(...)
+    return self
+  end
+
+  function obj:Remove()
+    self.frame.text:SetText("")
+    self.frame.text:Hide()
+    HudObject.Remove(self)
+  end
+  return obj
 end
 
 -- Texture
