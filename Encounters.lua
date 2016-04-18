@@ -707,23 +707,29 @@ do
 
 		return function(confs)
 			local config = {}
+			local keys = {}
 			env.config = config
 			local builder = config_builder(config)
 
 			-- Options defaults to true
-			for key in pairs(confs) do
-				local optional = key:sub(1, 1) == "_"
-				local default = optional and false or true
-				if optional then key = key:sub(2) end
+			for key, data in pairs(confs) do
+				table.insert(keys, key)
+
+				local default = data.default
+				if default == nil then default = true end
 
 				if opts[key] == nil then
 					opts[key] = true
 				end
 			end
 
+			table.sort(keys, function(a, b)
+				return (confs[a]._order or 0) < (confs[b]._order or 0)
+			end)
+
 			-- Build option table
-			for key, data in pairs(confs) do
-				if key:sub(1, 1) == "_" then key = key:sub(2) end
+			for _, key in ipairs(keys) do
+				local data = confs[key]
 				local spell, suffix, desc = unpack(data)
 
 				if type(spell) ~= "number" then
@@ -766,8 +772,7 @@ do
 			end
 
 			-- Cleanup
-			for key, value in pairs(opts) do
-				if key:sub(1, 1) == "_" then key = key:sub(2) end
+			for _, key in pairs(keys) do
 				if not confs[key] then
 					opts[key] = nil
 				end
@@ -775,6 +780,14 @@ do
 
 			return opts
 		end
+	end
+
+	local opt_counter = 1
+
+	function Module:opt(t)
+		t._order = opt_counter
+		opt_counter = opt_counter + 1
+		return t
 	end
 end
 -------------------------------------------------------------------------------
