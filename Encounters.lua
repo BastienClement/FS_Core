@@ -1,7 +1,7 @@
 local _, FS = ...
 local Encounters = FS:RegisterModule("Encounters", "AceTimer-3.0")
 
-local Roster, Map, Network, BigWigs
+local Roster, Tracker, Map, Network, BigWigs
 
 -------------------------------------------------------------------------------
 -- Encounters config
@@ -162,6 +162,7 @@ local msgBound = false
 
 function Encounters:OnInitialize()
 	Roster = FS.Roster
+	Tracker = FS.Tracker
 	Map = FS.Map
 	Network = FS.Network
 	BigWigs = FS.BigWigs
@@ -620,6 +621,16 @@ end
 
 function Module:RaidSize()
 	return Encounters.raidSize
+end
+
+function Module:UnitId(guid)
+	if UnitExists(guid) then
+		return guid
+	elseif guid:sub(1, 6) == "Player" then
+		return Roster:GetUnit(guid)
+	else
+		return Tracker:GetUnit(guid)
+	end
 end
 
 function Module:MobId(guid)
