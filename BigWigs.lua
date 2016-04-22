@@ -196,9 +196,9 @@ end
 --------------------------------------------------------------------------------
 -- BigWigs bindings
 
-function BW:Message(key, msg, color, sound)
+function BW:Message(key, msg, color, icon, sound)
 	if not BigWigs then return end
-	BigWigs:SendMessage("BigWigs_Message", nil, key, msg, color)
+	BigWigs:SendMessage("BigWigs_Message", nil, key, msg, color, icon and icons[icon])
 	if sound then self:Sound(key, sound) end
 end
 
