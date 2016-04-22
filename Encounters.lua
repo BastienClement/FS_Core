@@ -778,7 +778,7 @@ do
 
 				builder:Add({
 					type = "description",
-					name = "|cff999999" .. desc .. "\n"
+					name = "|cff999999" .. (desc and (desc .. "\n") or "")
 				})
 			end
 
