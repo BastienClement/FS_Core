@@ -46,6 +46,7 @@ BigWigs.lua
 Tracker.lua
 Hud.lua
 Encounters.lua
+Token.lua
 
 cooldowns\Cooldowns.xml
 pacman\Pacman.xml
