@@ -76,11 +76,51 @@ end
 
 --------------------------------------------------------------------------------
 
+local token_config = {
+	title = {
+		type = "description",
+		name = "|cff64b4ffService Token",
+		fontSize = "large",
+		order = 0
+	},
+	desc = {
+		type = "description",
+		name = "Distributed service coordinator election service.\n",
+		fontSize = "medium",
+		order = 1
+	},
+	ref = {
+		type = "header",
+		name = "Module reference",
+		order = 1000
+	},
+	cmds = FS.Config:MakeDoc("Available chat commands", 1900, {
+		{"token", "List active tokens state and owner."},
+	}, "/fs "),
+	docs = FS.Config:MakeDoc("Public API", 2000, {
+		{":Create ( name , level , default , promote ) -> token", "Creates a new service token with the given name. At any given time, only one player in the group can hold a token with a given name. The actual token holder will be selected primarly based on its token level. In the case multiple players have the same token level, the player with the highest game uptime (since last reload) will be elected as the token holder."},
+	}, "FS.Token"),
+	token = FS.Config:MakeDoc("Token API", 3000, {
+		{":IsMine ( ) -> boolean", "Returns true if the player is currently the token holder."},
+		{":Owner ( ) -> guid , name", "Returns the GUID and name of the current token holder."},
+		{":Enable ( )", "Enable this token and participate in the holder election process."},
+		{":Disable ( )", "Disable this token. The player will no longer participate in the holder election process and will release the token if currently owning the token."},
+	}, "token"),
+	events = FS.Config:MakeDoc("Emitted events", 4000, {
+		{"_ACQUIRED ( name , token )", "Emitted when a new holder is elected for the token."},
+		{"_WON ( name , token )", "Emitted when the player is now the holder of a token."},
+		{"_LOST ( name , token )", "Emitted when the player is no longer the holder of a token."},
+	}, "FS_TOKEN")
+}
+
+--------------------------------------------------------------------------------
+
 function Token:OnInitialize()
 	Network = FS.Network
 	Roster = FS.Roster
 	Console = FS.Console
 	Console:RegisterCommand("token", self)
+	FS.Config:Register("Service Token", token_config)
 end
 
 function Token:OnEnable()
