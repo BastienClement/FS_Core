@@ -1,10 +1,11 @@
 local _, FS = ...
 local Token = FS:RegisterModule("Token", "AceTimer-3.0")
-local Network, Console
+local Network, Console, Roster
 
 -- Player's GUID
 local PLAYER_GUID
 local PLAYER_NAME
+local PLAYER_ZONE
 
 -- Defined tokens
 local tokens = {}
@@ -24,6 +25,12 @@ local id = {
 	dev  = FS.version == "dev",
 	guid = "Player-?"
 }
+
+-- Track solo status
+local is_solo = true
+
+-- Zone statistics
+local most_common_zone = 0
 
 -- States
 local STATE_DISABLED    = 1 -- Token is disabled and completely ignored
@@ -71,6 +78,7 @@ end
 
 function Token:OnInitialize()
 	Network = FS.Network
+	Roster = FS.Roster
 	Console = FS.Console
 	Console:RegisterCommand("token", self)
 end
@@ -88,7 +96,13 @@ function Token:OnEnable()
 	self:RegisterMessage("FS_MSG_TOKEN")
 
 	-- Check group composition change
-	self:RegisterEvent("GROUP_ROSTER_UPDATE")
+	self:RegisterEvent("GROUP_ROSTER_UPDATE", "UpdateAcquirable")
+
+	-- Check entering / exiting instances
+	self:RegisterEvent("ZONE_CHANGED_NEW_AREA", "UpdateAcquirable")
+
+	-- Force an initial check
+	self:UpdateAcquirable()
 end
 
 function Token:EnableToken(token)
@@ -96,10 +110,9 @@ function Token:EnableToken(token)
 	enabled_count = enabled_count + 1
 
 	if enabled_count == 1 then
-		-- Periodically flush buffers
 		self:ScheduleRepeatingTimer("FlushBuffers", 1)
-		-- Check token owner liveness
-		self:ScheduleRepeatingTimer("CheckLiveness", 15)
+		self:ScheduleRepeatingTimer("BroadcastHeartbeat", 15)
+		self:ScheduleRepeatingTimer("CheckLiveness", 5)
 	end
 end
 
@@ -166,8 +179,8 @@ do
 	function Token:FlushBuffers()
 		if #broadcast_buffer > 0 then
 			execute_callback(broadcast_buffer)
-			if IsInGroup() then
-				Network:Send("TOKEN", { packed = broadcast_buffer, id = id }, "RAID")
+			if IsInGroup(LE_PARTY_CATEGORY_HOME) then
+				Network:Send("TOKEN", { packed = broadcast_buffer, id = id }, "RAID_STRICT")
 			end
 			wipe(broadcast_buffer)
 		end
@@ -183,25 +196,52 @@ do
 	end
 end
 
--- Check token owner liveness
-function Token:CheckLiveness()
-	local now = GetTime()
+-- Broadcast token heartbeats
+function Token:BroadcastHeartbeat()
 	for name, token in pairs(enabled) do
-		if token.state == STATE_ACQUIRED then
-			if token:IsMine() then
-				self:Broadcast({ heartbeat = token.id })
-			elseif now - token.ping > 20 then
-				token:Claim()
-			end
+		if token:IsMine() then
+			self:Broadcast({ heartbeat = token.id })
 		end
 	end
 end
 
-function Token:GROUP_ROSTER_UPDATE()
+-- Check token owner liveness
+function Token:CheckLiveness()
+	local now = GetTime()
+	for name, token in pairs(enabled) do
+		if token.state == STATE_ACQUIRED and not token:IsMine() and now - token.ping > 18 then
+			token:Claim()
+		end
+	end
+end
+
+function Token:UpdateAcquirable()
+	PLAYER_ZONE = select(4, UnitPosition("player"))
+
+	local zone_count = {}
+	for unit in Roster:Iterate() do
+		local zone = select(4, UnitPosition(unit))
+		if zone then
+			zone_count[zone] = (zone_count[zone] or 0) + 1
+		end
+	end
+
+	local max_count = 0
+	for zone, count in pairs(zone_count) do
+		if count > max_count or (count == max_count and zone == PLAYER_ZONE) then
+			most_common_zone = zone
+			max_count = count
+		end
+	end
+
+	local in_group = IsInGroup(LE_PARTY_CATEGORY_HOME)
+	local entering_group = is_solo and in_group
+	is_solo = not in_group
+
 	for name, token in pairs(tokens) do
 		local acquirable = token:IsAcquirable()
 		if token:IsEnabled() and not acquirable then
-			token:Disable(true)
+			token:Disable(true, entering_group)
 		elseif token.state == STATE_UNAVAILABLE and acquirable then
 			token:Enable()
 		end
@@ -340,6 +380,10 @@ function TokenObj:Disable(unavailable, no_release)
 			Token:DisableToken(self)
 		end
 
+		if self:IsMine() then
+			Token:SendMessage("FS_TOKEN_LOST", self.name, self)
+		end
+
 		-- Update state
 		self.state = unavailable and STATE_UNAVAILABLE or STATE_DISABLED
 
@@ -355,11 +399,9 @@ end
 
 -- Check if the token is acquirable (require raid promote and we have it)
 function TokenObj:IsAcquirable()
-	if self.promote and IsInGroup() then
-		return UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")
-	else
-		return true
-	end
+	local solo = not IsInGroup(LE_PARTY_CATEGORY_HOME)
+	local promoted = UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")
+	return solo or ((not self.promote or promoted) and PLAYER_ZONE == most_common_zone)
 end
 
 -- Attempts to claim and acquire the token
@@ -406,11 +448,15 @@ function TokenObj:SetOwner(guid, name)
 	self.state = STATE_ACQUIRED
 	self.owner = guid
 	self.owner_name = name
-	self.last_owner = guid
+	self.ping = GetTime()
 
-	if was_mine then Token:SendMessage("FS_TOKEN_LOST", self.name, self) end
-	Token:SendMessage("FS_TOKEN_ACQUIRED", self.name, self)
-	if is_mine then Token:SendMessage("FS_TOKEN_WON", self.name, self) end
+	if guid ~= self.last_owner then
+		if was_mine then Token:SendMessage("FS_TOKEN_LOST", self.name, self) end
+		Token:SendMessage("FS_TOKEN_ACQUIRED", self.name, self)
+		if is_mine then Token:SendMessage("FS_TOKEN_WON", self.name, self) end
+	end
+
+	self.last_owner = guid
 end
 
 -- Returns the token owner GUID and name
