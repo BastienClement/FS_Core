@@ -379,6 +379,7 @@ function TokenObj:New(name, level, promote)
 		state = STATE_DISABLED,
 		owner = nil,
 		owner_name = nil,
+		last_owner = nil,
 		ping = 0
 	}, TokenObj)
 end
@@ -430,6 +431,7 @@ function TokenObj:Disable(unavailable, no_release)
 		-- Erase owner information
 		self.owner = nil
 		self.owner_name = nil
+		self.last_owner = nil
 	end
 end
 
