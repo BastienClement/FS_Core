@@ -98,13 +98,13 @@ local token_config = {
 		{"token", "List active tokens state and owner."},
 	}, "/fs "),
 	docs = FS.Config:MakeDoc("Public API", 2000, {
-		{":Create ( name , level , default , promote ) -> token", "Creates a new service token with the given name. At any given time, only one player in the group can hold a token with a given name. The actual token holder will be selected primarly based on its token level. In the case multiple players have the same token level, the player with the highest game uptime (since last reload) will be elected as the token holder."},
+		{":Create ( name , level , default , promote ) -> token", "Creates a new service token with the given name. At any given time, only one player in the group can hold a token with a given name. The actual token holder will be selected primarly based on their token level. If multiple players have the same token level, the player with the highest game uptime (since last reload) will be elected as the token holder."},
 	}, "FS.Token"),
 	token = FS.Config:MakeDoc("Token API", 3000, {
-		{":IsMine ( ) -> boolean", "Returns true if the player is currently the token holder."},
-		{":Owner ( ) -> guid , name", "Returns the GUID and name of the current token holder."},
 		{":Enable ( )", "Enable this token and participate in the holder election process."},
 		{":Disable ( )", "Disable this token. The player will no longer participate in the holder election process and will release the token if currently owning the token."},
+		{":IsMine ( ) -> boolean", "Returns true if the player is currently the token holder."},
+		{":Owner ( ) -> guid , name", "Returns the GUID and name of the current token holder."},
 	}, "token"),
 	events = FS.Config:MakeDoc("Emitted events", 4000, {
 		{"_ACQUIRED ( name , token )", "Emitted when a new holder is elected for the token."},
@@ -120,7 +120,7 @@ function Token:OnInitialize()
 	Roster = FS.Roster
 	Console = FS.Console
 	Console:RegisterCommand("token", self)
-	FS.Config:Register("Service Token", token_config)
+	FS.Config:Register("Service token", token_config)
 end
 
 function Token:OnEnable()
