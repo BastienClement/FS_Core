@@ -744,7 +744,7 @@ do
 				if default == nil then default = true end
 
 				if opts[key] == nil then
-					opts[key] = true
+					opts[key] = default
 				end
 			end
 
