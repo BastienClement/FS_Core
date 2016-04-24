@@ -440,16 +440,16 @@ function Encounters:FS_MSG_ENCOUNTERS(_, msg, channel, source)
 	end
 end
 
-function Encounters:RegisterAceEvent(module, event, handler)
-	events[event]["*"][module] = handler
+function Encounters:RegisterAceEvent(module, event, firstArg, handler)
+	events[event][firstArg][module] = handler
 	if not aceRegistered[event] then
 		self:RegisterMessage(event, "ACE_EVENT")
 		aceRegistered[event] = true
 	end
 end
 
-function Encounters:ACE_EVENT(event, ...)
-	self:Dispatch(event, "*", ...)
+function Encounters:ACE_EVENT(event, firstArg, ...)
+	self:Dispatch(event, firstArg, ...)
 end
 
 -------------------------------------------------------------------------------
@@ -519,9 +519,17 @@ function Module:Network(event, handler)
 	Encounters:RegisterNetMessage(self, event, handler)
 end
 
-function Module:Ace(event, handler)
+function Module:Ace(event, handler, ...)
 	if not handler then handler = event end
-	Encounters:RegisterAceEvent(self, event, handler)
+	local n = select("#", ...)
+	if n < 1 then
+		Encounters:RegisterAceEvent(self, event, "*", handler)
+	else
+		for i = 1, n do
+			local id = select(i, ...)
+			Encounters:RegisterAceEvent(self, event, id, handler)
+		end
+	end
 end
 
 -------------------------------------------------------------------------------
