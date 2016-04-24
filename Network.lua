@@ -180,6 +180,7 @@ do
 		["OFFICER"] = true,
 		["PARTY"] = true,
 		["RAID"] = true,
+		["RAID_STRICT"] = true,
 		["INSTANCE_CHAT"] = true
 	}
 
