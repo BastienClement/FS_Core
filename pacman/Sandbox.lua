@@ -2,6 +2,8 @@ local _, FS = ...
 local Pacman = FS:GetModule("Pacman")
 local Sandbox, Store = Pacman:SubModule("Sandbox")
 
+local AceAddon = LibStub("AceAddon-3.0")
+
 local printf = Pacman.printf
 
 -------------------------------------------------------------------------------
@@ -66,6 +68,11 @@ function Sandbox:GetEnvironment(pkg)
 	env.sandbox = sandbox
 	env.locals = locals
 
+	-- Package Ace3 addon object
+	env.addon = AceAddon:NewAddon(pkg.uuid, "AceEvent-3.0", "AceTimer-3.0")
+	env.addon:SetEnabledState(false)
+	sandbox.addon = env.addon
+
 	-- Exports object
 	sandbox.exports = {}
 
@@ -89,7 +96,8 @@ function Sandbox:GetEnvironment(pkg)
 				end
 			})
 		end
-		sandbox.pkg = readOnly(pkg)
+		sandbox.reflect = readOnly(pkg)
+		sandbox.pkg = sandbox.reflect -- XXX Deprecated
 	end
 
 	-- Module loading cache
@@ -103,7 +111,6 @@ function Sandbox:GetEnvironment(pkg)
 		sandbox.db = Store:Status(pkg).db
 		sandbox.uuid = pkg.uuid
 		sandbox.revision = pkg.revision
-		Pacman:NotifyLoaded("Pacman:" .. id)
 
 		-- Call OnReload function
 		local reload = locals.reload
@@ -116,8 +123,12 @@ function Sandbox:GetEnvironment(pkg)
 				Store:UpdateExports(pkg, exports)
 			end
 		else
+			env.addon:Disable()
 			sandbox.load("main.lua", true)
+			env.addon:Enable()
 		end
+
+		Pacman:NotifyLoaded("Pacman:" .. id)
 	end
 
 	-------------------------
@@ -159,7 +170,7 @@ function Sandbox:GetEnvironment(pkg)
 		setfenv(fn, locals)
 
 		modules[file] = locals.exports
-		local success, res = pcall(fn)
+		local success, res = pcall(fn, env.addon, pkg.revision)
 		_loading[file] = nil
 
 		if not success then

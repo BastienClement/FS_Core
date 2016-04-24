@@ -390,12 +390,10 @@ function Pacman:OnEnable()
 end
 
 function Pacman:NotifyLoaded(name)
-	C_Timer.After(1, function()
-		for _, frame in ipairs({ GetFramesRegisteredForEvent("ADDON_LOADED") }) do
-			local handler = frame:GetScript("OnEvent")
-			if handler then handler(frame, "ADDON_LOADED", name) end
-		end
-	end)
+	for _, frame in ipairs({ GetFramesRegisteredForEvent("ADDON_LOADED") }) do
+		local handler = frame:GetScript("OnEvent")
+		if handler then handler(frame, "ADDON_LOADED", name) end
+	end
 end
 
 -------------------------------------------------------------------------------

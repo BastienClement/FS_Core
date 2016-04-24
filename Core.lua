@@ -65,7 +65,7 @@ do
 		end
 	end
 
-	-- DEPREACTED
+	-- XXX DEPRECATED
 	function Core:IterateGroup()
 		return function(_, last)
 			if not IsInGroup() then

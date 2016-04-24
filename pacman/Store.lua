@@ -48,18 +48,18 @@ status = setmetatable({}, {
 function Store:OnInitialize()
 	-- Initialize database object
 	if type(PACMAN_DB) ~= "table" then PACMAN_DB = {} end
-	
+
 	-- Move the database to a local variable
 	db = PACMAN_DB
 	--PACMAN_DB = nil
-	
+
 	-- MESSING WITH SAVED VARIABLES IS DANGEROUS
 	-- Restore global just before writing SavedVariables
 	--AceEvent:RegisterEvent("PLAYER_LOGOUT", function()
 		--PACMAN_DB = Compress:Encode7bit(Compress:CompressHuffman(self:Serialize(db)))
 		--PACMAN_DB = db
 	--end)
-	
+
 	-- Cleanup
 	for uuid in pairs(Pacman.db.profile.pkg) do
 		if not db[uuid] then Pacman.db.profile.pkg[uuid] = nil end
@@ -86,7 +86,7 @@ do
 			index[pkg.id:lower()] = pkg
 		end
 	end
-	
+
 	-- Load enabled packages
 	local function CheckEnabled()
 		for uuid, pkg in Store:Packages() do
@@ -105,7 +105,7 @@ do
 			end
 		end
 	end
-	
+
 	-- Notify store updates
 	function Store:StoreUpdated()
 		RebuildIndex()
@@ -187,16 +187,16 @@ function Store:HashPackage(pkg)
 		"revision:" .. pkg.revision,
 		"desc:" .. pkg.desc
 	}
-	
+
 	-- Use files content
 	for name, content in pairs(pkg.files) do fp[#fp + 1] = "file:" .. name .. ":" .. content end
-	
+
 	-- Use flags
 	for flag in pairs(pkg.flags) do fp[#fp + 1] = "flag:" .. flag end
-	
+
 	-- Ensure items are always used in the same order
 	table.sort(fp)
-	
+
 	-- Compute checksum
 	local code = Compress:fcs32init()
 	for _, item in ipairs(fp) do
@@ -244,7 +244,7 @@ end
 function Store:CreatePackage(id)
 	if index[id:lower()] then return end
 	local uuid = FS:UUID()
-	
+
 	local pkg = {
 		uuid = uuid,
 		id = id,
@@ -258,7 +258,7 @@ function Store:CreatePackage(id)
 		flags = {},
 		desc = ""
 	}
-	
+
 	db[uuid] = self:RehashPackage(pkg)
 	self:StoreUpdated()
 end
@@ -266,17 +266,17 @@ end
 -- Clone a package
 function Store:ClonePackage(pkg, to)
 	if index[to:lower()] then return end
-	
+
 	local uuid = FS:UUID()
 	local clone = FS:Clone(pkg)
-	
+
 	clone.id = to
 	clone.uuid = uuid
 	clone.author = UnitName("player") .. "-" .. GetRealmName()
 	clone.author_key = FS:PlayerKey()
 	clone.revision = 1
 	clone.revision_date = date()
-	
+
 	db[uuid] = self:RehashPackage(clone)
 	self:StoreUpdated()
 end
@@ -293,12 +293,16 @@ end
 -- Enable a package
 function Store:EnablePackage(pkg)
 	status[pkg.uuid].profile.enabled = true
+	local env = Pacman.Sandbox:GetEnvironment(pkg)
+	env.addon:Enable()
 	self:StoreUpdated()
 end
 
 -- Disable a package
 function Store:DisablePackage(pkg)
 	status[pkg.uuid].profile.enabled = false
+	local env = Pacman.Sandbox:GetEnvironment(pkg)
+	env.addon:Disable()
 	printf("The package '%s' will be disabled during your next UI loading.", pkg.id)
 	self:StoreUpdated()
 end
@@ -332,7 +336,7 @@ function Store:Metadata(pkg)
 	for file, content in pairs(pkg.files) do
 		size = size + #content
 	end
-	
+
 	return {
 		id = pkg.id,
 		uuid = pkg.uuid,
@@ -352,14 +356,14 @@ do
 	local loaded_revision = {}
 	local exports_cache = {}
 	local loading_failed = {}
-	
+
 	local mute_corrupted_notice = {}
 
 	-- Access the currently loaded revision
 	function Store:LoadedRevision(pkg)
 		return loaded_revision[pkg.uuid]
 	end
-	
+
 	-- Check if a package loading has failed
 	function Store:HasLoadingFailed(pkg)
 		return loading_failed[pkg.uuid]
@@ -368,7 +372,7 @@ do
 	-- Load a package
 	function Store:Load(pkg)
 		local uuid = pkg.uuid
-		
+
 		if loaded_revision[uuid] then
 			return true, exports_cache[uuid]
 		elseif loading_failed[uuid] then
@@ -376,7 +380,7 @@ do
 		elseif not status[uuid].profile.enabled then
 			return false, "Package is not enabled"
 		end
-		
+
 		if not self:IsValid(pkg) then
 			if not mute_corrupted_notice[uuid] then
 				mute_corrupted_notice[uuid] = true
@@ -385,10 +389,10 @@ do
 			end
 			return false, "Hash failure"
 		end
-		
+
 		local env = Pacman.Sandbox:GetEnvironment(pkg)
 		local ok, exports = pcall(env.sandbox.load, "main.lua")
-		
+
 		if not ok then
 			printf("Package '%s' loading failed:\n|cfffff569%s", pkg.id, exports)
 			loading_failed[uuid] = exports
@@ -397,8 +401,9 @@ do
 			exports_cache[uuid] = exports
 			status[uuid].loaded = true
 			Pacman:NotifyLoaded("Pacman:" .. pkg.id)
+			env.addon:Enable()
 		end
-		
+
 		return ok, exports
 	end
 
@@ -406,11 +411,11 @@ do
 	function Store:Reload(pkg)
 		if not pkg.flags.Reloadable then return end
 		loaded_revision[pkg.uuid] = pkg.revision
-		
+
 		local env = Pacman.Sandbox:GetEnvironment(pkg)
 		env.Reload()
 	end
-	
+
 	-- Change the cached exported values
 	function Store:UpdateExports(pkg, exports)
 		exports_cache[pkg.uuid] = exports
