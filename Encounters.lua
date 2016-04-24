@@ -1,7 +1,7 @@
 local _, FS = ...
 local Encounters = FS:RegisterModule("Encounters", "AceTimer-3.0")
 
-local Roster, Tracker, Map, Network, BigWigs
+local Roster, Tracker, Map, Geometry, Network, BigWigs
 
 -------------------------------------------------------------------------------
 -- Encounters config
@@ -56,49 +56,49 @@ local encounters_config = {
 		order = 1000
 	},
 	docs = FS.Config:MakeDoc("Public API", 2000, {
-		{":RegisterEncounter ( name , id ) -> mod", "Registers a new boss module bound to the given encounter id. If a new module is registered with the same name, the previous one is remplaced."},
+		{":RegisterEncounter ( name , id ) -> mod", "Registers a new boss module bound to the given encounter id. If a new module is registered with the same name, the previous one is replaced."},
 	}, "FS.Encounters"),
 	events = FS.Config:MakeDoc("Mod API", 3000, {
-		{":OnEngage ( id , name , difficulty , size )", ""},
-		{":OnReset ( kill )", ""},
-		{":CombatLog ( event , handler , [ spells ... ] )", ""},
-		{":Event ( event , handler , [ firstArgs ... ] )", ""},
-		{":Death ( handler , [ mobIds ... ] )", ""},
-		{":NetEvent ( event , handler )", ""},
-		{":AceEvent ( event , handler )", ""},
-		{":Message ( key , msg , color , sound )", ""},
-		{":Emphasized ( key , msg , r , g , b , sound )", ""},
-		{":Sound ( key , sound )", ""},
-		{":Bar ( key , length , text , icon )", ""},
-		{":StopBar ( key )", ""},
-		{":Say ( key , msg , channel , target )", ""},
-		{":Countdown ( key , time )", ""},
-		{":Proximity ( key , range , player , isReverse )", ""},
-		{":CloseProximity ( key )", ""},
-		{":Flash ( key )", ""},
-		{":Pusle ( key , icon )", ""},
-		{":ScheduleAction ( key , delay , fn , ... )", ""},
-		{":CancelAction ( key )", ""},
-		{":CancelAllActions ( )", ""},
-		{":Send ( event , data , target )", ""},
-		{":Emit ( msg , ... )", ""},
-		{":Difficulty ( ) -> number", ""},
-		{":LFR ( ) -> boolean", ""},
-		{":Easy ( ) -> boolean", ""},
-		{":Normal ( ) -> boolean", ""},
-		{":Heroic ( ) -> boolean", ""},
-		{":Mythic ( ) -> boolean", ""},
-		{":RaidSize ( ) -> number", ""},
-		{":MobId ( mobGUID ) -> number", ""},
-		{":Me ( unitGUID ) -> boolean", ""},
-		{":Range ( playerA [, playerB ] ) -> number", ""},
-		{":Role ( [ player ] ) -> tank | healer | melee | ranged", ""},
-		{":Melee ( [ player ] ) -> boolean", ""},
-		{":Ranged ( [ player ] ) -> boolean", ""},
-		{":Tank ( [ player ] ) -> boolean", ""},
-		{":Healer ( [ player ] ) -> boolean", ""},
-		{":Damager ( [ player ] ) -> boolean", ""},
-		{":IterateGroup ( [ limit [, sorted ]] ) -> [ units ]", ""},
+		{":OnEngage ( id , name , difficulty , size )", "Called on encounter start.\nModules should override this method."},
+		{":OnReset ( kill )", "Called on encounter end.\nModules should override this method.\n"},
+		{":CombatLog ( event , handler , [ spells ... ] )", "Binds a combat log listener. The given handler method will be invoked whenever a combat log event matching both the requested `event` type and one of the `spell` id is received."},
+		{":Event ( event , handler , [ firstArgs ... ] )", "Binds an event listener. The given handler method will be invoked whenever a Blizzard event matching both the requested `event` type and one of the `firstArg` is received."},
+		{":Death ( handler , [ mobIds ... ] )", "Binds an death listener. The given handler method will be invoked whenever a death event matching one of the requested `mobId` is received."},
+		{":Network ( type , handler )", "Binds a network message listener. The given handler method will be invoked whenever a network message matching the requested `type` is received."},
+		{":Ace ( type , handler )", "Binds an Ace3 message listener. The given handler method will be invoked whenever an Ace3 message matching the requested `type` is received.\n"},
+		{":Message ( key , msg , color , sound )", "Displays a message"},
+		{":Emphasized ( key , msg , r , g , b , sound )", "Displays an emphasized message."},
+		{":Sound ( key , sound )", "Play the requested sound.\n`sound` can be Long, Info, Alert, Alarm or Warning."},
+		{":Bar ( key , duration , text , icon )", "Starts a BigWigs bar for the requested duration."},
+		{":StopBar ( key )", "Cancels a bar started with :Bar()."},
+		{":Say ( key , msg , channel , target )", "/say."},
+		{":Countdown ( key , time )", "Starts a vocal countdown."},
+		{":Proximity ( key , range , player , isReverse )", "Opens BigWigs proximity display."},
+		{":CloseProximity ( key )", "Closes BigWigs proximity display."},
+		{":Flash ( key )", "Flashes the screen."},
+		{":Pulse ( key , icon )", "Displays a BigWigs pulse icon.\n"},
+		{":ScheduleAction ( key , delay , handler , ... )", "Schedules an action to be executed after `delay` seconds. Additional arguments will be given to the handler function."},
+		{":CancelAction ( key )", "Cancels a scheduled action."},
+		{":CancelAllActions ( )", "Cancels all scheduled actions.\n"},
+		{":Send ( type , data , target )", "Sends a network message."},
+		{":Emit ( msg , ... )", "Emits an Ace3 event.\n"},
+		{":Difficulty ( ) -> number", "Returns the encounter difficulty ID."},
+		{":LFR ( ) -> boolean", "Returns true if currently fighting a LFR encounter."},
+		{":Easy ( ) -> boolean", "Returns true if currently fighting a Easy encounter."},
+		{":Normal ( ) -> boolean", "Returns true if currently fighting a Normal encounter."},
+		{":Heroic ( ) -> boolean", "Returns true if currently fighting a Heroic encounter."},
+		{":Mythic ( ) -> boolean", "Returns true if currently fighting a Mythic encounter."},
+		{":RaidSize ( ) -> number", "Returns the number of players participating in the encounter.\n"},
+		{":MobId ( mobGUID ) -> number", "Returns the MobId from a creature GUID."},
+		{":Me ( unitGUID ) -> boolean", "Checks if the given GUID is the player."},
+		{":Range ( playerA [, playerB ] , squared ) -> number", "Returns the distance between playerA and playerB. If playerB is not given, it defaults to the player. If squared is true, returned number is the squared value of the distance."},
+		{":Role ( [ unit ] ) -> tank | healer | melee | ranged", "Returns the role of the given unit. Defaults to the player."},
+		{":Melee ( [ unit ] ) -> boolean", "Returns true if the given unit is a melee damager."},
+		{":Ranged ( [ unit ] ) -> boolean", "Returns true if the given unit is a ranged damager."},
+		{":Tank ( [ unit ] ) -> boolean", "Returns true if the given unit is a tank."},
+		{":Healer ( [ unit ] ) -> boolean", "Returns true if the given unit is a header."},
+		{":Damager ( [ unit ] ) -> boolean", "Returns true if the given unit is a damager (melee or ranged).\n"},
+		{":IterateGroup ( [ limit [, sorted ]] ) -> [ units ]", "Iterates over every units in the group. See Roster:Iterate()."},
 	}, "mod")
 }
 
@@ -164,6 +164,7 @@ function Encounters:OnInitialize()
 	Roster = FS.Roster
 	Tracker = FS.Tracker
 	Map = FS.Map
+	Geometry = FS.Geometry
 	Network = FS.Network
 	BigWigs = FS.BigWigs
 
@@ -513,12 +514,12 @@ function Module:Death(handler, ...)
 	return self:CombatLog("UNIT_DIED", handler, ...)
 end
 
-function Module:NetEvent(event, handler)
+function Module:Network(event, handler)
 	if not handler then handler = event end
 	Encounters:RegisterNetMessage(self, event, handler)
 end
 
-function Module:AceEvent(event, handler)
+function Module:Ace(event, handler)
 	if not handler then handler = event end
 	Encounters:RegisterAceEvent(self, event, handler)
 end
@@ -567,8 +568,13 @@ function Module:Pulse(...)
 	BigWigs:Pulse(...)
 end
 
-function Module:ScheduleAction(...)
-	BigWigs:ScheduleAction(...)
+function Module:ScheduleAction(key, delay, handler, ...)
+	if type(handler) == "string" then
+		handler = function(...)
+			self[handler](...)
+		end
+	end
+	BigWigs:ScheduleAction(key, delay, handler, ...)
 end
 
 function Module:CancelActions(...)
@@ -644,14 +650,14 @@ function Module:Me(guid)
 	return guid == playerGUID
 end
 
-function Module:Range(player, other)
+function Module:Range(player, other, squared)
 	if not other then other = "player" end
 	local tx, ty = UnitPosition(player)
 	local ux, uy = UnitPosition(other)
 	if not tx or not ux then
 		return 200
 	else
-		return Map:GetDistance(tx, ty, ux, uy)
+		return Geometry.Distance(tx, ty, ux, uy, squared)
 	end
 end
 
