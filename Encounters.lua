@@ -1,5 +1,6 @@
 local _, FS = ...
 local Encounters = FS:RegisterModule("Encounters", "AceTimer-3.0")
+local Events = LibStub("AceAddon-3.0"):NewAddon("FS_Core_Encounters_Event", "AceEvent-3.0")
 
 local Roster, Tracker, Map, Geometry, Network, BigWigs
 
@@ -277,21 +278,21 @@ function Encounters:ENCOUNTER_END(_, id, name, diff_id, size, kill)
 	end
 
 	if cleuBound then
-		self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+		Events:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 		cleuBound = false
 	end
 
 	if msgBound then
-		self:UnregisterMessage("FS_MSG_ENCOUNTERS")
+		Events:UnregisterMessage("FS_MSG_ENCOUNTERS")
 		msgBound = false
 	end
 
 	for event in pairs(registered) do
-		self:UnregisterEvent(event)
+		Events:UnregisterEvent(event)
 	end
 
 	for event in pairs(aceRegistered) do
-		self:UnregisterMessage(event)
+		Events:UnregisterMessage(event)
 	end
 
 	self:UnmarkAll()
@@ -405,13 +406,13 @@ function Encounters:RegisterCombatLog(module, event, id, handler)
 	events[event][id][module] = handler
 	allowedCleu[event] = true
 	if not cleuBound then
-		self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+		Events:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 		cleuBound = true
 	end
 end
 
 local args = {}
-function Encounters:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, _, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags, spellId, spellName, _, extraSpellId, amount)
+function Events:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, _, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags, spellId, spellName, _, extraSpellId, amount)
 	if allowedCleu[event] then
 		if event == "UNIT_DIED" then
 			local _, _, _, _, _, id = strsplit("-", destGUID)
@@ -419,15 +420,15 @@ function Encounters:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, _, sourceGUID, sour
 			args.mobId, args.destGUID, args.destName, args.destFlags, args.destRaidFlags = mobId, destGUID, destName, destFlags, destRaidFlags
 			if mobId then
 				args.mobId, args.destGUID, args.destName, args.destFlags, args.destRaidFlags = mobId, destGUID, destName, destFlags, destRaidFlags
-				self:Dispatch(event, mobId, args)
+				Encounters:Dispatch(event, mobId, args)
 			else
-				self:Dispatch(event, -1, args)
+				Encounters:Dispatch(event, -1, args)
 			end
 		else
 			args.sourceGUID, args.sourceName, args.sourceFlags, args.sourceRaidFlags = sourceGUID, sourceName, sourceFlags, sourceRaidFlags
 			args.destGUID, args.destName, args.destFlags, args.destRaidFlags = destGUID, destName, destFlags, destRaidFlags
 			args.spellId, args.spellName, args.extraSpellId, args.extraSpellName, args.amount = spellId, spellName, extraSpellId, amount, amount
-			self:Dispatch(event, spellId, args)
+			Encounters:Dispatch(event, spellId, args)
 		end
 	end
 end
@@ -435,41 +436,41 @@ end
 function Encounters:RegisterGenericEvent(module, event, unit, handler)
 	events[event][unit][module] = handler
 	if not registered[event] then
-		self:RegisterEvent(event, "GENERIC_EVENT")
+		Events:RegisterEvent(event, "GENERIC_EVENT")
 		registered[event] = true
 	end
 end
 
-function Encounters:GENERIC_EVENT(event, unit, ...)
-	self:Dispatch(event, unit, ...)
+function Events:GENERIC_EVENT(event, unit, ...)
+	Encounters:Dispatch(event, unit, ...)
 end
 
 function Encounters:RegisterNetMessage(module, event, handler)
 	events[event]["*"][module] = handler
 	allowedMsg[event] = true
 	if not msgBound then
-		self:RegisterMessage("FS_MSG_ENCOUNTERS")
+		Events:RegisterMessage("FS_MSG_ENCOUNTERS")
 		msgBound = true
 	end
 end
 
-function Encounters:FS_MSG_ENCOUNTERS(_, msg, channel, source)
+function Events:FS_MSG_ENCOUNTERS(_, msg, channel, source)
 	local event = msg.event
 	if allowedMsg[event] then
-		self:Dispatch(event, "*", msg.data, channel, source)
+		Encounters:Dispatch(event, "*", msg.data, channel, source)
 	end
 end
 
 function Encounters:RegisterAceEvent(module, event, firstArg, handler)
 	events[event][firstArg][module] = handler
 	if not aceRegistered[event] then
-		self:RegisterMessage(event, "ACE_EVENT")
+		Events:RegisterMessage(event, "ACE_EVENT")
 		aceRegistered[event] = true
 	end
 end
 
-function Encounters:ACE_EVENT(event, firstArg, ...)
-	self:Dispatch(event, firstArg, ...)
+function Events:ACE_EVENT(event, firstArg, ...)
+	Encounters:Dispatch(event, firstArg, ...)
 end
 
 -------------------------------------------------------------------------------
