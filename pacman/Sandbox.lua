@@ -96,7 +96,7 @@ function Sandbox:GetEnvironment(pkg)
 				end
 			})
 		end
-		sandbox.reflect = readOnly(pkg)
+		sandbox.meta = readOnly(pkg)
 		sandbox.pkg = sandbox.reflect -- XXX Deprecated
 	end
 
