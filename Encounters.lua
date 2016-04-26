@@ -735,11 +735,11 @@ function Module:Tank(player)
 end
 
 function Module:Healer(player)
-	return self:Role(player) == "tank"
+	return self:Role(player) == "healer"
 end
 
 function Module:Damager(player)
-	return self:Role(player) == "tank"
+	return self:Role(player) == "melee" or self:Role(player) == "ranged"
 end
 
 function Module:Mark(guid, callback)
