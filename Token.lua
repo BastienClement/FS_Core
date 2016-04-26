@@ -397,10 +397,12 @@ end
 
 function TokenObj:RequirePromote(flag)
 	self.promote = true
+	return self
 end
 
 function TokenObj:RequireZone(zoneid)
 	self.zone = zoneid
+	return self
 end
 
 -- Enable the token, attempting to claim it
