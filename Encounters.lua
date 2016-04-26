@@ -722,7 +722,7 @@ function Module:Mark(guid, callback)
 	if type(callback) == "string" then
 		local handler = callback
 		callback = function(...)
-			self[handler](...)
+			self[handler](self, ...)
 		end
 	end
 	Encounters:Mark(guid, callback)
