@@ -299,6 +299,7 @@ function Encounters:ENCOUNTER_END(_, id, name, diff_id, size, kill)
 	end
 
 	self:UnmarkAll()
+	BigWigs:ClearIntercepts()
 
 	wipe(actives)
 	wipe(events)

@@ -182,6 +182,7 @@ end
 function BW:ENCOUNTER_END()
 	self:CancelAllActions()
 	self:CloseProximity()
+	self:ClearIntercepts()
 
 	if not BigWigs then return end
 	BigWigs:SendMessage("BigWigs_StopBars", nil)
