@@ -190,6 +190,7 @@ function Encounters:OnEnable()
 	self:RegisterEvent("BOSS_KILL")
 	self:RegisterEvent("PLAYER_REGEN_ENABLED")
 	self:RegisterEvent("PLAYER_REGEN_DISABLED")
+	self:RegisterMessage("FS_TRACKER_DIED")
 end
 
 function Encounters:OnDisable()
@@ -989,4 +990,8 @@ function Encounters:UnmarkAll()
 	wipe(marks_queue)
 	wipe(marked)
 	marks_count = 0
+end
+
+function Encounters:FS_TRACKER_DIED(_, guid)
+	self:Unmark(guid)
 end
