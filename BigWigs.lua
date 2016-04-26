@@ -104,6 +104,50 @@ local bigwigs_config = {
 }
 
 --------------------------------------------------------------------------------
+-- Interception
+
+local intercepts = {}
+local BW_SendMessage
+local SendMessage_Hook
+
+do
+	local function apply_hooks(self, hooks, i, msg, ...)
+		if msg == nil then
+			return false
+		elseif msg == false then
+			return true
+		else
+			local hook = hooks[i]
+			if not hook then
+				BW_SendMessage(self, msg, ...)
+			elseif not apply_hooks(self, hooks, i + 1, hook(msg, ...)) then
+				apply_hooks(self, hooks, i + 1, msg, ...)
+			end
+			return true
+		end
+	end
+
+	local NO_HOOKS = {}
+	function SendMessage_Hook(self, msg, ...)
+		local hooks = intercepts[msg] or NO_HOOKS
+		apply_hooks(self, hooks, 1, msg, ...)
+	end
+end
+
+function BW:Intercept(msg, filter)
+	local hooks = intercepts[msg]
+	if not hooks then
+		hooks = {}
+		intercepts[msg] = hooks
+	end
+	table.insert(hooks, filter)
+end
+
+function BW:ClearIntercepts()
+	wipe(intercepts)
+end
+
+--------------------------------------------------------------------------------
 -- Module initialization
 
 function BW:OnInitialize()
@@ -118,6 +162,10 @@ function BW:OnEnable()
 	C_Timer.After(0, function()
 		LoadAddOn("BigWigs_Core")
 		if BigWigs then
+			BW_SendMessage = BigWigs.SendMessage
+			BigWigs.SendMessage = SendMessage_Hook
+			BigWigsLoader.SendMessage = SendMessage_Hook
+
 			BigWigs:Enable()
 			BigWigs:RegisterMessage("BigWigs_CoreDisabled", function(...)
 				BigWigs:Enable()
