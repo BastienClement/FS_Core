@@ -432,7 +432,7 @@ function Events:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, _, sourceGUID, sourceNa
 			args.sourceGUID, args.sourceName, args.sourceFlags, args.sourceRaidFlags = sourceGUID, sourceName, sourceFlags, sourceRaidFlags
 			args.destGUID, args.destName, args.destFlags, args.destRaidFlags = destGUID, destName, destFlags, destRaidFlags
 			args.spellId, args.spellName, args.extraSpellId, args.extraSpellName, args.amount = spellId, spellName, extraSpellId, amount, amount
-			args.sourceKey, args.destKey = sourceGUID .. spellId, destGUID .. spellId
+			args.destKey = destGUID .. spellId
 			Encounters:Dispatch(event, spellId, args)
 		end
 	end
