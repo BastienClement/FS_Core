@@ -624,7 +624,7 @@ end
 function Module:ScheduleAction(key, delay, handler, ...)
 	if type(handler) == "string" then
 		handler = function(...)
-			self[handler](...)
+			self[handler](self, ...)
 		end
 	end
 	BigWigs:ScheduleAction(key, delay, handler, ...)
@@ -941,7 +941,7 @@ function Encounters:Unmark(guid)
 		else
 			for i, g in ipairs(marks_queue) do
 				if g == guid then
-					table.remove(marks_count, i)
+					table.remove(marks_queue, i)
 					break
 				end
 			end
