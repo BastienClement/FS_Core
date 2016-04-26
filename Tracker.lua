@@ -524,7 +524,7 @@ end
 
 function Tracker:UNIT_DIED(source, _, _, _, dest)
 	if self.mobs[dest] then
-		self:SendMessage("FS_TRACKER_DIED", guid)
+		self:SendMessage("FS_TRACKER_DIED", dest)
 		self:RemoveMob(dest)
 	end
 end
