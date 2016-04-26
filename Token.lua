@@ -51,6 +51,8 @@ local state_name = {
 	[STATE_DISPOSED]    = "|cffc41f3bDISPOSED|r"
 }
 
+local acquirable_throttled = false
+
 --------------------------------------------------------------------------------
 
 -- Compare tokens level and owners GUID to chose the most rightful one
@@ -256,6 +258,14 @@ function Token:CheckLiveness()
 end
 
 function Token:UpdateAcquirable()
+	if not acquirable_throttled then
+		self:ScheduleTimer("DoUpdateAcquirable", 1)
+		acquirable_throttled = true
+	end
+end
+
+function Token:DoUpdateAcquirable()
+	acquirable_throttled = false
 	PLAYER_ZONE = select(4, UnitPosition("player"))
 
 	local zone_count = {}
