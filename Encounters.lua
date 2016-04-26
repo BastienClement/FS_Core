@@ -844,7 +844,12 @@ do
 					width = "full",
 					desc = GetSpellDescription(spell),
 					get = function() return opts[key] end,
-					set = function(_, v) opts[key] = v end
+					set = function(_, v)
+						opts[key] = v
+						if self.OnOptionChanged then
+							self:OnOptionChanged(key, v)
+						end
+					end
 				})
 
 				builder:Add({
