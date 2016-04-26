@@ -156,6 +156,13 @@ local cleuBound = false
 local allowedMsg = {}
 local msgBound = false
 
+local marks = {}
+local marks_queue = {}
+local marks_count = 0
+local marked = {}
+local marked_callback = {}
+local marks_scanner
+
 -------------------------------------------------------------------------------
 -- Life-cycle events
 -------------------------------------------------------------------------------
@@ -211,6 +218,16 @@ function Encounters:UpdateData()
 		end
 	else
 		role = "NONE"
+	end
+end
+
+function Encounters:UnitId(guid)
+	if UnitExists(guid) then
+		return guid
+	elseif guid:sub(1, 6) == "Player" then
+		return Roster:GetUnit(guid)
+	else
+		return Tracker:GetUnit(guid)
 	end
 end
 
@@ -275,6 +292,8 @@ function Encounters:ENCOUNTER_END(_, id, name, diff_id, size, kill)
 	for event in pairs(aceRegistered) do
 		self:UnregisterMessage(event)
 	end
+
+	self:UnmarkAll()
 
 	wipe(actives)
 	wipe(events)
@@ -464,7 +483,9 @@ function Module:New(name, encounter)
 		name = name,
 		encounter = encounter,
 		spells = BigWigs.spells,
-		icons = BigWigs.spells
+		spell = BigWigs.spells,
+		icons = BigWigs.icons,
+		icon = BigWigs.icons
 	}, Module)
 end
 
@@ -638,13 +659,7 @@ function Module:RaidSize()
 end
 
 function Module:UnitId(guid)
-	if UnitExists(guid) then
-		return guid
-	elseif guid:sub(1, 6) == "Player" then
-		return Roster:GetUnit(guid)
-	else
-		return Tracker:GetUnit(guid)
-	end
+	return Encounters:UnitId(guid)
 end
 
 function Module:MobId(guid)
@@ -701,6 +716,24 @@ end
 
 function Module:Damager(player)
 	return self:Role(player) == "tank"
+end
+
+function Module:Mark(guid, callback)
+	if type(callback) == "string" then
+		local handler = callback
+		callback = function(...)
+			self[handler](...)
+		end
+	end
+	Encounters:Mark(guid, callback)
+end
+
+function Module:Unmark(guid)
+	Encounters:Unmark(guid)
+end
+
+function Module:UnmarkAll()
+	Encounters:UnmarkAll()
 end
 
 function Module:IterateGroup(...)
@@ -815,6 +848,7 @@ do
 		return t
 	end
 end
+
 -------------------------------------------------------------------------------
 -- Encounter definition
 -------------------------------------------------------------------------------
@@ -843,4 +877,95 @@ function Encounters:RegisterEncounter(name, encounter)
 	end
 
 	return mod
+end
+
+-------------------------------------------------------------------------------
+-- Marking helper
+-------------------------------------------------------------------------------
+
+function Encounters:Mark(guid, callback)
+	if not marked[guid] then
+		marked[guid] = 0
+		table.insert(marks_queue, guid)
+		if type(callback) == "function" then
+			marked_callback[guid] = callback
+		end
+		if marks_count < 8 and not marks_scanner then
+			marks_scanner = self:ScheduleRepeatingTimer("MarkScan", 0.1)
+		end
+	end
+end
+
+function Encounters:Unmark(guid)
+	local mark = marked[guid]
+	if mark then
+		if mark > 0 then
+			local unit = self:UnitId(guid)
+			if unit then
+				SetRaidTarget(unit, 0)
+			end
+			marks[mark] = nil
+			marks_count = marks_count - 1
+			if marks_count == 7 and #marks_queue > 0 and not marks_scanner then
+				marks_scanner = self:ScheduleRepeatingTimer("MarkScan", 0.1)
+			end
+		else
+			for i, g in ipairs(marks_queue) do
+				if g == guid then
+					table.remove(marks_count, i)
+					break
+				end
+			end
+		end
+		marked[guid] = nil
+	end
+end
+
+function Encounters:MarkScan()
+	if #marks_queue == 0 or marks_count == 8 then
+		self:CancelTimer(marks_scanner)
+		marks_scanner = nil
+	else
+		local i = 1
+		while i <= #marks_queue and marks_count < 8 do
+			local guid = marks_queue[i]
+			local unit = self:UnitId(guid)
+			if unit then
+				for j = 1, 8 do
+					if not marks[j] then
+						marks[j] = guid
+						marked[guid] = j
+						local callback = marked_callback[guid]
+						SetRaidTarget(unit, j)
+						if callback then
+							pcall(callback, guid, j)
+							marked_callback[guid] = nil
+						end
+						table.remove(marks_queue, i)
+						marks_count = marks_count + 1
+						break
+					end
+				end
+			else
+				i = i + 1
+			end
+		end
+	end
+end
+
+function Encounters:UnmarkAll()
+	if marks_scanner then
+		self:CancelTimer(marks_scanner)
+		marks_scanner = nil
+	end
+
+	for i, guid in pairs(marks) do
+		local unit = self:UnitId(guid)
+		if unit then SetRaidTarget(unit, 0) end
+	end
+
+	wipe(marks)
+	wipe(marks_queue)
+	wipe(marked)
+	marks_count = 0
 end
