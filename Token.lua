@@ -380,18 +380,27 @@ local TokenObj = {}
 TokenObj.__index = TokenObj
 
 -- Creates a new Token object
-function TokenObj:New(name, level, promote)
+function TokenObj:New(name, level)
 	return setmetatable({
 		name = name,
 		level = level,
 		id = { name = name, level = level },
-		promote = promote,
+		promote = false,
+		zone = false,
 		state = STATE_DISABLED,
 		owner = nil,
 		owner_name = nil,
 		last_owner = nil,
 		ping = 0
 	}, TokenObj)
+end
+
+function TokenObj:RequirePromote(flag)
+	self.promote = true
+end
+
+function TokenObj:RequireZone(zoneid)
+	self.zone = zoneid
 end
 
 -- Enable the token, attempting to claim it
@@ -449,11 +458,19 @@ function TokenObj:IsEnabled()
 	return self.state > STATE_UNAVAILABLE and self.state ~= STATE_DISPOSED
 end
 
+function TokenObj:SetEnabled(enabled)
+	if enabled and self.state == STATE_DISABLED then
+		self:Enable()
+	elseif not enabled and self.state > STATE_DISABLED and self.state ~= STATE_DISPOSED then
+		self:Disable()
+	end
+end
+
 -- Check if the token is acquirable (require raid promote and we have it)
 function TokenObj:IsAcquirable()
 	local solo = not IsInGroup(LE_PARTY_CATEGORY_HOME)
 	local promoted = UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")
-	return solo or ((not self.promote or promoted) and PLAYER_ZONE == most_common_zone)
+	return (solo or ((not self.promote or promoted) and PLAYER_ZONE == most_common_zone)) and (not self.zone or self.zone == PLAYER_ZONE)
 end
 
 -- Attempts to claim and acquire the token
@@ -534,15 +551,17 @@ end
 --------------------------------------------------------------------------------
 
 -- Create a new token object
-function Token:Create(name, level, default, promote)
+function Token:Create(name, level, default)
 	local old = tokens[name]
 	if old then old:Dispose(false, true) end
 
-	local token = TokenObj:New(name, level, promote)
+	local token = TokenObj:New(name, level)
 	tokens[name] = token
 
 	if default ~= false then
-		token:Enable()
+		C_Timer.After(0, function()
+			token:Enable()
+		end)
 	end
 
 	return token
