@@ -65,7 +65,8 @@ local encounters_config = {
 		{":Event ( event , handler , [ firstArgs ... ] )", "Binds an event listener. The given handler method will be invoked whenever a Blizzard event matching both the requested `event` type and one of the `firstArg` is received."},
 		{":Death ( handler , [ mobIds ... ] )", "Binds an death listener. The given handler method will be invoked whenever a death event matching one of the requested `mobId` is received."},
 		{":Network ( type , handler )", "Binds a network message listener. The given handler method will be invoked whenever a network message matching the requested `type` is received."},
-		{":Ace ( type , handler )", "Binds an Ace3 message listener. The given handler method will be invoked whenever an Ace3 message matching the requested `type` is received.\n"},
+		{":Ace ( type , handler )", "Binds an Ace3 message listener. The given handler method will be invoked whenever an Ace3 message matching the requested `type` is received."},
+		{":Intercept ( handler , msg )", "Intercepts and transform BigWigs internal messages to dynamically alter bars and messages.\n"},
 		{":Message ( key , msg , color , sound )", "Displays a message"},
 		{":Emphasized ( key , msg , r , g , b , sound )", "Displays an emphasized message."},
 		{":Sound ( key , sound )", "Play the requested sound.\n`sound` can be Long, Info, Alert, Alarm or Warning."},
@@ -550,6 +551,23 @@ function Module:Ace(event, handler, ...)
 			local id = select(i, ...)
 			Encounters:RegisterAceEvent(self, event, id, handler)
 		end
+	end
+end
+
+function Module:Intercept(handler, ...)
+	local n = select("#", ...)
+	if n < 1 then error("Usage: mod:Intercept(handler, msg, ...)") end
+
+	if type(handler) == "string" then
+		local method = handler
+		handler = function(...)
+			return self[method](self, ...)
+		end
+	end
+
+	for i = 1, n do
+		local msg = select(i, ...)
+		BigWigs:Intercept("BigWigs_" .. msg, handler)
 	end
 end
 
