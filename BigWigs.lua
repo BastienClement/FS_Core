@@ -193,6 +193,7 @@ end
 
 do
 	local actions = {}
+	local once = {}
 
 	function BW:ScheduleAction(key, delay, fn, ...)
 		-- Default value for action key
@@ -204,6 +205,7 @@ do
 		local timer
 		local args = { ... }
 		timer = C_Timer.NewTimer(delay, function()
+			once[key] = nil
 			actions[timer] = nil
 			fn(unpack(args))
 		end)
@@ -212,9 +214,17 @@ do
 		actions[timer] = key
 	end
 
+	function BW:ScheduleActionOnce(key, delay, fn, ...)
+		if not once[key] then
+			once[key] = true
+			self:ScheduleAction(key, delay, fn, ...)
+		end
+	end
+
 	function BW:CancelActions(key)
 		-- Timer to cancel
 		local canceling
+		once[key] = nil
 
 		-- Search for timer with matching key
 		for timer, akey in pairs(actions) do
@@ -239,6 +249,7 @@ do
 			timer:Cancel()
 		end
 		wipe(actions)
+		wipe(once)
 	end
 end
 
