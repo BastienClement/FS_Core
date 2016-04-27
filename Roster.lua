@@ -126,11 +126,7 @@ do
 				unit = "raid" .. i
 			end
 
-			if UnitIsUnit("player", unit) then
-				return "player", i
-			else
-				return unit, i
-			end
+			return unit, i
 		end
 	end
 
