@@ -829,11 +829,13 @@ do
 				end
 
 				local name
+				local spell_desc
 				if spell then
 					local spellname, _, icon = GetSpellInfo(spell)
-					name = (" |T%s:18|t %s"):format(icon, spellname)
+					name = ("|T%s:18|t %s"):format(icon, spellname)
+					spell_desc = GetSpellDescription(spell)
 				else
-					name = " " .. suffix
+					name = suffix
 					suffix = nil
 				end
 
@@ -845,7 +847,7 @@ do
 					type = "toggle",
 					name = name,
 					width = "full",
-					desc = GetSpellDescription(spell),
+					desc = (desc or "") .. (spell_desc and desc and "\n\n" or "") .. (spell_desc and "|cff999999" .. spell_desc or ""),
 					get = function() return opts[key] end,
 					set = function(_, v)
 						opts[key] = v
@@ -853,11 +855,6 @@ do
 							self:OnOptionChanged(key, v)
 						end
 					end
-				})
-
-				builder:Add({
-					type = "description",
-					name = "|cff999999" .. (desc and (desc .. "\n") or "")
 				})
 			end
 
