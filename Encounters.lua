@@ -696,6 +696,9 @@ function Module:MobId(guid)
 end
 
 function Module:Me(guid)
+	if UnitExists(guid) and UnitIsUnit(guid, "player") then
+		return true
+	end
 	return guid == playerGUID
 end
 
