@@ -478,7 +478,7 @@ local function create_package_gui(pkg, valid)
 			type = "group",
 			inline = true,
 			name = "Operations",
-			order = 11,
+			order = 8,
 			args = {
 				edit = {
 					type = "execute",
