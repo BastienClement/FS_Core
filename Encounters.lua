@@ -131,6 +131,12 @@ local function get(t, k, ...)
 	return get(rawget(t, k), ...)
 end
 
+local function wrap(self, handler)
+	return function(...)
+		self[handler](self, ...)
+	end
+end
+
 -------------------------------------------------------------------------------
 -- State
 -------------------------------------------------------------------------------
@@ -564,12 +570,7 @@ function Module:Intercept(handler, ...)
 	local n = select("#", ...)
 	if n < 1 then error("Usage: mod:Intercept(handler, msg, ...)") end
 
-	if type(handler) == "string" then
-		local method = handler
-		handler = function(...)
-			return self[method](self, ...)
-		end
-	end
+	if type(handler) == "string" then handler = wrap(self, handler) end
 
 	for i = 1, n do
 		local msg = select(i, ...)
@@ -622,11 +623,7 @@ function Module:Pulse(...)
 end
 
 function Module:ScheduleAction(key, delay, handler, ...)
-	if type(handler) == "string" then
-		handler = function(...)
-			self[handler](self, ...)
-		end
-	end
+	if type(handler) == "string" then handler = wrap(self, handler) end
 	BigWigs:ScheduleAction(key, delay, handler, ...)
 end
 
@@ -743,12 +740,7 @@ function Module:Damager(player)
 end
 
 function Module:Mark(guid, callback)
-	if type(callback) == "string" then
-		local handler = callback
-		callback = function(...)
-			self[handler](self, ...)
-		end
-	end
+	if type(callback) == "string" then callback = wrap(self, callback) end
 	Encounters:Mark(guid, callback)
 end
 
