@@ -627,6 +627,11 @@ function Module:ScheduleAction(key, delay, handler, ...)
 	BigWigs:ScheduleAction(key, delay, handler, ...)
 end
 
+function Module:ScheduleActionOnce(key, delay, handler, ...)
+	if type(handler) == "string" then handler = wrap(self, handler) end
+	BigWigs:ScheduleActionOnce(key, delay, handler, ...)
+end
+
 function Module:CancelActions(...)
 	BigWigs:CancelActions(...)
 end
