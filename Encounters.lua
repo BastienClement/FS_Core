@@ -696,10 +696,13 @@ function Module:MobId(guid)
 end
 
 function Module:Me(guid)
-	if UnitExists(guid) and UnitIsUnit(guid, "player") then
+	if guid == playerGUID then
 		return true
+	elseif UnitExists(guid) and UnitIsUnit(guid, "player") then
+		return true
+	else
+		return false
 	end
-	return guid == playerGUID
 end
 
 function Module:Range(player, other, squared)
