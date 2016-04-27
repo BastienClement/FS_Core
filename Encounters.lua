@@ -847,7 +847,7 @@ do
 					type = "toggle",
 					name = name,
 					width = "full",
-					desc = (desc or "") .. (spell_desc and desc and "\n\n" or "") .. (spell_desc and "|cff999999" .. spell_desc or ""),
+					desc = (desc or "") .. (spell_desc and desc and "\n\n" or "") .. (spell_desc and "|cffffd100" .. spell_desc or ""),
 					get = function() return opts[key] end,
 					set = function(_, v)
 						opts[key] = v
