@@ -29,9 +29,6 @@ local id = {
 -- Track solo status
 local is_solo = true
 
--- Zone statistics
-local most_common_zone = 0
-
 -- States
 local STATE_DISABLED    = 1 -- Token is disabled and completely ignored
 local STATE_UNAVAILABLE = 2 -- Same as disabled, but because we don't have promote, automatically transition to INIT if we are promoted
@@ -268,22 +265,6 @@ function Token:DoUpdateAcquirable()
 	acquirable_throttled = false
 	PLAYER_ZONE = select(4, UnitPosition("player"))
 
-	local zone_count = {}
-	for unit in Roster:Iterate() do
-		local zone = select(4, UnitPosition(unit))
-		if zone then
-			zone_count[zone] = (zone_count[zone] or 0) + 1
-		end
-	end
-
-	local max_count = 0
-	for zone, count in pairs(zone_count) do
-		if count > max_count or (count == max_count and zone == PLAYER_ZONE) then
-			most_common_zone = zone
-			max_count = count
-		end
-	end
-
 	local in_group = IsInGroup(LE_PARTY_CATEGORY_HOME)
 	local entering_group = is_solo and in_group
 	is_solo = not in_group
@@ -472,7 +453,7 @@ end
 function TokenObj:IsAcquirable()
 	local solo = not IsInGroup(LE_PARTY_CATEGORY_HOME)
 	local promoted = UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")
-	return (solo or ((not self.promote or promoted) and PLAYER_ZONE == most_common_zone)) and (not self.zone or self.zone == PLAYER_ZONE)
+	return (solo or (not self.promote or promoted)) and (not self.zone or self.zone == PLAYER_ZONE)
 end
 
 -- Attempts to claim and acquire the token
