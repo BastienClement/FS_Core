@@ -248,7 +248,7 @@ function Tracker:GetMob(guid, timestamp)
 	local mob = self.mobs[guid]
 	if not mob and timestamp then
 		local unit_type, zero, s, i, z, m, w = self:ParseGUID(guid)
-		if unit_type ~= "Creature" then return end
+		if unit_type ~= "Creature" and unit_type ~= "Vehicule" then return end
 
 		mob = {
 			guid = guid,
@@ -485,14 +485,14 @@ do
 		local dest_t = self:ParseGUID(dest, true)
 		local now = GetTime()
 
-		if source_t == "Creature" and dest_t == "Player" then
+		if (source_t == "Creature" or source_t == "Vehicule") and dest_t == "Player" then
 			local source_m = self:GetMob(source, now)
 			if update_near(source_m.near, dest, destName, now) then
 				source_m.near_updated = true
 			end
 		end
 
-		if dest_t == "Creature" and source_t == "Player" then
+		if (dest_t == "Creature" or dest_t == "Vehicule") and source_t == "Player" then
 			local dest_m = self:GetMob(dest, now)
 			if update_near(dest_m.near, source, sourceName, now) then
 				dest_m.near_updated = true
@@ -505,7 +505,7 @@ do
 		if SMALL_AOES[spell] then
 			local source_t = self:ParseGUID(source, true)
 			local dest_t = self:ParseGUID(dest, true)
-			if source_t == "Player" and dest_t == "Creature" then
+			if source_t == "Player" and (dest_t == "Creature" or dest_t == "Vehicule") then
 				local now = GetTime()
 				local dest_m = self:GetMob(dest, now)
 				update_near(dest_m.near, source, sourceName, now)
@@ -538,7 +538,7 @@ function Tracker:UNIT_TARGET(_, unit)
 	local target_guid = UnitGUID(target)
 	local target_type = self:ParseGUID(target_guid, true)
 
-	if target_type == "Creature" then
+	if target_type == "Creature" or target_type == "Vehicule" then
 		local mob = self:GetMob(target_guid, GetTime())
 		mob.unitids[target] = true
 	end
@@ -548,7 +548,7 @@ function Tracker:NAME_PLATE_UNIT_ADDED(_, nameplate)
 	local nameplate_guid = UnitGUID(nameplate)
 	local nameplate_type = self:ParseGUID(nameplate_guid, true)
 
-	if nameplate_type == "Creature" then
+	if nameplate_type == "Creature" or nameplate_type == "Vehicule" then
 		local mob = self:GetMob(nameplate_guid, GetTime())
 		mob.unitids[nameplate] = true
 	end
