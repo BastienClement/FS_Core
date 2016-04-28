@@ -17,7 +17,8 @@ Cooldowns:RegisterSpells("SHAMAN", {
 	},
 	[20608] = { -- Reincarnation
 		cooldown = 1800,
-		reset = false
+		reset = false,
+		nocheck = true
 	},
 	[2825] = { -- Bloodlust
 		cooldown = 300,
