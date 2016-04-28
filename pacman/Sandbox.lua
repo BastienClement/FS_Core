@@ -97,7 +97,8 @@ function Sandbox:GetEnvironment(pkg)
 			})
 		end
 		sandbox.meta = readOnly(pkg)
-		sandbox.pkg = sandbox.reflect -- XXX Deprecated
+		sandbox.meta.sandbox = locals
+		sandbox.pkg = sandbox.meta -- XXX Deprecated
 	end
 
 	-- Module loading cache
@@ -109,8 +110,6 @@ function Sandbox:GetEnvironment(pkg)
 		pkg = Store:Get(uuid)
 		id = pkg.id
 		sandbox.db = Store:Status(pkg).db
-		sandbox.uuid = pkg.uuid
-		sandbox.revision = pkg.revision
 
 		-- Call OnReload function
 		local reload = locals.reload
