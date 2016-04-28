@@ -150,11 +150,6 @@ Cooldowns:RegisterSpells("DEATHKNIGHT", {
 		duration = 5,
 		talent = true
 	},
-	[194832] = { -- Marhc of the Damned
-		cooldown = 90,
-		duration = 6,
-		talent = true
-	},
 	[206940] = { -- Mark of Blood
 		cooldown = 180,
 		duration = 20,
