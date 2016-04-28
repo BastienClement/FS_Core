@@ -743,12 +743,14 @@ do
 			end
 		end
 
+		--[[
 		if guid == UnitGUID("player") and not pending_player_check and not self.settings.disable_check then
 			pending_player_check = true
 			C_Timer.After(0.5, function()
 				check_player(unit)
 			end)
 		end
+		]]
 	end
 end
 
