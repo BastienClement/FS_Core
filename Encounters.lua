@@ -2,7 +2,7 @@ local _, FS = ...
 local Encounters = FS:RegisterModule("Encounters", "AceTimer-3.0")
 local Events = LibStub("AceAddon-3.0"):NewAddon("FS_Core_Encounters_Event", "AceEvent-3.0")
 
-local Roster, Tracker, Map, Geometry, Network, BigWigs
+local Roster, Tracker, Map, Geometry, Network, BigWigs, Token
 
 -------------------------------------------------------------------------------
 -- Encounters config
@@ -184,6 +184,7 @@ function Encounters:OnInitialize()
 	Geometry = FS.Geometry
 	Network = FS.Network
 	BigWigs = FS.BigWigs
+	Token = FS.Token
 
 	self.db = FS.db:RegisterNamespace("Encounters", encounters_default)
 	self.settings = self.db.profile
@@ -491,10 +492,12 @@ end
 local Module = {}
 Module.__index = Module
 
-function Module:New(name, encounter)
+function Module:New(name, encounter, zone, meta)
 	return setmetatable({
 		name = name,
 		encounter = encounter,
+		zone = zone,
+		sandbox = meta and meta.sandbox,
 		spells = BigWigs.spells,
 		spell = BigWigs.spells,
 		icons = BigWigs.icons,
@@ -785,6 +788,7 @@ do
 		return builder
 	end
 
+	-- Deprecated, use mod:options instead
 	function Module:Options(env)
 		local db = env.db
 		if not db.opts then db.opts = {} end
@@ -854,6 +858,9 @@ do
 						if self.OnOptionChanged then
 							self:OnOptionChanged(key, v)
 						end
+						if self.OnTokenOptionChanged then
+							self:OnTokenOptionChanged()
+						end
 					end
 				})
 			end
@@ -869,6 +876,13 @@ do
 		end
 	end
 
+	function Module:options(confs)
+		if not self.sandbox then
+			error("Calling mod:options without having given meta to RegisterEncounter")
+		end
+		return self:Options(self.sandbox)(confs)
+	end
+
 	local opt_counter = 1
 
 	function Module:opt(t)
@@ -879,11 +893,59 @@ do
 end
 
 -------------------------------------------------------------------------------
+-- Tokens helper
+-------------------------------------------------------------------------------
+
+do
+	function Module:tokens(defs)
+		if not self.sandbox then
+			error("Calling mod:tokens without having given meta to RegisterEncounter")
+		end
+
+		local opts = self.sandbox.db.opts
+		if not opts then
+			error("Calling mod:tokens without having called options")
+		end
+
+		local tokens = {}
+		local tokens_opts = {}
+		local rev = self.sandbox.meta.revision
+
+		for key, def in pairs(defs) do
+			local opt_key = def.option or key
+			local tok = Token:Create(self.name .. ":" .. key, rev, opts[opt_key])
+
+			if def.promote then tok:RequirePromote(true) end
+			if self.zone then tok:RequireZone(self.zone) end
+
+			tokens_opts[tok] = opt_key
+			tokens[key] = tok
+		end
+
+		function self:OnTokenOptionChanged()
+			for token, opt_key in pairs(tokens_opts) do
+				token:SetEnabled(opts[opt_key])
+			end
+		end
+
+		return setmetatable({}, {
+			__index = function(_, k)
+				return tokens[k] and tokens[k]:IsMine()
+			end
+		})
+	end
+
+	function Module:tok(conf)
+		return conf
+	end
+end
+
+-------------------------------------------------------------------------------
 -- Encounter definition
 -------------------------------------------------------------------------------
 
 -- Registers a new encounter module
-function Encounters:RegisterEncounter(name, encounter)
+function Encounters:RegisterEncounter(name, encounter, zone, meta)
 	local mod = modules[name]
 
 	if mod then
@@ -895,7 +957,7 @@ function Encounters:RegisterEncounter(name, encounter)
 		end
 	end
 
-	mod = Module:New(name, encounter)
+	mod = Module:New(name, encounter, zone, meta)
 	modules[name] = mod
 
 	local mods = encounters[encounter]
