@@ -1,9 +1,17 @@
 local _, FS = ...
 local Cooldowns = FS:RegisterModule("Cooldowns")
 
+local FsCooldownsTooltip = FsCooldownsTooltip
+
 -------------------------------------------------------------------------------
 -- Cooldowns config
 --------------------------------------------------------------------------------
+
+local cooldowns_default = {
+	profile = {
+		disable_check = false
+	}
+}
 
 local cooldowns_config = {
 	title = {
@@ -22,6 +30,19 @@ local cooldowns_config = {
 		type = "description",
 		name = "|cff999999This module only provides low-level tracking for developers.\nIf you want a visual cooldown tracker, take a look at FSCooldowns2.\n",
 		order = 6
+	},
+	verification = {
+		type = "toggle",
+		name = "Disable static data verification",
+		width = "full",
+		get = function() return Cooldowns.settings.disable_check end,
+		set = function(_, v) Cooldowns.settings.disable_check = v end,
+		order = 7
+	},
+	verification_desc = {
+		type = "description",
+		name = "|cff999999Disable the spell data verification processs.\nThis is used to detect discrepancies between hard-coded spell data like cooldown and charges and actual values and can provide very useful feedbacks to developers.\n",
+		order = 8
 	},
 	ref = {
 		type = "header",
@@ -71,6 +92,9 @@ Cooldowns.aliases = {}
 
 function Cooldowns:OnInitialize()
 	FS.Config:Register("Cooldowns tracker", cooldowns_config)
+
+	self.db = FS.db:RegisterNamespace("Cooldowns", cooldowns_default)
+	self.settings = self.db.profile
 end
 
 function Cooldowns:OnEnable()
@@ -110,6 +134,7 @@ local tag_aliases = {
 }
 
 local LEGION = select(4, GetBuildInfo()) >= 70000
+Cooldowns.Legion = LEGION
 
 -- Registers a new spell in the tracker database
 function Cooldowns:RegisterSpells(class, cooldowns)
@@ -559,78 +584,170 @@ end
 -- Updater
 -------------------------------------------------------------------------------
 
--- Update unit with new info table
-function Cooldowns:UpdateUnit(guid, info)
-	local unit = self.units[guid]
+do
+	local pending_player_check = false
+	local printed = {}
 
-	-- Create or update unit
-	if not unit then
-		unit = Unit:New(guid, info)
-		self.units[guid] = unit
-	elseif info then
-		unit.info = info
+	local function print_once(msg, ...)
+		msg = msg:format(...)
+		if not printed[msg] then
+			printed[msg] = true
+			Cooldowns:Print(msg)
+		end
 	end
 
-	-- Matches spell definition criteria with current unit
-	local function match(criterion, value, key)
-		if criterion == nil then
-			-- No criterion in the spell definition
-			return true
-		elseif type(criterion) == "boolean" then
-			-- A function returned a definitive result, bypass all remaining checks
-			return criterion
-		elseif type(criterion) == "table" then
-			-- One item in the table must match
-			for _, sub_criterion in ipairs(criterion) do
-				if match(sub_criterion, value) then
-					return true
+	local unit_multiplier = {
+		sec = 1,
+		min = 60
+	}
+
+	local function check_player(unit)
+		pending_player_check = false
+		local fails = 0
+
+		for id, cd in unit:IterateCooldowns() do
+			local name = GetSpellInfo(id)
+			local known = IsSpellKnown(id)
+			if not known and cd.spell.alias then
+				for _, alias in ipairs(cd.spell.alias) do
+					if IsSpellKnown(alias) then
+						known = true
+						break
+					end
 				end
 			end
-			return false
-		elseif type(criterion) == "function" then
-			-- Evaluate the function with the info table and then match
-			return match(criterion(info), value)
-		elseif value == nil then
-			-- No value to match against
-			return false
-		elseif type(value) == "table" then
-			if key then
-				-- Must match one value of one subkey
-				for _, candidate in pairs(value) do
-					local candidate_value = candidate[key]
-					if match(criterion, candidate_value) then
+			if not known then
+				print_once("|cffffff00Spell %s is not known by the player", name)
+			elseif not cd.spell.nocheck then
+				do -- Cooldown
+					local def_cd = cd.spell.cooldown
+					FsCooldownsTooltip:ClearLines()
+					FsCooldownsTooltip:SetSpellByID(id)
+
+					local found = false
+					for i = 2, FsCooldownsTooltip:NumLines() do
+						local text = _G["FsCooldownsTooltipTextRight" .. i]
+						text = text and text:GetText()
+						if text and (text:find("cooldown") or text:find("recharge")) then
+							local value, unit = text:match("^([%d\.]+) (%a+)")
+							value = tonumber(value)
+							if value and unit then
+								if not unit_multiplier[unit] then
+									print_once("|cffffff00Invalid cooldown unit for spell %s: '%s'", name, unit)
+								else
+									found = true
+									value = value * unit_multiplier[unit]
+									if value ~= def_cd then
+										fails = fails + 1
+										print_once("|cffffff00%s cooldown discrepancy: %d (actual %d)", name, def_cd, value)
+									end
+								end
+							end
+							break
+						end
+					end
+
+					if not found then
+						print_once("|cffffff00Unable to check %s actual cooldown", name)
+						fails = fails + 1
+					end
+				end
+				do -- Charges
+					local charges = cd.spell.charges or 1
+					local actual = GetSpellCharges(id) or 1
+					if charges ~= actual then
+						fails = fails + 1
+						print_once("|cffffff00%s charges discrepancy: %d (actual %d)", name, charges, actual)
+					end
+				end
+			end
+		end
+
+		if fails > 0 then
+			--Cooldowns:Printf("You can disable %s from the module config panel", fails > 1 and "these messages" or "this message")
+		end
+	end
+
+	-- Update unit with new info table
+	function Cooldowns:UpdateUnit(guid, info)
+		local unit = self.units[guid]
+
+		-- Create or update unit
+		if not unit then
+			unit = Unit:New(guid, info)
+			self.units[guid] = unit
+		elseif info then
+			unit.info = info
+		end
+
+		-- Matches spell definition criteria with current unit
+		local function match(criterion, value, key)
+			if criterion == nil then
+				-- No criterion in the spell definition
+				return true
+			elseif type(criterion) == "boolean" then
+				-- A function returned a definitive result, bypass all remaining checks
+				return criterion
+			elseif type(criterion) == "table" then
+				-- One item in the table must match
+				for _, sub_criterion in ipairs(criterion) do
+					if match(sub_criterion, value) then
 						return true
 					end
 				end
 				return false
+			elseif type(criterion) == "function" then
+				-- Evaluate the function with the info table and then match
+				return match(criterion(info), value)
+			elseif value == nil then
+				-- No value to match against
+				return false
+			elseif type(value) == "table" then
+				if key then
+					-- Must match one value of one subkey
+					for _, candidate in pairs(value) do
+						local candidate_value = candidate[key]
+						if match(criterion, candidate_value) then
+							return true
+						end
+					end
+					return false
+				else
+					-- Must match one key of the table
+					return value[criterion] ~= nil
+				end
 			else
-				-- Must match one key of the table
-				return value[criterion] ~= nil
+				return criterion == value
 			end
-		else
-			return criterion == value
 		end
-	end
 
-	for id, spell in self:IterateSpells() do
-		local cd = unit.cooldowns[id]
+		for id, spell in self:IterateSpells() do
+			local cd = unit.cooldowns[id]
 
-		if  match(spell.class,  info.class)
-		and match(spell.race,   info.race)
-		and match(spell.spec,   info.global_spec_id)
-		and match(spell.glyph,  info.glyphs)
-		and match(spell.talent, info.talents)
-		and match(spell.talent_spell, info.talents, "spell_id")
-		and match(spell.available) then
-			if not cd then
-				cd = Cooldown:New(unit, spell)
-				unit.cooldowns[id] = cd
-				cd:Emit("FS_COOLDOWNS_GAINED")
+			if  match(spell.class,  info.class)
+			and match(spell.race,   info.race)
+			and match(spell.spec,   info.global_spec_id)
+			and match(spell.glyph,  info.glyphs)
+			and match(spell.talent, info.talents)
+			and match(spell.talent_spell, info.talents, "spell_id")
+			and match(spell.available) then
+				if not cd then
+					cd = Cooldown:New(unit, spell)
+					unit.cooldowns[id] = cd
+					cd:Emit("FS_COOLDOWNS_GAINED")
+				end
+				cd:Update()
+			elseif cd then
+				unit.cooldowns[id]:Dispose()
+				unit.cooldowns[id] = nil
 			end
-			cd:Update()
-		elseif cd then
-			unit.cooldowns[id]:Dispose()
-			unit.cooldowns[id] = nil
+		end
+
+		if guid == UnitGUID("player") and not pending_player_check and not self.settings.disable_check then
+			pending_player_check = true
+			C_Timer.After(0.5, function()
+				check_player(unit)
+			end)
 		end
 	end
 end
