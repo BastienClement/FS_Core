@@ -1617,6 +1617,10 @@ do
 			return self
 		end
 
+		function obj:SetColor(...)
+			obj.frame.text:SetTextColor(...)
+		end
+
 		function obj:Remove()
 			self.frame.text:SetText("")
 			self.frame.text:Hide()
