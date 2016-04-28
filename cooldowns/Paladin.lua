@@ -50,6 +50,7 @@ Cooldowns:RegisterSpells("PALADIN", {
 	-- Holy
 	[31842] = { -- Avenging Wrath (Holy)
 		cooldown = function(unit)
+			if Cooldowns.Legion then return 120 end
 			return unit:HasGlyph(162604) and 90 or 180
 		end,
 		duration = function(unit)
@@ -173,7 +174,8 @@ Cooldowns:RegisterSpells("PALADIN", {
 		talent = true
 	},
 	[214202] = { -- Rule of Law
-		cooldown = 60,
+		cooldown = 30,
+		charges = 2,
 		duration = 10,
 		talent = true
 	},
