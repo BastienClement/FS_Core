@@ -305,6 +305,7 @@ function Encounters:ENCOUNTER_END(_, id, name, diff_id, size, kill)
 		Events:UnregisterMessage(event)
 	end
 
+	self:UnregisterEvent("UNIT_TARGET")
 	self:UnmarkAll()
 	BigWigs:ClearIntercepts()
 
@@ -768,6 +769,68 @@ end
 
 function Module:IterateGroup(...)
 	return Roster:Iterate(...)
+end
+
+-------------------------------------------------------------------------------
+-- Target scanner
+-------------------------------------------------------------------------------
+
+do
+	local ut_bound = false
+	local scans = {}
+	local scans_count = 0
+
+	local function done_scanning(guid)
+		if scans[guid] then
+			scans[guid] = nil
+			scans_count = scans_count - 1
+			if scans_count == 0 then
+				ut_bound = false
+				Encounters:UnregisterEvent("UNIT_TARGET")
+			end
+		end
+	end
+
+	local function test_unit(guid, unit, callback)
+		local target = unit .. "target"
+		if UnitExists(target) and Module:Role(target) ~= "tank" then
+			local tanking, status = UnitDetailedThreatSituation(target, unit)
+			if not tanking and status ~= 3 then
+				callback(UnitGUID(target), target, guid, unit)
+				return true
+			end
+		end
+		return false
+	end
+
+	function Encounters:UNIT_TARGET(_, unit)
+		local guid = UnitGUID(unit)
+		local callback = guid and scans[guid]
+		if callback and test_unit(guid, unit, callback) then
+			done_scanning(guid)
+		end
+	end
+
+	function Module:ScanTarget(guid, callback, duration)
+		if type(callback) == "string" then callback = wrap(self, callback) end
+
+		local unit = self:UnitId(guid)
+		if unit and test_unit(guid, unit, callback) then
+			return
+		end
+
+		scans[guid] = callback
+		scans_count = scans_count + 1
+
+		if not ut_bound then
+			ut_bound = true
+			Encounters:RegisterEvent("UNIT_TARGET")
+		end
+
+		C_Timer.After(duration or 1.5, function()
+			done_scanning(guid)
+		end)
+	end
 end
 
 -------------------------------------------------------------------------------
