@@ -212,16 +212,26 @@ do
 
 		-- Register the timer
 		actions[timer] = key
+		return timer
 	end
 
 	function BW:ScheduleActionOnce(key, delay, fn, ...)
-		if not once[key] then
-			once[key] = true
-			self:ScheduleAction(key, delay, fn, ...)
+		local action = once[key]
+		if not action then
+			action = self:ScheduleAction(key, delay, fn, ...)
+			once[key] = action
 		end
+		return action
 	end
 
 	function BW:CancelActions(key)
+		if key.Cancel then
+			key:Cancel()
+			local action_key = actions[key]
+			once[action_key] = nil
+			return
+		end
+
 		-- Timer to cancel
 		local canceling
 		once[key] = nil
