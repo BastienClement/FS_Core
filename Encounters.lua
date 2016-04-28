@@ -699,6 +699,11 @@ function Module:MobId(guid)
 	return tonumber(id) or 1
 end
 
+function Module:SpellId(spellGUID)
+	local _, _, _, _, spellId = strsplit("-", spellGUID)
+	return spellId
+end
+
 function Module:Me(guid)
 	if guid == playerGUID then
 		return true
