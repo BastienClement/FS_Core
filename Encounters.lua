@@ -379,11 +379,17 @@ do
 			for module, handler in pairs(match) do
 				if type(handler) == "function" then
 					if orig_key == "*" then
-						handler(event, ...)
+						handler(...)
 					else
-						handler(event, orig_key, ...)
+						handler(orig_key, ...)
 					end
-				elseif type(module[handler]) == "function" then
+				elseif type(module[handler]) == "function" and module.sandbox then
+					if orig_key == "*" then
+						module[handler](module, ...)
+					else
+						module[handler](module, orig_key, ...)
+					end
+				elseif type(module[handler]) == "function" then -- XXX DEPRECATED
 					if orig_key == "*" then
 						module[handler](module, event, ...)
 					else
