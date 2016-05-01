@@ -137,6 +137,24 @@ local function wrap(self, handler)
 	end
 end
 
+local argsProviders = {}
+
+function argsProviders.spellName(args)
+	return BigWigs.spell[args.spellId]
+end
+
+function argsProviders.spellIcon(args)
+	return BigWigs.icons[args.spellId]
+end
+
+function argsProviders.sourceKey(args)
+	return args.sourceGUID .. args.spellId
+end
+
+function argsProviders.destKey(args)
+	return args.destGUID .. args.spellId
+end
+
 -------------------------------------------------------------------------------
 -- State
 -------------------------------------------------------------------------------
@@ -429,7 +447,14 @@ function Encounters:RegisterCombatLog(module, event, id, handler)
 	end
 end
 
-local args = {}
+local args = setmetatable({}, {
+	__index = function(self, key)
+		if argsProviders[key] then
+			return argsProviders[key](self)
+		end
+	end
+})
+
 function Events:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, _, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags, spellId, spellName, _, extraSpellId, amount)
 	if allowedCleu[event] then
 		if event == "UNIT_DIED" then
@@ -446,7 +471,6 @@ function Events:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, _, sourceGUID, sourceNa
 			args.sourceGUID, args.sourceName, args.sourceFlags, args.sourceRaidFlags = sourceGUID, sourceName, sourceFlags, sourceRaidFlags
 			args.destGUID, args.destName, args.destFlags, args.destRaidFlags = destGUID, destName, destFlags, destRaidFlags
 			args.spellId, args.spellName, args.extraSpellId, args.extraSpellName, args.amount = spellId, spellName, extraSpellId, amount, amount
-			args.destKey = destGUID .. spellId
 			Encounters:Dispatch(event, spellId, args)
 		end
 	end
@@ -698,12 +722,18 @@ function Module:UnitId(guid)
 	return Encounters:UnitId(guid)
 end
 
+function argsProviders.sourceUnit(args) return Module:UnitId(args.sourceGUID) end
+function argsProviders.destUnit(args) return Module:UnitId(args.destGUID) end
+
 function Module:MobId(guid)
 	if UnitExists(guid) then guid = UnitGUID(guid) end
 	if not guid then return 1 end
 	local _, _, _, _, _, id = strsplit("-", guid)
 	return tonumber(id) or 1
 end
+
+function argsProviders.sourceMob(args) return Module:MobId(args.sourceGUID) end
+function argsProviders.destMob(args) return Module:MobId(args.destGUID) end
 
 function Module:SpellId(spellGUID)
 	local _, _, _, _, spellId = strsplit("-", spellGUID)
