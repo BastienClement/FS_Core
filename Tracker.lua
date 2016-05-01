@@ -530,6 +530,7 @@ function Tracker:UNIT_DIED(source, _, _, _, dest)
 end
 
 Tracker.UNIT_DESTROYED = Tracker.UNIT_DIED
+Tracker.UNIT_DISSIPATES = Tracker.UNIT_DIED
 
 function Tracker:UNIT_TARGET(_, unit)
 	local target = unit .. "target"
