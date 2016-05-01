@@ -461,12 +461,7 @@ function Events:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, _, sourceGUID, sourceNa
 			local _, _, _, _, _, id = strsplit("-", destGUID)
 			local mobId = tonumber(id)
 			args.mobId, args.destGUID, args.destName, args.destFlags, args.destRaidFlags = mobId, destGUID, destName, destFlags, destRaidFlags
-			if mobId then
-				args.mobId, args.destGUID, args.destName, args.destFlags, args.destRaidFlags = mobId, destGUID, destName, destFlags, destRaidFlags
-				Encounters:Dispatch(event, mobId, args)
-			else
-				Encounters:Dispatch(event, -1, args)
-			end
+			Encounters:Dispatch(event, mobId or -1, args)
 		else
 			args.sourceGUID, args.sourceName, args.sourceFlags, args.sourceRaidFlags = sourceGUID, sourceName, sourceFlags, sourceRaidFlags
 			args.destGUID, args.destName, args.destFlags, args.destRaidFlags = destGUID, destName, destFlags, destRaidFlags
@@ -855,7 +850,14 @@ do
 	function Module:ScanTarget(guid, callback, duration)
 		if type(callback) == "string" then callback = wrap(self, callback) end
 
-		local unit = self:UnitId(guid)
+		local unit
+		if UnitExists(guid) then
+			unit = guid
+			guid = UnitGUID(unit)
+		else
+			unit = self:UnitId(guid)
+		end
+
 		if unit and test_unit(guid, unit, callback) then
 			return
 		end
