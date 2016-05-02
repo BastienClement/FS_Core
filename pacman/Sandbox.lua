@@ -147,7 +147,7 @@ function Sandbox:GetEnvironment(pkg)
 
 	-- Load a package Lua file
 	local _loading = {}
-	function sandbox.load(file, reload)
+	function sandbox.load(file, reload, ...)
 		if modules[file] and not reload then
 			return modules[file]
 		end
@@ -171,7 +171,7 @@ function Sandbox:GetEnvironment(pkg)
 		setfenv(fn, locals)
 
 		modules[file] = locals.exports
-		local success, res = pcall(fn, env.addon, pkg.revision)
+		local success, res = pcall(fn, env.addon, ...)
 		_loading[file] = nil
 
 		if not success then
