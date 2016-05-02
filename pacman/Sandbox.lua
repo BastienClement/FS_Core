@@ -68,11 +68,15 @@ function Sandbox:GetEnvironment(pkg)
 	env.sandbox = sandbox
 	env.locals = locals
 
-	-- Package Ace3 addon object
-	if pkg.flags.Ace3 then
+	local function create_ace3()
 		env.addon = AceAddon:NewAddon(pkg.uuid, "AceEvent-3.0", "AceTimer-3.0")
 		env.addon:SetEnabledState(false)
 		sandbox.addon = env.addon
+	end
+
+	-- Package Ace3 addon object
+	if pkg.flags.Ace3 then
+		create_ace3()
 	end
 
 	-- Exports object
@@ -112,6 +116,10 @@ function Sandbox:GetEnvironment(pkg)
 		pkg = Store:Get(uuid)
 		id = pkg.id
 		sandbox.db = Store:Status(pkg).db
+
+		if pkg.flags.Ace3 and not env.addon then
+			create_ace3()
+		end
 
 		-- Call OnReload function
 		local reload = locals.reload
