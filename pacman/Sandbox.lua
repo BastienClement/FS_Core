@@ -179,7 +179,14 @@ function Sandbox:GetEnvironment(pkg)
 		setfenv(fn, locals)
 
 		modules[file] = locals.exports
-		local success, res = pcall(fn, env.addon, ...)
+
+		local success, res
+		if env.addon then
+			success, res = pcall(fn, env.addon, ...)
+		else
+			success, res = pcall(fn, ...)
+		end
+
 		_loading[file] = nil
 
 		if not success then
