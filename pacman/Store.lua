@@ -294,7 +294,7 @@ end
 function Store:EnablePackage(pkg)
 	status[pkg.uuid].profile.enabled = true
 	local env = Pacman.Sandbox:GetEnvironment(pkg)
-	env.addon:Enable()
+	if env.addon then env.addon:Enable() end
 	self:StoreUpdated()
 end
 
@@ -302,7 +302,7 @@ end
 function Store:DisablePackage(pkg)
 	status[pkg.uuid].profile.enabled = false
 	local env = Pacman.Sandbox:GetEnvironment(pkg)
-	env.addon:Disable()
+	if env.addon then env.addon:Disable() end
 	printf("The package '%s' will be disabled during your next UI loading.", pkg.id)
 	self:StoreUpdated()
 end
@@ -401,7 +401,7 @@ do
 			exports_cache[uuid] = exports
 			status[uuid].loaded = true
 			Pacman:NotifyLoaded("Pacman:" .. pkg.id)
-			env.addon:Enable()
+			if env.addon then env.addon:Enable() end
 		end
 
 		return ok, exports

@@ -69,9 +69,11 @@ function Sandbox:GetEnvironment(pkg)
 	env.locals = locals
 
 	-- Package Ace3 addon object
-	env.addon = AceAddon:NewAddon(pkg.uuid, "AceEvent-3.0", "AceTimer-3.0")
-	env.addon:SetEnabledState(false)
-	sandbox.addon = env.addon
+	if pkg.flags.Ace3 then
+		env.addon = AceAddon:NewAddon(pkg.uuid, "AceEvent-3.0", "AceTimer-3.0")
+		env.addon:SetEnabledState(false)
+		sandbox.addon = env.addon
+	end
 
 	-- Exports object
 	sandbox.exports = {}
@@ -122,9 +124,9 @@ function Sandbox:GetEnvironment(pkg)
 				Store:UpdateExports(pkg, exports)
 			end
 		else
-			env.addon:Disable()
+			if env.addon then env.addon:Disable() end
 			sandbox.load("main.lua", true)
-			env.addon:Enable()
+			if env.addon then env.addon:Enable() end
 		end
 
 		Pacman:NotifyLoaded("Pacman:" .. id)

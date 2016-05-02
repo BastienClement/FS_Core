@@ -154,6 +154,7 @@ local package_properties = {
 				shareable = make_flag_toggle("Shareable", "Other players will be able to share this package."),
 				opaque = make_flag_toggle("Opaque", "This package content will not be visible."),
 				configurable = make_flag_toggle("Configurable", "This package offers configuration options."),
+				ace3 = make_flag_toggle("Ace3", "This package uses an Ace3 addon object."),
 			}
 		}
 	}
@@ -199,17 +200,17 @@ local function UpdatePackageTree()
 			},
 		}
 	end
-	
+
 	if own or not pkg.flags.Opaque then
 		local files = t[1].children
-		
+
 		for key in pairs(pkg.files) do
 			files[#files + 1] = {
 				value = key,
 				text = key
 			}
 		end
-	
+
 		table.sort(files, function(a, b)
 			a, b = a.value, b.value
 			if a == "main.lua" then
@@ -223,41 +224,41 @@ local function UpdatePackageTree()
 	else
 		t[1].children = nil
 	end
-	
+
 	tree:SetTree(t)
 end
 
 local function CreateTextEditor(file)
 	local is_lua = file:match("%.lua$")
 	local is_main = file == "main.lua"
-	
+
 	local editor = AceGUI:Create("MultiLineEditBox")
 	editor.width = "fill"
 	editor.height = "fill"
 	editor:SetLabel("")
 	editor:SetDisabled(not own)
 	editor.editBox:SetTextColor(1, 1, 1)
-	
+
 	local old_font, old_font_size
 	local fontPath = LSM:Fetch("font", "Fira Mono Medium")
 	if fontPath then
 		old_font, old_font_size = editor.editBox:GetFont()
 		editor.editBox:SetFont(fontPath, 12)
 	end
-	
+
 	local source = pkg.files[file]:trim():gsub("|", "||")
 	editor:SetText(source .. "\n")
-	
+
 	if is_lua then
 		IndentationLib.enable(editor.editBox, nil, 2)
 	end
-	
+
 	local rename_file, delete_file, revert_file
 	if not own then
 		editor:DisableButton(true)
 	else
 		editor.button:Hide()
-		
+
 		-- Rename
 		rename_file = AceGUI:Create("EditBox")
 		rename_file.frame:SetParent(editor.frame)
@@ -266,7 +267,7 @@ local function CreateTextEditor(file)
 		rename_file:SetText(file)
 		rename_file:SetDisabled(is_main or not own)
 		rename_file:SetWidth(200)
-		
+
 		local should_set_focus = set_focus
 		set_focus = false
 		editor:SetUserData("setfocus", function()
@@ -276,8 +277,8 @@ local function CreateTextEditor(file)
 				end)
 			end
 		end)
-		
-		
+
+
 		rename_file:SetCallback("OnEnterPressed", function(_, _, name)
 			pkg.files[name] = pkg.files[file]
 			pkg.files[file] = nil
@@ -285,7 +286,7 @@ local function CreateTextEditor(file)
 			UpdatePackageTree()
 			tree:SelectByPath("package", name)
 		end)
-		
+
 		-- Delete
 		delete_file = AceGUI:Create("Button")
 		delete_file.frame:SetParent(editor.frame)
@@ -294,7 +295,7 @@ local function CreateTextEditor(file)
 		delete_file:SetText("Delete")
 		delete_file:SetWidth(120)
 		delete_file:SetDisabled(is_main)
-		
+
 		delete_file:SetCallback("OnClick", function()
 			ConfirmPopup("Are you sure you want to delete this file?", function(...)
 				pkg.files[file] = nil
@@ -303,7 +304,7 @@ local function CreateTextEditor(file)
 				tree:SelectByPath("package")
 			end)
 		end)
-		
+
 		-- Revert
 		revert_file = AceGUI:Create("Button")
 		revert_file.frame:SetParent(editor.frame)
@@ -311,11 +312,11 @@ local function CreateTextEditor(file)
 		revert_file:SetText("Revert")
 		revert_file:SetWidth(120)
 		revert_file:SetDisabled(not changed[file])
-		
+
 		if orig_pkg.files[file] then
 			revert_file.frame:Show()
 		end
-		
+
 		revert_file:SetCallback("OnClick", function()
 			ConfirmPopup("Are you sure you want to revert this file to the previous revision?", function(...)
 				if pkg.flags.Opaque then
@@ -327,8 +328,8 @@ local function CreateTextEditor(file)
 				tree:SelectByPath("package", file)
 			end, function() end)
 		end)
-		
-		
+
+
 		editor:SetCallback("OnTextChanged", function(_, _, text)
 			text = text:trim()
 			if source ~= text:gsub("|", "||") then
@@ -340,7 +341,7 @@ local function CreateTextEditor(file)
 			end
 		end)
 	end
-	
+
 	editor:SetCallback("OnRelease", function()
 		if is_lua then IndentationLib.disable(editor.editBox) end
 		if old_font then editor.editBox:SetFont(old_font, old_font_size) end
@@ -351,7 +352,7 @@ local function CreateTextEditor(file)
 			revert_file:Release()
 		end
 	end)
-	
+
 	return editor
 end
 
@@ -368,7 +369,7 @@ local function FileSelected(container, _, file)
 	-- Clear the main view
 	container:ReleaseChildren()
 	if file ~= "package" then in_package = false end
-	
+
 	-- Take appropriate action
 	if file == "new_file" then -- Creating a new file
 		if not pkg.files[""] then
@@ -409,16 +410,16 @@ local function FileSelected(container, _, file)
 			local editor = CreateTextEditor(file)
 			container:AddChild(editor)
 			container:PauseLayout()
-			
+
 			editor:ClearAllPoints()
 			editor:SetPoint("TOPLEFT", container.border, 0, 3.5)
 			editor:SetPoint("BOTTOMRIGHT", container.border, -3, -3.5)
-			
+
 			if not tree_backdrop_altered then
 				container.border:SetBackdrop(nil)
 				tree_backdrop_altered = true
 			end
-			
+
 			local setfocus = editor:GetUserData("setfocus")
 			if setfocus then setfocus() end
 		end
@@ -438,36 +439,36 @@ function Editor:Open(p, read_only, reopen_package)
 
 	-- Close old editor before opening this one
 	if frame then frame:Release() end
-	
+
 	-- Close main Pacman frame
 	AceConfigDialog:Close("Pacman")
 	GameTooltip:Hide()
-	
+
 	-- Store package data
 	orig_pkg = p
 	pkg = FS:Clone(p)
 	reopen = reopen_package
 	in_package = false
-	
+
 	-- Init ownership and dirty flag
-	own = not read_only and pkg.author_key == FS:PlayerKey() 
+	own = not read_only and pkg.author_key == FS:PlayerKey()
 	dirty = false
 	changed = {}
-	
+
 	-- Decode opaque package
 	if pkg.flags.Opaque and own then
 		for file, content in pairs(pkg.files) do
 			pkg.files[file] = Store:Decode(content)
 		end
 	end
-	
+
 	-- Main window
 	frame = AceGUI:Create("Window")
 	frame:SetTitle("Package Editor")
 	frame:SetWidth(1200)
 	frame:SetHeight(675)
 	frame:SetLayout("fill")
-	
+
 	-- Left tree
 	tree = AceGUI:Create("TreeGroup")
 	tree:EnableButtonTooltips(false)
@@ -476,7 +477,7 @@ function Editor:Open(p, read_only, reopen_package)
 	tree_backdrop_color = { tree.border:GetBackdropColor() }
 	tree_backdrop_border_color = { tree.border:GetBackdropBorderColor() }
 	frame:AddChild(tree)
-	
+
 	-- Populate tree and open the main.lua file
 	UpdatePackageTree()
 	tree:SetCallback("OnGroupSelected", FileSelected)
@@ -484,7 +485,7 @@ function Editor:Open(p, read_only, reopen_package)
 	tree:SetCallback("OnRelease", function()
 		RestoreContentBackdrop()
 	end)
-	
+
 	-- Cleanup when editor window is closed
 	frame:SetCallback("OnClose", function(widget)
 		Editor:Close(true)
@@ -495,26 +496,26 @@ end
 function Editor:Close(discard)
 	-- No editor open
 	if not frame then return end
-	
+
 	-- We need to save a new revision
 	if dirty and not discard then
 		pkg.revision = pkg.revision + 1
 		pkg.revision_date = date()
-		
+
 		-- Encode Opaque package
 		if pkg.flags.Opaque then
 			for file, content in pairs(pkg.files) do
 				pkg.files[file] = Store:Encode(content)
 			end
 		end
-		
+
 		Store:UpdatePackage(pkg)
 	end
-	
+
 	-- Close window
 	frame:Release()
 	frame = nil
-	
+
 	-- We need to open the main GUI again
 	if reopen then
 		AceConfigDialog:Open("Pacman")
