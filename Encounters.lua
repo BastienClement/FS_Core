@@ -1022,7 +1022,9 @@ do
 			local tok = Token:Create(self.name .. ":" .. key, rev, opts[opt_key])
 
 			if def.promote then tok:RequirePromote(true) end
-			if self.zone then tok:RequireZone(self.zone) end
+
+			local zone = def.zone or self.zone
+			if zone then tok:RequireZone(zone) end
 
 			tokens_opts[tok] = opt_key
 			tokens[key] = tok
