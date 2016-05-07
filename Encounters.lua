@@ -921,6 +921,7 @@ do
 			order = order + 1
 			ct.order = order
 			t["_opt" .. order] = ct
+			return ct
 		end
 
 		return builder
@@ -954,6 +955,10 @@ do
 				return (confs[a]._order or 0) < (confs[b]._order or 0)
 			end)
 
+			local sub_main
+			local sub_name
+			local last_sub = false
+
 			-- Build option table
 			for _, key in ipairs(keys) do
 				local data = confs[key]
@@ -978,18 +983,33 @@ do
 					spell_desc = GetSpellDescription(spell)
 				else
 					name = suffix
-					suffix = nil
+					suffix = data.suffix
+				end
+
+				if data.spell then
+					local spellname, _, icon = GetSpellInfo(data.spell)
+					name = ("|T%s:18|t %s"):format(icon, name)
 				end
 
 				if suffix then
 					name = name .. " |cffff7d0a(" .. suffix .. ")"
 				end
 
-				builder:Add({
+				local main = sub_main
+				if data.sub and not last_sub then
+					builder:Add({
+						type = "description",
+						name = function() return (not main.get() and "|cff999999" or "") .. "        Options:" end,
+						width = "half"
+					})
+				end
+
+				local c = builder:Add({
 					type = "toggle",
 					name = name,
-					width = "full",
+					width = data.sub and "half" or "full",
 					desc = (desc or "") .. (spell_desc and desc and "\n\n" or "") .. (spell_desc and "|cffffd100" .. spell_desc or ""),
+					--descStyle = not data.sub and "inline" or nil,
 					get = function() return opts[key] end,
 					set = function(_, v)
 						opts[key] = v
@@ -999,8 +1019,16 @@ do
 						if self.OnTokenOptionChanged then
 							self:OnTokenOptionChanged()
 						end
+					end,
+					disabled = data.sub and function()
+						return not main.get()
 					end
 				})
+
+				last_sub = data.sub
+				if not data.sub then
+					sub_main = c
+				end
 			end
 
 			-- Cleanup
