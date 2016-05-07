@@ -183,6 +183,7 @@ local allowedCleu = {}
 local cleuBound = false
 local allowedMsg = {}
 local msgBound = false
+local fsTrackerBound = false
 
 local marks = {}
 local marks_queue = {}
@@ -321,6 +322,11 @@ function Encounters:ENCOUNTER_END(_, id, name, diff_id, size, kill)
 
 	for event in pairs(aceRegistered) do
 		Events:UnregisterMessage(event)
+	end
+
+	if fsTrackerBound then
+		Events:UnregisterMessage("FS_TRACKER_FOUND")
+		fsTrackerBound = false
 	end
 
 	self:UnregisterEvent("UNIT_TARGET")
@@ -511,6 +517,19 @@ function Events:ACE_EVENT(event, firstArg, ...)
 	Encounters:Dispatch(event, firstArg, ...)
 end
 
+function Encounters:RegisterScanMob(module, mobId, handler)
+	events["MOB_FOUND"][mobId][module] = handler
+	if not fsTrackerBound then
+		Events:RegisterMessage("FS_TRACKER_FOUND")
+		fsTrackerBound = true
+	end
+end
+
+function Events:FS_TRACKER_FOUND(_, guid, mobid)
+	Encounters:Dispatch("MOB_FOUND", mobid, guid)
+end
+
+
 -------------------------------------------------------------------------------
 -- Module prototype
 -------------------------------------------------------------------------------
@@ -604,6 +623,19 @@ function Module:Intercept(handler, ...)
 	for i = 1, n do
 		local msg = select(i, ...)
 		BigWigs:Intercept("BigWigs_" .. msg, handler)
+	end
+end
+
+function Module:ScanMob(handler, ...)
+	if not handler then handler = "MOB_FOUND" end
+	local n = select("#", ...)
+	if n < 1 then
+		Encounters:RegisterScanMob(self, "*", handler)
+	else
+		for i = 1, n do
+			local id = select(i, ...)
+			Encounters:RegisterScanMob(self, id, handler)
+		end
 	end
 end
 
