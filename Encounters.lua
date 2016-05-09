@@ -957,6 +957,7 @@ do
 
 			local sub_main
 			local sub_name
+			local sub_count = 0
 			local last_sub = false
 
 			-- Build option table
@@ -996,20 +997,24 @@ do
 				end
 
 				local main = sub_main
-				if data.sub and not last_sub then
-					builder:Add({
-						type = "description",
-						name = function() return (not main.get() and "|cff999999" or "") .. "        Options:" end,
-						width = "half"
-					})
+				if data.sub then
+					if sub_count % 4 == 0 then
+						builder:Add({
+							type = "description",
+							name = sub_count == 0 and function() return (not main.get() and "|cff999999" or "") .. "        Options:" end or "",
+							width = "half"
+						})
+					end
+					sub_count = sub_count + 1
+				else
+					sub_count = 0
 				end
 
-				local c = builder:Add({
+				local ot = builder:Add({
 					type = "toggle",
 					name = name,
 					width = data.sub and "half" or "full",
 					desc = (desc or "") .. (spell_desc and desc and "\n\n" or "") .. (spell_desc and "|cffffd100" .. spell_desc or ""),
-					--descStyle = not data.sub and "inline" or nil,
 					get = function() return opts[key] end,
 					set = function(_, v)
 						opts[key] = v
@@ -1025,9 +1030,8 @@ do
 					end
 				})
 
-				last_sub = data.sub
 				if not data.sub then
-					sub_main = c
+					sub_main = ot
 				end
 			end
 
