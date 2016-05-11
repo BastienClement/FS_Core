@@ -361,7 +361,8 @@ do
 			if useless then
 				add_text("|cffabd473You already have latest version of this package.\n")
 			elseif upgrade then
-				table.insert(buttons, { "Upgrade", function() do_import(nil, nil, trust:GetValue()) end })
+				local status = Store:Status(upgrade)
+				table.insert(buttons, { "Upgrade", function() do_import(nil, status.global.push, trust:GetValue()) end })
 			else
 				table.insert(buttons, { "Import", function() do_import(enable:GetValue(), push:GetValue(), trust:GetValue()) end })
 			end
@@ -420,7 +421,7 @@ do
 					return list[a] < list[b]
 				end)
 
-				pkg_select = AceGUI:Create("Dropdown")
+				local pkg_select = AceGUI:Create("Dropdown")
 				pkg_select:SetLabel("Package")
 				pkg_select:SetFullWidth(true)
 				pkg_select:SetList(list, order)
