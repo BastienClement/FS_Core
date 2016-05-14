@@ -712,7 +712,7 @@ function Pacman:UpdatePackageList()
 				sub_node = {
 					type = "group",
 					name = head,
-					desc = (prefix .. head):lower(),
+					--desc = (prefix .. head):lower(),
 					args = {}
 				}
 				node[head] = sub_node
@@ -729,10 +729,10 @@ function Pacman:UpdatePackageList()
 				color = "|cff64b4ff"
 			end
 
-			node[key .. suffix] = {
+			node[key] = {
 				type = "group",
 				name = color .. key,
-				desc = (prefix .. key):lower(),
+				desc = pkg.desc, --(prefix .. key):lower(),
 				args = create_package_gui(pkg, valid)
 			}
 		end
@@ -745,7 +745,12 @@ function Pacman:UpdatePackageList()
 	pacman_installed.args = pkgs
 end
 
-function Pacman:OpenGUI()
+function Pacman:OpenGUI(pkg)
 	self:UpdatePackageList()
-	AceConfigDialog:Open("Pacman")
+	if pkg then
+		AceConfigDialog:Open("Pacman")
+		AceConfigDialog:SelectGroup("Pacman", "packages", strsplit(".", pkg.id))
+	else
+		AceConfigDialog:Open("Pacman")
+	end
 end

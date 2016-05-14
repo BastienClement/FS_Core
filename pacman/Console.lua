@@ -29,7 +29,7 @@ local verbs = {
 -- Print the list of installed packages and their status
 local function PrintPackagesList()
 	print("|cffff7d0aInstalled packages:")
-	
+
 	local out = {}
 	for uuid, pkg in Store:Packages() do
 		local status = Store:Status(pkg)
@@ -41,10 +41,10 @@ local function PrintPackagesList()
 			status.loaded and "00ff00L" or "ff7d0aU"
 		)
 	end
-	
+
 	-- Sort packages list
 	table.sort(out)
-	
+
 	-- Output
 	for _, row in ipairs(out) do print(row) end
 end
@@ -69,7 +69,12 @@ function Console:OnSlash(cmd, arg1, arg2)
 			printf("Unknown package '%s'.", arg1 or "")
 		end
 	else
-		printf("Undefined Pacman command '%s'.", cmd or "")
+		local pkg = Store:Get(cmd)
+		if pkg then
+			Pacman:OpenGUI(pkg)
+		else
+			printf("Undefined Pacman command '%s'.", cmd or "")
+		end
 	end
 end
 
