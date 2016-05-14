@@ -681,18 +681,31 @@ local function create_package_gui(pkg, valid)
 		local env = Pacman.Sandbox:GetEnvironment(pkg)
 		local conf_table = env.locals.config
 		if conf_table then
-			o.pkg_conf = {
+			local pkg_conf = {
 				type = "group",
 				inline = true,
 				name = "Package configuration",
 				order = 9,
 				args = conf_table
 			}
-			--[[o.pkg_conf_spacing = {
-				type = "description",
-				name = " ",
-				order = 10
-			}]]
+
+			local ok, err = pcall(AceConfigRegistry.ValidateOptionsTable, AceConfigRegistry, pkg_conf, "config")
+
+			if not ok then
+				pkg_conf = {
+					type = "group",
+					inline = true,
+					name = "Package configuration",
+					order = 9,
+					args = {
+						fail = {
+							type = "description",
+							name = "|cffff7d0aThe options table for this package is broken and cannot be displayed.\n\n|r" .. err
+						}
+					}
+				}
+			end
+			o.pkg_conf = pkg_conf
 		end
 	end
 
