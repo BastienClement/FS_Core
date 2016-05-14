@@ -1025,11 +1025,17 @@ do
 					sub_count = 0
 				end
 
+				if desc then
+					desc = desc:gsub("%[([^\]]+)%]", function(match)
+						return "|cffffd100" .. match .. "|r"
+					end)
+				end
+
 				local ot = builder:Add({
 					type = "toggle",
 					name = name,
-					desc = (desc or "") .. (spell_desc and desc and "\n\n" or "") .. (spell_desc and "|cffffd100" .. spell_desc or ""),
 					width = width_kw[width],
+					desc = (desc or "") .. (spell_desc and desc and "\n\n" or "") .. (spell_desc and "|cffffd100" .. spell_desc:gsub("%|r", "|cffffd100") or ""),
 					get = function() return opts[key] end,
 					set = function(_, v)
 						opts[key] = v
