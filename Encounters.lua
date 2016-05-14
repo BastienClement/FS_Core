@@ -407,17 +407,11 @@ do
 					else
 						handler(orig_key, ...)
 					end
-				elseif type(module[handler]) == "function" and module.sandbox then
+				elseif type(module[handler]) == "function" then
 					if orig_key == "*" then
 						module[handler](module, ...)
 					else
 						module[handler](module, orig_key, ...)
-					end
-				elseif type(module[handler]) == "function" then -- XXX DEPRECATED
-					if orig_key == "*" then
-						module[handler](module, event, ...)
-					else
-						module[handler](module, event, orig_key, ...)
 					end
 				else
 					Encounters:Printf("|cffffff00Unable to invoke handler %s", handler)

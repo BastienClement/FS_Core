@@ -65,21 +65,6 @@ do
 		end
 	end
 
-	-- XXX DEPRECATED
-	function Core:IterateGroup()
-		return function(_, last)
-			if not IsInGroup() then
-				if not last then return 1, "player" end
-			end
-			local num = (last or 0) + 1
-			if num <= GetNumGroupMembers() then
-				local unit = IsInRaid() and ("raid" .. num) or ("party" .. num)
-				if not UnitExists(unit) then unit = "player" end
-				return num, unit
-			end
-		end
-	end
-
 	function Core:UnitIsInGuild(unit)
 		return guild_members[UnitName(unit) or unit] or false
 	end

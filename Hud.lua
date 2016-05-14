@@ -1304,12 +1304,6 @@ function HudObject:Persistent(state)
 	return self
 end
 
--- Set fade flag
--- Deprecated
-function HudObject:Fade()
-	return self
-end
-
 -- Set a key for this object
 function HudObject:Register(key, replace)
 	if not key then return end

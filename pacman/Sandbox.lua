@@ -104,7 +104,6 @@ function Sandbox:GetEnvironment(pkg)
 		end
 		sandbox.meta = readOnly(pkg)
 		sandbox.meta.sandbox = locals
-		sandbox.pkg = sandbox.meta -- XXX Deprecated
 	end
 
 	-- Module loading cache
