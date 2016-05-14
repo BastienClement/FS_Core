@@ -915,6 +915,41 @@ end
 -------------------------------------------------------------------------------
 
 do
+	-- XXX BEGIN: Ace3 toggle align hook
+	local widgets = LibStub("AceGUI-3.0").WidgetRegistry
+	local checkbox_factory = widgets.CheckBox
+
+	local function sane_align(self, xoffset, yoffset)
+		if self.image:GetTexture() then
+			self.text:SetPoint("LEFT", self.image,"RIGHT", 5 + xoffset, 0 + yoffset)
+		end
+	end
+
+	widgets.CheckBox = function(...)
+		local cb = checkbox_factory(...)
+
+		local set_image = cb.SetImage
+		cb.SetImage = function(...)
+			set_image(...)
+			sane_align(cb, 0, 0)
+		end
+
+		local mousedown = cb.frame:GetScript("OnMouseDown")
+		cb.frame:SetScript("OnMouseDown", function(...)
+			mousedown(...)
+			sane_align(cb, 1, -1)
+		end)
+
+		local mouseup = cb.frame:GetScript("OnMouseUp")
+		cb.frame:SetScript("OnMouseUp", function(...)
+			mouseup(...)
+			sane_align(cb, 0, 0)
+		end)
+
+		return cb
+	end
+	-- XXX END: Ace3 toggle align hook
+
 	local function config_builder(t)
 		local order = 0
 		local builder = {}
@@ -1045,7 +1080,7 @@ do
 
 				local ot = builder:Add({
 					type = "toggle",
-					name = (icon and " " or "") .. name,
+					name = name,
 					image = icon,
 					width = width_kw[width],
 					desc = effective_desc and ("\n" .. effective_desc) or nil,
