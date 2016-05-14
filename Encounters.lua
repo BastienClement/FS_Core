@@ -4,6 +4,8 @@ local Events = LibStub("AceAddon-3.0"):NewAddon("FS_Core_Encounters_Event", "Ace
 
 local Roster, Tracker, Map, Geometry, Network, BigWigs, Token
 
+local ACECONFIG_IMAGE_FIX = (LibStub.minors["AceConfigDialog-3.0"] or 0) > 60
+
 -------------------------------------------------------------------------------
 -- Encounters config
 --------------------------------------------------------------------------------
@@ -978,16 +980,19 @@ do
 			local sub_name
 			local sub_count = 0
 			local last_sub = false
+			local key_opt = {}
 
 			-- Build option table
 			for _, key in ipairs(keys) do
 				local data = confs[key]
 				local spell, suffix, desc = unpack(data)
 
+				local name
 				if type(spell) ~= "number" then
-					desc = suffix
-					suffix = spell
+					name = spell
 					spell = nil
+				else
+					name = BigWigs.spells[spell]
 				end
 
 				if not desc then
@@ -995,36 +1000,26 @@ do
 					suffix = nil
 				end
 
-				local name
-				local spell_desc
-				if spell then
-					local spellname, icon = BigWigs.spells[spell], BigWigs.icons[spell]
-					icon = data.icon and select(3, GetSpellInfo(data.icon)) or icon or ""
-					name = ("|T%s:18|t %s"):format(icon, spellname)
-					spell_desc = spell > 0 and GetSpellDescription(spell) or nil
-				else
-					name = suffix
-					suffix = data.suffix
+				local icon = (data.icon ~= nil) and (BigWigs.icons[data.icon] or select(3, GetSpellInfo(data.icon)) or data.icon) or BigWigs.icons[data.spell or spell or 0] or nil
+				local spell_desc = (data.spell or spell or 0) > 0 and GetSpellDescription(data.spell or spell) or nil
+
+				if data.suffix or suffix then
+					name = name .. " |cffff7d0a(" .. (data.suffix or suffix) .. ")"
 				end
 
-				if data.spell then
-					local spellname, icon = BigWigs.spells[data.spell], BigWigs.icons[data.spell]
-					icon = data.icon and select(3, GetSpellInfo(data.icon)) or icon or ""
-					name = ("|T%s:18|t %s"):format(icon, name)
-				end
-
-				if suffix then
-					name = name .. " |cffff7d0a(" .. suffix .. ")"
-				end
+				local cur_sub_main = sub_main
+				local main = data.linked and
+						function() return key_opt[data.linked] end or
+						(data.sub and data.linked ~= false and function() return cur_sub_main end) or
+						nil
 
 				local width = opt_width(data.sub)
-				local main = sub_main
 
 				if data.sub then
 					if sub_count % 4 == 0 then
 						builder:Add({
 							type = "description",
-							name = sub_count == 0 and function() return (not main.get() and "|cff999999" or "") .. "        Options:" end or "",
+							name = sub_count == 0 and "        Options:" or "",
 							width = "half"
 						})
 					end
@@ -1039,11 +1034,21 @@ do
 					end)
 				end
 
+				if not ACECONFIG_IMAGE_FIX and type(icon) == "number" then
+					icon = nil
+				end
+
+				local effective_desc =
+					(desc or "") ..
+					(spell_desc and desc and "\n\n" or "") ..
+					(spell_desc and "|cffffd100" .. spell_desc:gsub("%|r", "|cffffd100") or "")
+
 				local ot = builder:Add({
 					type = "toggle",
-					name = name,
+					name = (icon and " " or "") .. name,
+					image = icon,
 					width = width_kw[width],
-					desc = (desc or "") .. (spell_desc and desc and "\n\n" or "") .. (spell_desc and "|cffffd100" .. spell_desc:gsub("%|r", "|cffffd100") or ""),
+					desc = effective_desc and ("\n" .. effective_desc) or nil,
 					get = function() return opts[key] end,
 					set = function(_, v)
 						opts[key] = v
@@ -1054,11 +1059,12 @@ do
 							self:OnTokenOptionChanged()
 						end
 					end,
-					disabled = data.sub and function()
-						return not main.get()
+					disabled = main and function()
+						return not main().get()
 					end
 				})
 
+				key_opt[key] = ot
 				if not data.sub then
 					sub_main = ot
 				end
