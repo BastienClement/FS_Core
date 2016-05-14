@@ -992,16 +992,18 @@ do
 				local name
 				local spell_desc
 				if spell then
-					local spellname, _, icon = GetSpellInfo(spell)
+					local spellname, icon = BigWigs.spells[spell], BigWigs.icons[spell]
+					icon = data.icon and select(3, GetSpellInfo(data.icon)) or icon or ""
 					name = ("|T%s:18|t %s"):format(icon, spellname)
-					spell_desc = GetSpellDescription(spell)
+					spell_desc = spell > 0 and GetSpellDescription(spell) or nil
 				else
 					name = suffix
 					suffix = data.suffix
 				end
 
 				if data.spell then
-					local spellname, _, icon = GetSpellInfo(data.spell)
+					local spellname, icon = BigWigs.spells[data.spell], BigWigs.icons[data.spell]
+					icon = data.icon and select(3, GetSpellInfo(data.icon)) or icon or ""
 					name = ("|T%s:18|t %s"):format(icon, name)
 				end
 
