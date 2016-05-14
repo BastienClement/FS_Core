@@ -927,6 +927,25 @@ do
 		return builder
 	end
 
+	local width_kw = {
+		[1] = "half",
+		[2] = "normal",
+		[4] = "double",
+		[5] = "full"
+	}
+
+	local function opt_width(sub)
+		if not sub then
+			return 5
+		elseif sub == 2 then
+			return 2
+		elseif sub == 3 then
+			return 4
+		else
+			return 1
+		end
+	end
+
 	-- Deprecated, use mod:options instead
 	function Module:Options(env)
 		local db = env.db
@@ -996,7 +1015,9 @@ do
 					name = name .. " |cffff7d0a(" .. suffix .. ")"
 				end
 
+				local width = opt_width(data.sub)
 				local main = sub_main
+
 				if data.sub then
 					if sub_count % 4 == 0 then
 						builder:Add({
@@ -1005,7 +1026,7 @@ do
 							width = "half"
 						})
 					end
-					sub_count = sub_count + 1
+					sub_count = sub_count + width
 				else
 					sub_count = 0
 				end
@@ -1013,8 +1034,8 @@ do
 				local ot = builder:Add({
 					type = "toggle",
 					name = name,
-					width = data.sub and "half" or "full",
 					desc = (desc or "") .. (spell_desc and desc and "\n\n" or "") .. (spell_desc and "|cffffd100" .. spell_desc or ""),
+					width = width_kw[width],
 					get = function() return opts[key] end,
 					set = function(_, v)
 						opts[key] = v
