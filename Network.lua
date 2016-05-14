@@ -3,6 +3,7 @@ local Network = FS:RegisterModule("Network")
 
 local AceComm = LibStub("AceComm-3.0")
 LibStub("AceSerializer-3.0"):Embed(Network)
+local AceConfigRegistry = LibStub("AceConfigRegistry-3.0")
 
 local Compress = LibStub:GetLibrary("LibCompress")
 local CompressEncode = Compress:GetAddonEncodeTable()
@@ -89,7 +90,7 @@ version_check = {
 		name = "",
 		order = 2,
 	},
-	update_btn = {
+	--[[update_btn = {
 		type = "execute",
 		name = "Refresh",
 		desc = "Refresh the version list with latest informations",
@@ -97,7 +98,7 @@ version_check = {
 		func = function()
 			-- Dummy function to trigger Ace3 config dialog refresh
 		end
-	},
+	},]]
 	request_btn = {
 		type = "execute",
 		name = "Request",
@@ -428,6 +429,8 @@ function Network:OnControlMessage(_, msg, channel, sender)
 			type = "description",
 			name = sender .. "  -  " .. data.version
 		}
+
+		AceConfigRegistry:NotifyChange("FS Core")
 	elseif cmd == "REQ_ANNOUNCE" then
 		self:BroadcastAnnounce()
 	end
