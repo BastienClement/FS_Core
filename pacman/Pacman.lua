@@ -3,6 +3,7 @@ local Pacman = FS:RegisterModule("Pacman")
 
 local AceConfig = LibStub("AceConfig-3.0")
 local AceConfigDialog = LibStub("AceConfigDialog-3.0")
+local AceConfigRegistry = LibStub("AceConfigRegistry-3.0")
 local AceGUI = LibStub("AceGUI-3.0")
 
 LibStub("AceSerializer-3.0"):Embed(Pacman)
@@ -756,6 +757,7 @@ function Pacman:UpdatePackageList()
 	end
 
 	pacman_installed.args = pkgs
+	AceConfigRegistry:NotifyChange("Pacman")
 end
 
 function Pacman:OpenGUI(pkg)
