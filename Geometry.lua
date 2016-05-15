@@ -291,8 +291,8 @@ do
 
 		-- Join two vertices in the same component
 		function UF.Union(a, b)
-			ca = component[a]
-			cb = component[b]
+			local ca = component[a]
+			local cb = component[b]
 
 			if ca ~= cb then
 				-- Change components
