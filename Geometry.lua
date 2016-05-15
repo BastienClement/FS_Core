@@ -553,10 +553,10 @@ do
 						local other = edge.a == vertex and edge.b or edge.a
 						local d = dists[vertex][other]
 						if d > distance then
-							distance = d;
-							farthest = vertex;
-							farthest_edge = edge;
-							farthest_other = other;
+							distance = d
+							farthest = vertex
+							farthest_edge = edge
+							farthest_other = other
 						end
 					end
 				end
@@ -695,7 +695,7 @@ do
 				end
 
 				-- Take best of two
-				local best_choice = matching_a_cost < matching_b_cost and 1 or 0;
+				local best_choice = matching_a_cost < matching_b_cost and 1 or 0
 
 				for i = 1, #path - 1 do
 					local a = path[i]
