@@ -253,6 +253,7 @@ do
 			actions[timer] = nil
 		end
 	end
+	BW.CancelAction = BW.CancelActions
 
 	function BW:CancelAllActions()
 		for timer, _ in pairs(actions) do

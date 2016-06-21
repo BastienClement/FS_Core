@@ -692,6 +692,7 @@ end
 function Module:CancelActions(...)
 	BigWigs:CancelActions(...)
 end
+Module.CancelAction = Module.CancelActions
 
 function Module:CancelAllActions(...)
 	BigWigs:CancelAllActions(...)
