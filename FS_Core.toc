@@ -32,6 +32,11 @@ libs\LibDualSpec-1.0\LibDualSpec-1.0.lua
 libs\indents.lua
 
 Core.lua
+
+utils\Operators.lua
+utils\Stream.lua
+utils\Deferred.lua
+
 Config.lua
 
 Geometry.lua
