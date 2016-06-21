@@ -36,6 +36,8 @@ function FS.Util.Stream(gen, param, state)
 	local tpe = type(gen)
 	if tpe == "function" then
 		return stream(gen, param, state)
+	elseif tpe == "nil" then
+		return stream(function() return nil end)
 	elseif tpe == "table" then
 		return (#gen > 0) and stream(ipairs(gen)) : map (function(a, b) return b end) or stream(pairs(gen))
 	else
@@ -44,23 +46,28 @@ function FS.Util.Stream(gen, param, state)
 end
 
 function FS.Util.Generate(generator, state, ...)
-	if state == nil then
-		if select("#", ...) > 0 then
-			local values = { state, ... }
-			return stream(function() return unpack(values) end)
-		else
-			return stream(function() return state end)
-		end
-	else
+	if type(generator) == "function" then
 		local first = true
+
+		local function trampoline(new_state, ...)
+			state = new_state
+			return new_state, ...
+		end
+
 		return stream(function()
 			if first then
 				first = false
 			else
-				state = generator(state)
+				return trampoline(generator(state))
 			end
-			return state
 		end)
+	else
+		if select("#", ...) > 0 then
+			local values = { generator, state, ... }
+			return stream(function() return unpack(values) end)
+		else
+			return stream(function() return generator, state end)
+		end
 	end
 end
 
@@ -126,6 +133,18 @@ end
 -- Slicing
 -------------------------------------------------------------------------------
 
+-- Next
+do
+	local function trampoline(self, state, ...)
+		self.state = state
+		return state, ...
+	end
+
+	function Stream:next()
+		return trampoline(self, self.gen(self.param, self.state))
+	end
+end
+
 -- Take
 do
 	local function take(pred, state, ...)
@@ -170,9 +189,9 @@ function Stream:drop(pred)
 	return stream(gen, param, state)
 end
 
--- Span
-function Stream:span(pred)
-	return self:take(pred), self:drop(pred)
+-- Nth
+function Stream:nth(n)
+	return self:drop(n - 1):next()
 end
 
 -------------------------------------------------------------------------------
@@ -245,29 +264,37 @@ end
 do
 	local stream = FS.Util.Stream
 
-	local function toIterators(stream)
-		return stream:iterator()
-	end
-
-	local function iteratorHasNext(iterator)
-		return iterator:HasNext()
-	end
-
-	local function iteratorNext(iterator)
-		return iterator:Next()
-	end
-
-	local function zip_gen(sources)
-		if not stream(sources) : all(iteratorHasNext) then
-			return nil
+	local function build(i, sources, ...)
+		if i > 0 then
+			local val = sources[i]:next()
+			if val == nil then
+				return nil
+			else
+				return build(i - 1, sources, val, ...)
+			end
 		else
-			return unpack(stream(sources) : map(iteratorNext) : toList())
+			return ...
 		end
 	end
 
-	function Stream:zip(...)
-		return stream(zip_gen, stream { self, ... } : map (toIterators) : toList())
+	local function zip_gen(sources)
+		return build(#sources, sources)
 	end
+
+	function Stream:zip(...)
+		return stream(zip_gen, { self, ... })
+	end
+end
+
+-------------------------------------------------------------------------------
+-- Sorting
+-------------------------------------------------------------------------------
+
+-- Sort
+function Stream:sort(sorter)
+	local vals = self:toList()
+	table.sort(vals, sorter)
+	return FS.Util.Stream(vals)
 end
 
 -------------------------------------------------------------------------------
@@ -277,9 +304,7 @@ end
 -- Fold
 function Stream:fold(seed, fn)
 	local acc = seed
-	self:foreach(function(...)
-		acc = fn(acc, ...)
-	end)
+	self:foreach(function(...) acc = fn(acc, ...) end)
 	return acc
 end
 
@@ -363,31 +388,4 @@ function Stream:toMap()
 		m[k] = v
 		return m
 	end)
-end
-
--- Iterator
-function Stream:iterator()
-	local gen, param, state = self.gen, self.param, self.state
-
-	local it = {
-		generated = false
-	}
-
-	function it:Generate()
-		self.generated = true
-		state = gen(param, state)
-	end
-
-	function it:HasNext()
-		if not self.generated then self:Generate() end
-		return state ~= nil
-	end
-
-	function it:Next()
-		if not self.generated then self:Generate() end
-		self.generated = false
-		return state
-	end
-
-	return it
 end
