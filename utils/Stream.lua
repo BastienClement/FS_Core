@@ -47,7 +47,7 @@ end
 
 function FS.Util.Generate(generator, state, ...)
 	if type(generator) == "function" then
-		local first = true
+		local first = state ~= nil
 
 		local function trampoline(new_state, ...)
 			state = new_state
@@ -57,6 +57,7 @@ function FS.Util.Generate(generator, state, ...)
 		return stream(function()
 			if first then
 				first = false
+				return state
 			else
 				return trampoline(generator(state))
 			end
@@ -79,7 +80,7 @@ function FS.Util.Range(start, stop, step)
 	if step == nil then
 		step = (start <= stop) and 1 or -1
 	end
-	if start == 0 and stop == 0 then
+	if start == 1 and stop == 0 then
 		return stream(function() return nil end)
 	else
 		return stream(function(param, current)
@@ -262,8 +263,6 @@ end
 -------------------------------------------------------------------------------
 
 do
-	local stream = FS.Util.Stream
-
 	local function build(i, sources, ...)
 		if i > 0 then
 			local val = sources[i]:next()
@@ -282,7 +281,7 @@ do
 	end
 
 	function Stream:zip(...)
-		return stream(zip_gen, { self, ... })
+		return FS.Util.Stream(zip_gen, { self, ... })
 	end
 end
 
@@ -331,7 +330,7 @@ end
 
 -- Product
 function Stream:product()
-	return self:fold(0, Operator.Mul)
+	return self:fold(1, Operator.Mul)
 end
 
 -- Min
