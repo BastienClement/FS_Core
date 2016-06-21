@@ -27,11 +27,11 @@ local function resolve(state, self, ...)
 	self.waiting = nil
 end
 
-function Deferred:Resolve(...)
+function Deferred:resolve(...)
 	resolve(true, self, ...)
 end
 
-function Deferred:Reject(...)
+function Deferred:reject(...)
 	resolve(false, self, ...)
 end
 
@@ -54,20 +54,20 @@ end
 function Deferred:map(fn)
 	local child = new()
 	self:onComplete(
-		function(...) child:Resolve(fn(...)) end,
-		function(...) child:Reject(...) end
+		function(...) child:resolve(fn(...)) end,
+		function(...) child:reject(...) end
 	)
 	return child
 end
 
 function Deferred:flatmap(fn)
 	local child = new()
-	self:OnComplete(
-		function(...) fn(...):OnComplete(
-			function(...) child:Resolve(...) end,
-			function(...) child:Reject(...) end
+	self:onComplete(
+		function(...) fn(...):onComplete(
+			function(...) child:resolve(...) end,
+			function(...) child:reject(...) end
 		) end,
-		function(...) child:Reject(...) end
+		function(...) child:reject(...) end
 	)
 	return child
 end
