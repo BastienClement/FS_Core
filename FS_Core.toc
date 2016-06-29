@@ -2,6 +2,7 @@
 ## Title: |cff64b4ffFrom Scratch|r Core
 ## Description: A framework to build powerful addons, WeakAuras and enhancing boss mods for high-end raiding
 ## SavedVariables: FSDB, PACMAN_DB
+## SavedVariablesPerCharacter: FSC_guildmates
 ## OptionalDeps: LibStub, CallbackHandler-1.0, Ace3, LibGroupInSpecT-1.1, LibStrataFix, BigWigs, LibSharedMedia-3.0, AceGUI-3.0-SharedMediaWidgets, LibCompress, LibDualSpec-1.0
 
 #@no-lib-strip@
@@ -52,6 +53,8 @@ Tracker.lua
 Hud.lua
 Encounters.lua
 Token.lua
+
+AutoInvite.lua
 
 cooldowns\Cooldowns.xml
 pacman\Pacman.xml
