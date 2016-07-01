@@ -1,16 +1,14 @@
 local _, FS = ...
-local AutoInv = FS:RegisterModule("AutoInvite")
+local AutoInvite = FS:RegisterModule("AutoInvite")
+
 local Console
 
-local connectedMates={}
-local FSC_mates,playerName,homeRealm,playerFullName
-
-local raidSizeMax=40
-local loopTok --timer token for invite loop
-
+------------------------------------------------------------------------------------------------------------------------
+-- Config Auto Invite
+------------------------------------------------------------------------------------------------------------------------
 local autoinvite_default = {
 	profile = {
-		
+		freq=5
 	}
 }
 
@@ -27,188 +25,259 @@ local autoinvite_config = {
 		fontSize = "medium",
 		order = 1
 	},
+	freq ={
+		type = "input",
+		name = "Invitation frequency",
+		get = function() return AutoInvite.settings.freq end,
+		set = function(_,val) AutoInvite.settings.freq=val end,
+		desc= "Time to wait in seconds before resending invitations. Default 5 sec",
+		order = 5
+	},
 	ref = {
 		type = "header",
 		name = "Module reference",
 		order = 1000
 	},
 	cmds = FS.Config:MakeDoc("Available chat commands", 2000, {
-		{"|cffabd473inv|r", "Enable auto invite for all guild members"},
-		{"|cffabd473inv scan|r", "Scan and store all guild members"},
-		{"|cffabd473inv stop|r", "Disable auto invite"},
-		{"|cffabd473inv rank <rank>|r", "Enable auto invite for only guild members of rank <rank>"},
-		{"|cffabd473inv rank <x> <y>|r", "Enable auto invite for guild members of rank beween x and y (included)"},
-		{"|cffabd473inv level <x>|r", "Enable auto invite for guild members with level x"},
-		{"|cffabd473inv level <x> <y>|r", "Enable auto invite for guild members beween level x and y"},
-	}, "/fs ")
+		{"inv", "Enable auto invite for all guild members"},
+		{"inv stop", "Disable auto invite"},
+		{"inv rank <rank>", "Enable auto invite for only guild members of rank <rank>"},
+		{"inv rank <x> <y>", "Enable auto invite for guild members of rank beween x and y (included)"},
+		{"inv level <x>", "Enable auto invite for guild members with level x"},
+		{"inv level <x> <y>", "Enable auto invite for guild members beween level x and y"},
+	}, "/fs "),
+	api = FS.Config:MakeDoc("Public API", 3000, {
+		{":InviteAll ( )", "Looping invitations of all connected guild members"},
+		{":InviteRank( guildRank )", "Looping invitations of all connected guild members having the specified rank. This rank can be the rankIndex or the rank name.\nBeware with ranks having spaces in it. The parameter is therefore \"The guild rank name\" "},
+		{":InviteRangeRank( guildRank1 , guildRank2 )", "Looping invitations of all connected guild members having a rank within the ranks provided. Ranks can also be the rankIndex or the rank name."},
+		{":InviteLevel( level )", "Looping invitations of all connected guild members having the specified level. Max level if no level provided."},
+		{":InviteRangeLevel( levelStart , levelStop )", "Looping invitations of all connected guild members having a level between the specified levels."},
+		{":Stop ( )", "Stops invitation looping."}
+	}, "FS.AutoInvite"),
 }
 
-function AutoInv:OnInitialize()
+------------------------------------------------------------------------------------------------------------------------
+
+local connectedMates={}
+local playerName,homeRealm,playerFullName
+
+local raidSizeMax=40
+local loopTok --timer token for invite loop
+
+------------------------------------------------------------------------------------------------------------------------
+-- Module initialization
+
+function AutoInvite:OnInitialize()
 	Console = FS:GetModule("Console")
 	Console:RegisterCommand("inv", self)
-	
-	FS.Config:Register("Auto invite", autoinvite_config)
 
-	self.db = FS.db:RegisterNamespace("Inv", autoinvite_default)
+	self.db = FS.db:RegisterNamespace("AutoInvite", autoinvite_default)
 	self.settings = self.db.profile
+	FS.Config:Register("AutoInvite", autoinvite_config)
 end
 
-function AutoInv:OnEnable()
+function AutoInvite:OnEnable()
 	homeRealm = GetRealmName()
+	homeRealm = homeRealm:gsub("%s+", "")
 	playerName = UnitName("player")
-	playerFullName=playerName.."-"..homeRealm
+	playerFullName = playerName.."-"..homeRealm
+end
+
+-----------------------------------------------------------------------------------------------------------------------------
+-- Private
+
+function GetConnected()
+	GuildRoster()
+	local _,_,numOnlineMembers = GetNumGuildMembers();
+	local connectedMates={}
+	for connected=1,numOnlineMembers,1 do
+		local name, rank, rankIndex, level, _, _, _, _, _, _, _,_, _, isMobile=GetGuildRosterInfo(connected);
+		connectedMates[#connectedMates+1]={["name"]=name,["rank"]=rank,["rankIndex"]=rankIndex,["level"]=level,["isMobile"]=isMobile }
+	end
+	return connectedMates
+end
+
+function GetPplGroup()
+	local grouped={}
+	for i=1,GetNumGroupMembers(),1 do
+		local name=select(1,GetRaidRosterInfo(i))
+
+		if not name:find('%u%U*-%u%U') then
+			name=name.."-"..homeRealm
+		end
+		grouped[#grouped+1]=name
+	end
+	return grouped
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Public API
 
-function AutoInv:CancelInvites()
-	if loopTok then
-		loopTok:Cancel()
-		loopTok=nil --to be sure
-		self:Printf("Invitations stopped")
-	end
-end
-
-
-function AutoInv:InviteAll()
+function AutoInvite:InviteAll()
 	if loopTok then
 		self:Printf("Invitations already in progress, please stop them before to inviting again")
 	else
 		self:Printf("Inviting all connected members")
+		print(self.settings.freq)
 		local function update()
-			local connectedMates=self:GetConnected() -- Get all ppl connected in guild
+			local connectedMates=GetConnected() -- Get all ppl connected in guild
 
-			local grouped=self:GetPplGroup()
-			if #grouped < raidSizeMax then
-				for i=1,#connectedMates,1 do
-					local invitation=true
-					for j=1,#grouped,1 do
-						if connectedMates[i].name == grouped[j] then
-							invitation=false
-							break
+			if connectedMates then
+				local grouped=GetPplGroup()
+				if #grouped < raidSizeMax then
+					for i=1,#connectedMates,1 do
+						local invitation=true
+						for j=1,#grouped,1 do
+							if connectedMates[i].name == grouped[j] then
+								invitation=false
+								break
+							end
 						end
-					end
-					--Convert to raid if party full and invites pending
-					if not IsInRaid() and #grouped==5 and invitation then
-						ConvertToRaid()
-					end
+						--Convert to raid if party full and invites pending
+						if not IsInRaid() and #grouped==5 and invitation then
+							ConvertToRaid()
+						end
 
-					if invitation and connectedMates[i].name~=playerFullName then
-						InviteUnit(connectedMates[i].name)
+						if invitation and connectedMates[i].name~=playerFullName then
+							InviteUnit(connectedMates[i].name)
+						end
 					end
 				end
 			end
 		end
-		loopTok=C_Timer.NewTicker(5, function() update() end)
+		loopTok=C_Timer.NewTicker(self.settings.freq, function() update() end)
 	end
 end
 
-function AutoInv:InviteRank(arg2)
+function AutoInvite:InviteRank(guildRank)
 	if loopTok then
 		self:Printf("Invitations already in progress, please stop them before to inviting again")
 	else
-		self:Printf("Inviting members with rank %s",arg2)
-		local rank=tonumber(arg2)
+		local rank=tonumber(guildRank)
 
-		if rank >= GuildControlGetNumRanks()then
-			self:Printf("Rank %d does not exists. Not inviting.",rank)
+		if not rank then
+			for k,v in pairs(GetGuildRanks()) do
+				if v==guildRank then
+					rank=k-1
+				end
+			end
+		end
+
+		if not rank or rank >= GuildControlGetNumRanks()then
+			self:Printf("Rank %s does not exists. Not inviting.",rank)
 			return
 		end
 
+		self:Printf("Inviting members with rank %s",guildRank)
+
 		local function update()
-			local connectedMates=self:GetConnected() -- Get all ppl connected in guild
+			local connectedMates=GetConnected() -- Get all ppl connected in guild
 
-			local connectedSelected={} --Select ppl filling the criteria
-			for i=1,#connectedMates,1 do
-				if connectedMates[i].rankIndex == rank and not connectedMates[i].isMobile then
-					connectedSelected[#connectedSelected+1]=connectedMates[i]
+			if connectedMates then
+				local connectedSelected={} --Select ppl filling the criteria
+				for i=1,#connectedMates,1 do
+					if connectedMates[i].rankIndex == rank and not connectedMates[i].isMobile then
+						connectedSelected[#connectedSelected+1]=connectedMates[i]
+					end
 				end
-			end
 
-			local grouped=self:GetPplGroup()
-			if #grouped < raidSizeMax then
-				for i=1,#connectedSelected,1 do
-					local invitation=true
-					for j=1,#grouped,1 do
-						if connectedSelected[i].name == grouped[j] then
-							invitation=false
-							break
+				local grouped=GetPplGroup()
+				if #grouped < raidSizeMax then
+					for i=1,#connectedSelected,1 do
+						local invitation=true
+						for j=1,#grouped,1 do
+							if connectedSelected[i].name == grouped[j] then
+								invitation=false
+								break
+							end
 						end
-					end
-					--Convert to raid if party full and invites pending
-					if not IsInRaid() and #grouped==5 and invitation then
-						ConvertToRaid()
-					end
+						--Convert to raid if party full and invites pending
+						if not IsInRaid() and #grouped==5 and invitation then
+							ConvertToRaid()
+						end
 
-					if invitation and connectedSelected[i].name~=playerFullName then
-						self:Printf("Inviting "..connectedSelected[i].name)
-						InviteUnit(connectedSelected[i].name)
+						if invitation and connectedSelected[i].name~=playerFullName then
+							self:Printf("Inviting "..connectedSelected[i].name)
+							InviteUnit(connectedSelected[i].name)
+						end
 					end
 				end
 			end
 		end
-		loopTok=C_Timer.NewTicker(5, function() update() end)
+		loopTok=C_Timer.NewTicker(self.settings.freq, function() update() end)
 	end
 end
 
-function AutoInv:InviteRangeRank(arg2,arg3)
+function AutoInvite:InviteRangeRank(guildRank1,guildRank2)
 	if loopTok then
 		self:Printf("Invitations already in progress, please stop them before to inviting again")
 	else
-		local rk1=tonumber(arg2)
-		local rk2=tonumber(arg3)
+		local rk1=tonumber(guildRank1)
+		local rk2=tonumber(guildRank2)
 
-		if rk1>rk2 then
+		--Parameters are not numbers
+		if not rk1 or not rk2 then
+			for k,v in pairs(GetGuildRanks()) do
+				if v==guildRank1 then
+					rk1=k-1
+				end
+				if v==guildRank2 then
+					rk2=k-1
+				end
+			end
+		end
+
+		if rk1 and rk2 and rk1>rk2 then
 			local tmp=rk1
 			rk1=rk2
 			rk2=tmp
 		end
 
-		self:Printf("Inviting members between rank %s and %s",rk1,rk2)
-
-		if rk2 >= GuildControlGetNumRanks()then
-			self:Printf("Rank %d does not exists. Not inviting.",rk2)
+		if not rk1 or not rk2 or rk2 >= GuildControlGetNumRanks()then
+			self:Printf("One of the ranks does not exists. Not inviting.")
 			return
 		end
+		self:Printf("Inviting members between rank %s and %s",guildRank1,guildRank2)
 
 		local function update()
-			local connectedMates=self:GetConnected() -- Get all ppl connected in guild
+			local connectedMates=GetConnected() -- Get all ppl connected in guild
 
-			local connectedSelected={} --Select ppl filling the criteria
-			for i=1,#connectedMates,1 do
-				if connectedMates[i].rankIndex>=tonumber(rk1)and connectedMates[i].rankIndex<=tonumber(rk2) and not connectedMates[i].isMobile then
-					connectedSelected[#connectedSelected+1]=connectedMates[i]
+			if connectedMates then
+				local connectedSelected={} --Select ppl filling the criteria
+				for i=1,#connectedMates,1 do
+					if connectedMates[i].rankIndex>=tonumber(rk1)and connectedMates[i].rankIndex<=tonumber(rk2) and not connectedMates[i].isMobile then
+						connectedSelected[#connectedSelected+1]=connectedMates[i]
+					end
 				end
-			end
 
-			local grouped=self:GetPplGroup()
-			if #grouped < raidSizeMax then
-				for i=1,#connectedSelected,1 do
-					local invitation=true
-					for j=1,#grouped,1 do
-						if connectedSelected[i].name == grouped[j] then
-							invitation=false
-							break
+				local grouped=GetPplGroup()
+				if #grouped < raidSizeMax then
+					for i=1,#connectedSelected,1 do
+						local invitation=true
+						for j=1,#grouped,1 do
+							if connectedSelected[i].name == grouped[j] then
+								invitation=false
+								break
+							end
 						end
-					end
-					--Convert to raid if party full and invites pending
-					if not IsInRaid() and #grouped==5 and invitation then
-						ConvertToRaid()
-					end
+						--Convert to raid if party full and invites pending
+						if not IsInRaid() and #grouped==5 and invitation then
+							ConvertToRaid()
+						end
 
-					if invitation and connectedSelected[i].name~=playerFullName then
-						self:Printf("Inviting "..connectedSelected[i].name)
-						InviteUnit(connectedSelected[i].name)
+						if invitation and connectedSelected[i].name~=playerFullName then
+							self:Printf("Inviting "..connectedSelected[i].name)
+							InviteUnit(connectedSelected[i].name)
+						end
 					end
 				end
 			end
 		end
-		loopTok=C_Timer.NewTicker(5, function() update() end)
+		loopTok=C_Timer.NewTicker(self.settings.freq, function() update() end)
 	end
 end
 
-function AutoInv:InviteLevel(level)
+function AutoInvite:InviteLevel(level)
 	if loopTok then
 		self:Printf("Invitations already in progress, please stop them before to inviting again")
 	else
@@ -224,42 +293,44 @@ function AutoInv:InviteLevel(level)
 		self:Printf("Inviting members at level %d",level)
 
 		local function update()
-			local connectedMates=self:GetConnected() -- Get all ppl connected in guild
+			local connectedMates=GetConnected() -- Get all ppl connected in guild
 
-			local connectedSelected={} --Select ppl filling the criteria
-			for i=1,#connectedMates,1 do
-				if connectedMates[i].level==tonumber(level) and not connectedMates[i].isMobile then
-					connectedSelected[#connectedSelected+1]=connectedMates[i]
+			if connectedMates then
+				local connectedSelected={} --Select ppl filling the criteria
+				for i=1,#connectedMates,1 do
+					if connectedMates[i].level==tonumber(level) and not connectedMates[i].isMobile then
+						connectedSelected[#connectedSelected+1]=connectedMates[i]
+					end
 				end
-			end
 
-			local grouped=self:GetPplGroup()
-			if #grouped < raidSizeMax then
-				for i=1,#connectedSelected,1 do
-					local invitation=true
-					for j=1,#grouped,1 do
-						if connectedSelected[i].name == grouped[j] then
-							invitation=false
-							break
+				local grouped=GetPplGroup()
+				if #grouped < raidSizeMax then
+					for i=1,#connectedSelected,1 do
+						local invitation=true
+						for j=1,#grouped,1 do
+							if connectedSelected[i].name == grouped[j] then
+								invitation=false
+								break
+							end
 						end
-					end
-					--Convert to raid if party full and invites pending
-					if not IsInRaid() and #grouped==5 and invitation then
-						ConvertToRaid()
-					end
+						--Convert to raid if party full and invites pending
+						if not IsInRaid() and #grouped==5 and invitation then
+							ConvertToRaid()
+						end
 
-					if invitation and connectedSelected[i].name~=playerFullName then
-						self:Printf("Inviting "..connectedSelected[i].name)
-						InviteUnit(connectedSelected[i].name)
+						if invitation and connectedSelected[i].name~=playerFullName then
+							self:Printf("Inviting "..connectedSelected[i].name)
+							InviteUnit(connectedSelected[i].name)
+						end
 					end
 				end
 			end
 		end
-		loopTok=C_Timer.NewTicker(5, function() update() end)
+		loopTok=C_Timer.NewTicker(self.settings.freq, function() update() end)
 	end
 end
 
-function AutoInv:InviteRangeLevel(levelStart,levelStop)
+function AutoInvite:InviteRangeLevel(levelStart,levelStop)
 	if loopTok then
 		self:Printf("Invitations already in progress, please stop them before to inviting again")
 	else
@@ -271,101 +342,59 @@ function AutoInv:InviteRangeLevel(levelStart,levelStop)
 
 		self:Printf("Inviting members beteween level %d and %d",levelStart,levelStop)
 		local function update()
-			local connectedMates=self:GetConnected() -- Get all ppl connected in guild
+			local connectedMates=GetConnected() -- Get all ppl connected in guild
 
-			local connectedSelected={} --Select ppl filling the criteria
-			for i=1,#connectedMates,1 do
-				if connectedMates[i].level >= tonumber(levelStart) and connectedMates[i].level <= tonumber(levelStop) and not connectedMates[i].isMobile then
-					connectedSelected[#connectedSelected+1]=connectedMates[i]
+			if connectedMates then
+				local connectedSelected={} --Select ppl filling the criteria
+				for i=1,#connectedMates,1 do
+					if connectedMates[i].level >= tonumber(levelStart) and connectedMates[i].level <= tonumber(levelStop) and not connectedMates[i].isMobile then
+						connectedSelected[#connectedSelected+1]=connectedMates[i]
+					end
 				end
-			end
 
-			local grouped=self:GetPplGroup()
-			if #grouped < raidSizeMax then
-				for i=1,#connectedSelected,1 do
-					local invitation=true
-					for j=1,#grouped,1 do
-						if connectedSelected[i].name == grouped[j] then
-							invitation=false
-							break
+				local grouped=GetPplGroup()
+				if #grouped < raidSizeMax then
+					for i=1,#connectedSelected,1 do
+						local invitation=true
+						for j=1,#grouped,1 do
+							if connectedSelected[i].name == grouped[j] then
+								invitation=false
+								break
+							end
+						end
+						--Convert to raid if party full and invites pending
+						if not IsInRaid() and #grouped==5 and invitation then
+							ConvertToRaid()
+						end
+
+						if invitation and connectedSelected[i].name~=playerFullName then
+							self:Printf("Inviting "..connectedSelected[i].name)
+							InviteUnit(connectedSelected[i].name)
 						end
 					end
-					--Convert to raid if party full and invites pending
-					if not IsInRaid() and #grouped==5 and invitation then
-						ConvertToRaid()
-					end
-
-					if invitation and connectedSelected[i].name~=playerFullName then
-						self:Printf("Inviting "..connectedSelected[i].name)
-						InviteUnit(connectedSelected[i].name)
-					end
 				end
 			end
-
 		end
 
-		loopTok=C_Timer.NewTicker(5, function() update() end)
+		loopTok=C_Timer.NewTicker(self.settings.freq, function() update() end)
 	end
 end
 
------------------------------------------------------------------------------------------------------------------------------
--- Private
-
-function listPplGuild()
-	GuildRoster() -- Game does it every 10 sec and raises GUILD_ROSTER_UPDATE event
-	local numTotalMembers,_,_ = GetNumGuildMembers();
-	for member=1,numTotalMembers,1 do
-		local nm, rk, rankIndex, lvl, cls, zone, charnote, officerNote, online, stus, classFileName,achievementPoints, achievementRank, isMobile=GetGuildRosterInfo(member);
-		FSC_mates[member]={["name"]=nm,
-							["rank"]=rk,
-							["rankIdx"]=rankIndex,
-							["level"]=lvl,
-							["class"]=cls,
-							["note"]=charnote,
-							["offinote"]=officerNote,
-							["status"]=stus,
-							["zone"]=zone,
-							["online"]=online,
-							["classFileName"]=classFileName,
-							["achievementPoints"]=achievementPoints,
-							["achievementRank"]=achievementRank,
-							["isMobile"]=isMobile
-						  }
+function AutoInvite:Stop()
+	if loopTok then
+		loopTok:Cancel()
+		loopTok=nil --to be sure
+		self:Printf("Invitations stopped")
 	end
-	print("Guild scan performed")
-end
-
-function AutoInv:GetConnected()
-	GuildRoster()
-	local _,_,numOnlineMembers = GetNumGuildMembers();
-	local connectedMates={}
-	for connected=1,numOnlineMembers,1 do
-		local name, rank, rankIndex, level, _, _, _, _, _, _, _,_, _, isMobile=GetGuildRosterInfo(connected);
-		connectedMates[#connectedMates+1]={["name"]=name,["rank"]=rank,["rankIndex"]=rankIndex,["level"]=level,["isMobile"]=isMobile }
-	end
-	return connectedMates
-end
-
-function AutoInv:GetPplGroup()
-	local grouped={}
-	for i=1,GetNumGroupMembers(),1 do
-		local name=select(1,GetRaidRosterInfo(i))
-
-		if not name:find('%u%U*-%u%U') then
-			name=name.."-"..homeRealm
-		end
-		grouped[#grouped+1]=name
-	end
-	return grouped
 end
 
 --------------------------------------------------------------------------------
 -- Slash command handler
 
-function AutoInv:OnSlash(arg1,arg2,arg3)
+function AutoInvite:OnSlash(arg1,arg2,arg3)
 	if arg1 then
 		if arg1 == "stop" then
-			self:CancelInvites()
+			self:Stop()
 		elseif arg1 == "rank" then
 			if arg2 and not arg3 then
 				self:InviteRank(arg2)
