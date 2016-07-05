@@ -591,6 +591,10 @@ do
 
 		-- Change the point color
 		function point:SetColor(r, g, b, a)
+			if r > 1 then r = r / 255 end
+			if g > 1 then g = g / 255 end
+			if b > 1 then b = b / 255 end
+			if a > 1 then a = a / 255 end
 			self.tex:SetVertexColor(r, g, b, a or 1)
 			return self
 		end
@@ -1251,6 +1255,10 @@ end
 
 -- Set the obejct color
 function HudObject:SetColor(r, g, b, a)
+	if r > 1 then r = r / 255 end
+	if g > 1 then g = g / 255 end
+	if b > 1 then b = b / 255 end
+	if a > 1 then a = a / 255 end
 	self.tex:SetVertexColor(r, g, b, a or 0.5)
 	return self
 end
