@@ -92,6 +92,19 @@ end
 -----------------------------------------------------------------------------------------------------------------------------
 -- Private
 
+local function GetGuildRanks()
+	GuildRoster()
+	local numTotalMembers,_,_ = GetNumGuildMembers();
+	local ranks={}
+	for member=1,numTotalMembers,1 do
+		_, rk, rankIndex, _, _, _, _, _, _, _, _,_, _, _=GetGuildRosterInfo(member);
+		if not ranks[rankIndex+1] then
+			ranks[rankIndex+1]=rk
+		end
+	end
+	return ranks
+end
+
 local function GetConnected()
 	GuildRoster()
 	local _,_,numOnlineMembers = GetNumGuildMembers();
@@ -218,7 +231,7 @@ function AutoInvite:InviteRank(guildRank)
 		end
 
 		if not rank or rank >= GuildControlGetNumRanks()then
-			self:Printf("Rank %s does not exists. Not inviting.",rank)
+			self:Printf("Rank %s does not exists. Not inviting.",guildRank)
 			return
 		end
 
