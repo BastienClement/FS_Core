@@ -54,5 +54,7 @@ Hud.lua
 Encounters.lua
 Token.lua
 
+AutoInvite.lua
+
 cooldowns\Cooldowns.xml
 pacman\Pacman.xml

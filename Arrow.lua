@@ -160,17 +160,20 @@ function Arrow:GetDirection()
 	elseif self.mode == "raidtarget" then
 		if not self.unit or GetRaidTargetIndex(self.unit) ~= self.raidtarget then
 			self.unit = nil
-			if IsInRaid() then
 				for i = 1, GetNumGroupMembers() do
-					-- FIXME: raidtarget mode will not work in 5-players groups
-					local unit = "raid" .. i
+					local unit=nil
+					if IsInRaid() then
+						unit = "raid" .. i
+					else
+						unit = "party" .. i
+					end
 					if GetRaidTargetIndex(unit) == self.raidtarget then
 						self.unit = unit
 						self:UpdateUnit()
 						break
 					end
 				end
-			end
+			
 		end
 		if not self.unit then return end
 		return Map:GetPlayerDirection(UnitPosition(self.unit))
