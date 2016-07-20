@@ -107,12 +107,12 @@ function Arrow:OnInitialize()
 	Map = FS:GetModule("Map")
 	Console = FS:GetModule("Console")
 	Console:RegisterCommand("arrow", self)
-	
+
 	self.db = FS.db:RegisterNamespace("Arrow", arrow_default)
 	self.settings = self.db.profile
-	
+
 	self:SetEnabledState(self.settings.enable)
-	
+
 	FS:GetModule("Config"):Register("Arrow", arrow_config_infos)
 end
 
@@ -160,20 +160,14 @@ function Arrow:GetDirection()
 	elseif self.mode == "raidtarget" then
 		if not self.unit or GetRaidTargetIndex(self.unit) ~= self.raidtarget then
 			self.unit = nil
-				for i = 1, GetNumGroupMembers() do
-					local unit=nil
-					if IsInRaid() then
-						unit = "raid" .. i
-					else
-						unit = "party" .. i
-					end
-					if GetRaidTargetIndex(unit) == self.raidtarget then
-						self.unit = unit
-						self:UpdateUnit()
-						break
-					end
+			for i = 1, GetNumGroupMembers() do
+				local unit = (IsInRaid() and "raid" or "party") .. i
+				if GetRaidTargetIndex(unit) == self.raidtarget then
+					self.unit = unit
+					self:UpdateUnit()
+					break
 				end
-			
+			end
 		end
 		if not self.unit then return end
 		return Map:GetPlayerDirection(UnitPosition(self.unit))
@@ -185,11 +179,11 @@ do
 	local showDownArrow, count = false, 0
 	local pi2 = math.pi * 2
 	local floor = math.floor
-	
+
 	local unit_format = "%s |c%s%s|r \n|cffffe359%d yd|r"
 	local location_format = "|cffffe359%d yd|r"
 	local label_format = "%s\n|cffffe359%d yd|r"
-	
+
 	function Arrow:OnUpdate(dt)
 		-- Fetch distance and angle
 		local distance, angle = self:GetDirection()
@@ -197,7 +191,7 @@ do
 			self:Hide()
 			return
 		end
-		
+
 		if distance < self.options.near then
 			-- Transition Pointed -> Down
 			if not showDownArrow then
@@ -205,20 +199,20 @@ do
 				arrow:SetTexture("Interface\\AddOns\\FS_Core\\media\\Arrow-UP.blp")
 				showDownArrow = true
 			end
-			
+
 			-- Hide on arrival
 			self._tal = self._tal + 1
 			if self._tal > 50 and self.options.autohide then
 				self:Hide()
 				return
 			end
-			
+
 			-- Arrow rotation
 			count = count + 1
 			if count >= 55 then
 				count = 0
 			end
-			
+
 			local cell = count
 			local column = cell % 9
 			local row = floor(cell / 9)
@@ -236,9 +230,9 @@ do
 				currentCell = nil
 				self._tal = 0
 			end
-			
+
 			local cell = floor(angle / pi2 * 108 + 0.5) % 108
-			
+
 			if cell ~= currentCell then
 				currentCell = cell
 				local column = cell % 9
@@ -250,7 +244,7 @@ do
 				arrow:SetTexCoord(xStart, xEnd, yStart, yEnd)
 			end
 		end
-		
+
 		-- Arrow label
 		if self.options.label then
 			text:SetText(label_format:format(self.options.label, floor(distance)))
@@ -301,7 +295,7 @@ function Arrow:SetOptions(options)
 		options = {}
 	end
 	self.options = options
-	
+
 	-- Auto hide after timeout
 	if self.hide_timeout then
 		self.hide_timeout:Cancel()
@@ -312,12 +306,12 @@ function Arrow:SetOptions(options)
 			self:Hide()
 		end)
 	end
-	
+
 	-- Auto hide on arrival
 	if options.autohide == nil then
 		options.autohide = false
 	end
-	
+
 	-- The "near" threshold
 	if options.near == nil then
 		options.near = 2
@@ -350,12 +344,12 @@ end
 
 function Arrow:FS_MSG_ARROW(_, prefix, data, channel, sender)
 	if not self.settings.allow_remote then return end
-	
+
 	-- Require the sender to be in the raid group
 	if not FS:UnitIsTrusted(sender) then return end
-	
+
 	local action = data.action
-	
+
 	if action == "show" then
 		-- Display the arrow
 		if data.unit then
