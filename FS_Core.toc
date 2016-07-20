@@ -53,6 +53,7 @@ Tracker.lua
 Hud.lua
 Encounters.lua
 Token.lua
+Misc.lua
 
 AutoInvite.lua
 

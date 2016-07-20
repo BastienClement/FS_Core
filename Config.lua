@@ -54,10 +54,11 @@ function Config:OnEnable()
 	options.args.profiles = LibStub("AceDBOptions-3.0"):GetOptionsTable(FS.db)
 end
 
-function Config:Register(title, config)
+function Config:Register(title, config, order)
+	if order == nil then order = 10 end
 	options.args[title] = {
 		name = title,
-		order = 10,
+		order = order,
 		type = "group",
 		args = config
 	}

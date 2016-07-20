@@ -144,7 +144,7 @@ function Network:OnInitialize()
 	self.guids = {}
 
 	FS:GetModule("Config"):Register("Network", version_gui)
-	FS:GetModule("Config"):Register("Versions", version_check)
+	FS:GetModule("Config"):Register("Versions", version_check, 13)
 
 	if self.settings.disabled then return end
 	RegisterAddonMessagePrefix("FS")
