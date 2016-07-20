@@ -5,10 +5,6 @@ local SPEC_HOLY = 65
 local SPEC_PROTECTION = 66
 local SPEC_RETRIBUTION  = 70
 
-local function Clemency(unit)
-	return unit:HasTalent(17593) and 2 or 1
-end
-
 local function UnbreakableSpirit(base)
 	return function(unit)
 		local base_cooldown = type(base) == "function" and base(unit) or base
@@ -28,19 +24,16 @@ Cooldowns:RegisterSpells("PALADIN", {
 	},
 	[1044] = { -- Hand of Freedom
 		cooldown = 25,
-		duration = 6,
-		charges = Clemency
+		duration = 6
 	},
 	[1022] = { -- Hand of Protection
 		cooldown = 300,
-		duration = 10,
-		charges = Clemency
+		duration = 10
 	},
 	[6940] = { -- Hand of Sacrifice
 		-- Legion: not available to Prot
 		cooldown = 120,
 		duration = 12,
-		charges = Clemency,
 	},
 	[853] = { -- Hammer of Justice
 		cooldown = 60,
@@ -49,27 +42,17 @@ Cooldowns:RegisterSpells("PALADIN", {
 
 	-- Holy
 	[31842] = { -- Avenging Wrath (Holy)
-		cooldown = function(unit)
-			if Cooldowns.Legion then return 120 end
-			return unit:HasGlyph(162604) and 90 or 180
-		end,
+		cooldown = 120,
 		duration = function(unit)
 			return unit:HasTalent(17599) and 30 or 20
 		end,
 		spec = SPEC_HOLY,
 		reset = true
 	},
-	[31821] = { -- Devotion Aura
-		-- Legion: Aura Mastery
+	[31821] = { -- Aura Mastery
 		cooldown = 180,
 		duration = 6,
 		spec = SPEC_HOLY
-	},
-	[114039] = { -- Hand of Purity
-		cooldown = 30,
-		duration = 6,
-		talent = 17589,
-		legion = false
 	},
 
 	-- Protection

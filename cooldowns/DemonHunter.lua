@@ -5,9 +5,21 @@ local SPEC_HAVOC = 577
 local SPEC_VENGEANCE = 581
 
 Cooldowns:RegisterSpells("DEMONHUNTER", {
+	[198793] = { -- Vengeful Retreat
+		cooldown = 25,
+		duration = 3,
+	},
 	[188499] = { -- Blur
 		cooldown = 60,
 		duration = 10,
+	},
+	[198013] = { -- Eye Beam
+		cooldown = 45,
+		duration = 2,
+	},
+	[196718] = { -- Darkness
+		cooldown = 180,
+		duration = 8,
 	},
 	[179057] = { -- Chaos Nova
 		cooldown = 60,
@@ -16,12 +28,12 @@ Cooldowns:RegisterSpells("DEMONHUNTER", {
 	[183752] = { -- Consume Magic
 		cooldown = 20,
 		duration = 3,
-		alias = 183782 -- Wowhead ?!
 	},
 
 	[191427] = { -- Metamorphosis
 		cooldown = 300,
 		duration = 30,
+		spec = SPEC_HAVOC -- Guessing ?
 	},
 
 	-- Vengeance
@@ -71,6 +83,11 @@ Cooldowns:RegisterSpells("DEMONHUNTER", {
 		duration = 2,
 		spec = SPEC_VENGEANCE
 	},
+	[207684] = { -- Sigil of Misery
+		cooldown = 60,
+		duration = 2,
+		spec = SPEC_VENGEANCE
+	},
 	[185245] = { -- Torment (Taunt)
 		cooldown = 8,
 		duration = 3,
@@ -80,6 +97,7 @@ Cooldowns:RegisterSpells("DEMONHUNTER", {
 	-- Talents
 	[212084] = { -- Fel Devastation
 		cooldown = 60,
+		duration = 2,
 		talent = true
 	},
 	[211881] = { -- Fel Eruption
@@ -105,11 +123,6 @@ Cooldowns:RegisterSpells("DEMONHUNTER", {
 		cooldown = 90,
 		duration = 5,
 		-- Replaces Blur
-		talent = true
-	},
-	[207684] = { -- Sigil of Misery
-		cooldown = 60,
-		duration = 2,
 		talent = true
 	},
 })

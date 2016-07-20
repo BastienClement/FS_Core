@@ -10,8 +10,8 @@ Cooldowns:RegisterSpells("DRUID", {
 	[106898] = { -- Stampeding Roar
 		cooldown = 120,
 		duration = 8,
-		alias = 77761 -- Bear
-		-- LEGION: spec = { SPEC_FERAL, SPEC_GUARDIAN }
+		alias = 77761, -- Bear
+		spec = { SPEC_FERAL, SPEC_GUARDIAN }
 	},
 	[1850] = { -- Dash
 		cooldown = 180,

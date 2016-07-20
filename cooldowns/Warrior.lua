@@ -66,7 +66,7 @@ Cooldowns:RegisterSpells("WARRIOR", {
 	},
 
 	-- Talents
-	[107574] = { -- Avatag
+	[107574] = { -- Avatar
 		cooldown = 90,
 		duration = 20,
 		talent = true

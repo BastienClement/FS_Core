@@ -30,7 +30,7 @@ Cooldowns:RegisterSpells("PRIEST", {
 		spec = SPEC_HOLY
 	},
 	[47788] = { -- Guardian Spirit
-		cooldown = 180, -- Legion: 4 min
+		cooldown = 240,
 		duration = 10,
 		spec = SPEC_HOLY
 	},
