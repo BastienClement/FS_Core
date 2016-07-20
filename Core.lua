@@ -103,51 +103,6 @@ function Core:PlayerKey()
 	return self.db.global.PLAYER_KEY
 end
 
--- Debug helper
-function Core:Dump(t)
-	local dump_cache = {}
-	local function to_string(v)
-		local prefix = "|cff00ff96"
-		local suffix = "|r"
-		local tpe = type(v)
-
-		if tpe == "string" then
-			prefix = "|cfffff569\""
-			suffix = "\"|r"
-		elseif tpe == "number" then
-			prefix = "|cffff7d0a"
-		elseif tpe == "table" then
-			prefix = "|cffabd473"
-		elseif tpe == "function" then
-			prefix = "|cff69ccf0"
-		end
-
-		return prefix .. tostring(v) .. suffix
-	end
-	local function sub_dump(t, indent)
-		local t_str = to_string(t)
-		if dump_cache[t_str] then
-			print(indent .. "*" .. t_str)
-		else
-			dump_cache[t_str] = true
-			if type(t) == "table" then
-				for pos, val in pairs(t) do
-					if type(val) == "table" then
-						print(indent .. to_string(pos) .. " => " .. to_string(val) .." {")
-						sub_dump(val, indent .. (" "):rep(4))
-						print(indent .. "}")
-					else
-						print(indent .. to_string(pos) .. " => " .. to_string(val))
-					end
-				end
-			else
-				print(indent .. t_str)
-			end
-		end
-	end
-	sub_dump(t, " ")
-end
-
 -- Deep cloning helper
 function Core:Clone(source)
 	local clone = {}

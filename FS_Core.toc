@@ -38,6 +38,7 @@ utils\Stream.lua
 utils\Deferred.lua
 
 Config.lua
+Debug.lua
 
 Geometry.lua
 Format.lua
