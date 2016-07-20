@@ -9,96 +9,144 @@ do
 		45462, -- Plague Strike
 		49998, -- Death Strike
 		47528, -- Mind Freeze
-		49143, -- Frost Stike
+		130736, -- Soul Reaper
+		206930, -- Heart Strike
+		195182, -- Marrowrend
+		85948, -- Festering Strike
 		49020, -- Obliterate
+		49143, -- Frost Stike
 		55090, -- Scourge Strike
 
+		-- Demon Hunter
+		162794, -- Chaos Strike
+		162243, -- Demon's Bite
+		203782, -- Shear
+		209795, -- Fracture
+
 		-- Druid
-		22568, -- Ferocious Bite
-		5221, -- Shred
-		33917, -- Mangle
-		1079, -- Rip
 		33745, -- Lacerate
-		6807, -- Maul
-		80313, -- Pulverize
-		22570, -- Maim
+		5221, -- Shred
+		22568, -- Ferocious Bite
 		1822, -- Rake
+		33917, -- Mangle
+		6807, -- Maul
+		1079, -- Rip
+		22570, -- Maim
+		80313, -- Pulverize
+
+		-- Hunter
+		186270, -- Raptor Strike
+		202800, -- Flanking Strike
+		190928, -- Mongoose Bite
+		187707, -- Muzzle
 
 		-- Monk
-		100780, -- Jab
-		115693, -- Jab
-		115695, -- Jab
-		115687, -- Jab
-		115698, -- Jab
-		108557, -- Jab
-		100787, -- Tiger Palm
+		100780, -- Tiger Palm
 		100784, -- Blackout Kick
+		205523, -- Blackout Strike
+		107428, -- Rising Sun Kick
 		115080, -- Touch of Death
 		116705, -- Spear Hand Strike
-		107428, -- Rising Sun Kick
-		116095, -- Disable
-		122470, -- Touch of Karma
 
 		-- Paladin
 		35395, -- Crusader Strike
-		96231, -- Rebuke
-		53595, -- Hammer of the Righteous
 		85256, -- Templar's Verdict
-		53600, -- Shield of the Righteousw
+		53595, -- Hammer of the Righteous
+		184575, -- Blade of Justice
+		96231, -- Rebuke
+		53600, -- Shield of the Righteous
+		202270, -- Blade of Wrath
+		215661, -- Justicar's Vengeance
 
 		-- Rogue
-		1752, -- Sinister Strike
-		2098, -- Eviscerate
-		8676, -- Ambush
-		1766, -- Kick
-		1776, -- Gouge
-		1833, -- Cheap Shot
-		408, -- Kidney Shot
-		703, -- Garrote
-		5938, -- Shiv
-		53, -- Backstab
-		111240, -- Dispatch
+		209783, -- Goremaw's Bite
 		32645, -- Envenom
+		2098, -- Run Through
+		53, -- Backstab
+		196819, -- Evicerate
+		193315, -- Saber Slash
+		8676, -- Ambush
 		16511, -- Hemorrhage
-		1329, -- Mutilate
-		84617, -- Revealing Strike
+		196937, -- Ghostly Stike
+		1766, -- Kick
+		200758, -- Gloomblade
+		185438, -- Shadowstrike
 		1943, -- Rupture
+		195452, -- Nightblade
+		703, -- Garrote
+		200806, -- Exsanguinate
+		206237, -- Enveloping Shadows
+		5171, -- Slice and Dice
 
 		-- Shaman
-		73899, -- Primal Strike
 		60103, -- Lava Lash
+		193786, -- Rockbiter
+		201897, -- Boulderfist
+		201898, -- Windsong
+		196834, -- Frostbrand
 		17364, -- Stormstrike
+		32175, -- Stormstrike
+
 
 		-- Warrior
-		78, -- Heroic Strike
-		34428, -- Victory Rush
-		6552, -- Pummel
-		1715, -- Hamstring
-		167105, -- Colossus Smash
+		1464, -- Slam
 		12294, -- Mortal Strike
-		85288, -- Raging Blow
-		772, -- Rend
-		23922, -- Shield Slam
-		20243, -- Devastate
 		163201, -- Execute
 		5308, -- Execute
-		6572, -- Revenge
-		100130, -- Wild Strike
+		100130, -- Furious Slash
+		23922, -- Shield Slam
+		34428, -- Victory Rush
+		20243, -- Devastate
+		23881, -- Bloodthrist
+		96103, -- Raging Blow
+		85384, -- Raging Blow
+		85288, -- Raging Blow
+		107570, -- Storm Bolt
+		167105, -- Colossus Smash
+		6552, -- Pummel
+		202168, -- Impending Victory
 	}
 
 	local aoe = {
-		53595,  -- Hammer of the Righteous
-		106785, -- Swipe
-		101546, -- Spinning Crane Kick
-		51723, -- Fan of Knives
+		178740, -- Immolation Aura
+		214743, -- Soul Cleave
+		106832, -- Trash
+		106830, -- Trash
+		77758, -- Trash
+		213764, -- Swipe
+		202028, -- Brutal Slash
+		187708, -- Carve
+		107270, -- Spinning Crane Kick
+		117418, -- Fists of Fury
+		121253, -- Keg Smash
+		220357, -- Cyclone Stike
+		124081, -- Zen Pulse
+		115072, -- Expel Harm
 		113656, -- Fists of Fury
-		101423, -- Seal of Righteousness
-		1680, -- Whirlwind
+		101546, -- Spinning Crane Kick
+		196743, -- Chi Orbit | TODO: check spell ID
+		53595, -- Hammer of the Righteous
+		204019, -- Blessed Hammer
+		152261, -- Holy Shield | TODO: check reflect ID
 		53385, -- Divine Storm
-		--50842, -- Blood Boil
-		121411, -- Crimsom Tempest
-		6544, -- Heroic Leap
-		46924, -- Blade Storm
+		198034, -- Divine Hammer
+		205191, -- Eye for an Eye
+		210220, -- Holy Wrath
+		13877, -- Blade Flurry
+		51723, -- Fan of Knives
+		197835, -- Shuriken Storm
+		197211, -- Fury of Air
+		187874, -- Crash Lightning
+		50622, -- Bladestorm
+		202161, -- Sweeping Stikes | TODO: check cleave ID
+		46968, -- Shockwave
+		6343, -- Thunder Clap
+		6572, -- Revenge
+		1680, -- Whirlwind
+		190411, -- Whirlwind
+		845, -- Cleave
+		227847, -- Bladestorm
+		46924, -- Bladestorm
 	}
 
 	for i = 1, #melee do
