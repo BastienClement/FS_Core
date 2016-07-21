@@ -8,10 +8,7 @@ local features = {}
 -------------------------------------------------------------------------------
 
 local misc_defaults = {
-	profile = {
-		disable_talkinghead = false,
-		enable_slashrl = true,
-	}
+	profile = {}
 }
 
 local misc_config = {
@@ -47,7 +44,7 @@ end
 
 do
 	local order = 10
-	function Misc:RegisterFeature(name, short, long, fn)
+	function Misc:RegisterFeature(name, short, long, default, fn)
 		misc_config[name] = {
 			type = "toggle",
 			name = short,
@@ -88,14 +85,31 @@ Misc:RegisterFeature(
 )
 
 do
-	local rlEnabled = false
+	local enabled = false
 	Misc:RegisterFeature(
 		"SlashRL",
 		"Enable /rl",
 		"Enables the short version for reloading the interface.",
+		false,
 		function(state)
-			if state and not rlEnabled then
-				rlEnabled = true
+			if state and not enabled then
+				enabled = true
+				FS.Console:RegisterChatCommand("rl", function() ReloadUI() end)
+			end
+		end
+	)
+end
+
+do
+	local enabled = false
+	Misc:RegisterFeature(
+		"SlashRL",
+		"Enable /rl",
+		"Enables the short version for reloading the interface.",
+		true,
+		function(state)
+			if state and not enabled then
+				enabled = true
 				FS.Console:RegisterChatCommand("rl", function() ReloadUI() end)
 			end
 		end
