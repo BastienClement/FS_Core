@@ -133,9 +133,6 @@ local tag_aliases = {
 	["AOE_STUN"] = { "STUN" }
 }
 
-local LEGION = select(4, GetBuildInfo()) >= 70000
-Cooldowns.Legion = LEGION
-
 -- Registers a new spell in the tracker database
 function Cooldowns:RegisterSpells(class, cooldowns)
 	-- No class given
@@ -146,7 +143,7 @@ function Cooldowns:RegisterSpells(class, cooldowns)
 
 	for id, data in pairs(cooldowns) do
 		-- Ensure the spell is availabe in this build of the game
-		if data.disabled or (not LEGION and (id > 178000 or data.legion)) or (LEGION and data.legion == false) then
+		if data.disabled then
 			-- Ignore
 		elseif GetSpellInfo(id) then
 			-- Save the id in the spell definition for later reference
@@ -561,7 +558,7 @@ end
 function Cooldown:Reset()
 	local should_reset = self.spell.reset
 	if should_reset == nil then
-		should_reset = self.spell.cooldown >= 180
+		should_reset = self.spell.cooldown >= 120
 	end
 	if should_reset and self:Invoke("onreset") ~= false then
 		self:CancelTimer()
