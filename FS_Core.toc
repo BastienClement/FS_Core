@@ -30,6 +30,7 @@ libs\LibDualSpec-1.0\LibDualSpec-1.0.lua
 #@end-no-lib-strip@
 
 libs\indents.lua
+libs\LibArtifactData-1.0.lua
 
 Core.lua
 
