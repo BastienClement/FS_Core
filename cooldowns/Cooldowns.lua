@@ -58,7 +58,6 @@ local cooldowns_config = {
 		{ ":IterateSpells ( ) -> [ spell , SpellDefinition ]", "Iterates over every defined spells."},
 	}, "FS.Cooldowns"),
 	unit_api = FS.Config:MakeDoc("Unit API", 2100, {
-		{ ":HasGlyph ( glyphid ) -> boolean", "Checks if the unit has the requested glyph."},
 		{ ":HasTalent ( talentid ) -> boolean", "Checks if the unit has the requested talent."},
 		{ ":UnitID ( ) -> unitid", "Returns the last known unitid for this unit."},
 		{ ":GetCooldown ( spell , target ) -> Cooldown", "Returns the cooldowns object for the given spell."},
@@ -270,10 +269,6 @@ end
 function Unit:GetUnitId()
 	local lku = self.info.lku
 	return (lku and UnitGUID(lku) == self.guid) and lku or nil
-end
-
-function Unit:HasGlyph(gid)
-	return self.info.glyphs[gid] ~= nil
 end
 
 function Unit:HasTalent(tid)
@@ -720,14 +715,14 @@ do
 
 		for id, spell in self:IterateSpells() do
 			local cd = unit.cooldowns[id]
+			local s = UnitSpellProxy(unit, spell)
 
-			if  match(spell.class,  info.class)
-			and match(spell.race,   info.race)
-			and match(spell.spec,   info.global_spec_id)
-			and match(spell.glyph,  info.glyphs)
-			and match(spell.talent, info.talents)
-			and match(spell.talent_spell, info.talents, "spell_id")
-			and match(spell.available) then
+			if  match(s.class,  info.class)
+			and match(s.race,   info.race)
+			and match(s.spec,   info.global_spec_id)
+			and match(s.talent, info.talents)
+			and match(s.talent_spell, info.talents, "spell_id")
+			and match(s.available) then
 				if not cd then
 					cd = Cooldown:New(unit, spell)
 					unit.cooldowns[id] = cd
