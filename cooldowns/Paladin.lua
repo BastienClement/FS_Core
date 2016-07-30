@@ -34,7 +34,7 @@ Cooldowns:RegisterSpells("PALADIN", {
 	},
 	[1044] = { -- Blessing of Freedom
 		cooldown = 25,
-		duration = 6
+		duration = 8
 		-- Holy Artifact reduces cooldown by 15%
 	},
 	[1022] = { -- Blessing of Protection
