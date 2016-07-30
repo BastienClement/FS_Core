@@ -69,6 +69,18 @@ Cooldowns:RegisterSpells("PALADIN", {
 		-- Holy Artifact increases duration by 2 sec
 	},
 
+	-- Protection
+	[86659] = { -- Guardian of Ancient King
+		cooldown = 300,
+		duration = 8,
+		spec = SPEC_PROTECTION
+	},
+	[31850] = { -- Ardent Defender
+		cooldown = 120,
+		duration = 8,
+		spec = SPEC_PROTECTION
+	},
+
 	-- Shared
 	[96231] = { -- Rebuke
 		cooldown = 15,

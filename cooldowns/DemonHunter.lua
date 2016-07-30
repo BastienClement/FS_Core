@@ -53,6 +53,11 @@ Cooldowns:RegisterSpells("DEMONHUNTER", {
 		cooldown = QuickenedSigils(60),
 		spec = SPEC_VENGEANCE
 	},
+	[187827] = { -- Metamorphosis
+		cooldown = 180,
+		duration = 15,
+		spec = SPEC_VENGEANCE
+	},
 
 	-- Talents
 	[207810] = { -- Nether Bond

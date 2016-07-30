@@ -27,6 +27,16 @@ Cooldowns:RegisterSpells("DRUID", {
 		duration = 3,
 		spec = SPEC_GUARDIAN
 	},
+	[22812] = { -- Barkskin
+		cooldown = 60,
+		duration = 12,
+		spec = SPEC_GUARDIAN
+	},
+	[61336] = { -- Survival Instinct
+		cooldown = 180,
+		duration = 6,
+		spec = SPEC_GUARDIAN
+	},
 
 	-- Resto
 	[740] = { -- Tranquility

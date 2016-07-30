@@ -19,6 +19,25 @@ Cooldowns:RegisterSpells("WARRIOR", {
 		spec = SPEC_PROTECTION,
 		available = function(unit) return unit:HasTalent(22789) end
 	},
+	[12975] = { -- Last Stand
+		cooldown = 180,
+		duration = 15,
+		spec = SPEC_PROTECTION
+		-- TODO: Cooldown reduced by talent (Anger Management)
+	},
+	[871] = { -- Shield Wall
+		cooldown = 240,
+		duration = 8,
+		spec = SPEC_PROTECTION
+		-- TODO: Cooldown reduced by talent (Anger Management)
+		-- TODO: Cooldown reduced by legendary
+	},
+	[1160] = { -- Shield Wall
+		cooldown = 90,
+		duration = 8,
+		spec = SPEC_PROTECTION
+		-- TODO: Cooldown reduced by legendary
+	},
 
 	-- Arms
 	[118038] = { -- Die by the Sword
@@ -40,5 +59,10 @@ Cooldowns:RegisterSpells("WARRIOR", {
 		duration = 4,
 		talent = true
 		-- TODO: Cooldown reduced by 20 sec if it strikes at least 3 target
+	},
+	[228920] = { -- Ravager
+		cooldown = 60,
+		duration = 12,
+		talent = true
 	},
 })

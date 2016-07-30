@@ -32,8 +32,31 @@ Cooldowns:RegisterSpells("DEATHKNIGHT", {
 		spec = SPEC_BLOOD
 		-- TODO: Cooldown affected by Talent
 	},
+	[55233] = { -- Vampiric Blood
+		cooldown = 90,
+		duration = 10,
+		spec = SPEC_BLOOD
+		-- TODO: Affected by talent / item
+	},
+	[49028] = { -- Dancing Rune Weapon
+		cooldown = 180,
+		duration = 8,
+		spec = SPEC_BLOOD
+		-- TODO: Affected by artifact
+	},
 
 	-- Talents
+	[194679] = { -- Rune Tap
+		cooldowns = 25,
+		duration = 3,
+		charges = 2,
+		talent = true
+	},
+	[206977] = { -- Blood Mirror
+		cooldowns = 120,
+		duration = 10,
+		talent = true
+	},
 	[207319] = { -- Corpse Shield
 		cooldown = 60,
 		duration = 10,
