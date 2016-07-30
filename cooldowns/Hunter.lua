@@ -13,13 +13,6 @@ Cooldowns:RegisterSpells("HUNTER", {
 		duration = 8
 	},
 
-	-- Marksmanship
-	[186387] = { -- Bursting Shot
-		cooldown = 30,
-		duration = 4,
-		spec = SPEC_MARKSMANSHIP
-	},
-
 	-- Survival
 	[187707] = { -- Muzzle
 		cooldown = 15,
