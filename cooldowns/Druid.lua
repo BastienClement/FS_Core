@@ -35,6 +35,7 @@ Cooldowns:RegisterSpells("DRUID", {
 	[61336] = { -- Survival Instinct
 		cooldown = 180,
 		duration = 6,
+		charges = 2,
 		spec = SPEC_GUARDIAN
 	},
 
