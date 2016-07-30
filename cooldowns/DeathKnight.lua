@@ -7,9 +7,14 @@ local SPEC_UNHOLY = 252
 
 Cooldowns:RegisterSpells("DEATHKNIGHT", {
 	[49576] = { -- Death Grip
-		cooldown = 25,
+		cooldown = function(unit)
+			if unit.global_spec_id == SPEC_BLOOD then
+				return 15
+			else
+				return 25
+			end
+		end,
 		duration = 3
-		-- TODO: 15 tank / 25 dps
 	},
 	[47528] = { -- Mind freeze
 		cooldown = 15,
