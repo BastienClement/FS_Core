@@ -10,11 +10,6 @@ Cooldowns:RegisterSpells("SHAMAN", {
 		cooldown = 90,
 		duration = 8
 	},
-	[20608] = { -- Reincarnation
-		cooldown = 1800,
-		reset = false,
-		nocheck = true
-	},
 	[57994] = { -- Wind Shear
 		cooldown = 12,
 		duration = 3
@@ -57,6 +52,11 @@ Cooldowns:RegisterSpells("SHAMAN", {
 	[192077] = { -- Wind Rush Totem
 		cooldown = 120,
 		duration = 15,
+		talent = true
+	},
+	[192058] = { -- Lightning Surge Totem
+		cooldown = 45,
+		duration = 7,
 		talent = true
 	},
 })
