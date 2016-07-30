@@ -58,4 +58,9 @@ Cooldowns:RegisterSpells("MONK", {
 		duration = 8,
 		talent = true
 	},
+	[198664] = { -- Invoke Chi-Ji, the Red Crane
+		cooldown = 180,
+		duration = 45,
+		talent = true
+	},
 })
