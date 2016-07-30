@@ -13,11 +13,11 @@ Cooldowns:RegisterSpells("WARRIOR", {
 
 	-- Protection
 	[198304] = { -- Intercept
-		cooldown = 20,
+		cooldown = 15,
 		duration = 6,
 		charges = 2,
-		spec = SPEC_PROTECTION
-		-- TODO: Talent changes it to Hand of Sacrifice
+		spec = SPEC_PROTECTION,
+		available = function(unit) return unit:HasTalent(22789) end
 	},
 
 	-- Arms
