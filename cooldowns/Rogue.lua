@@ -14,4 +14,9 @@ Cooldowns:RegisterSpells("ROGUE", {
 		cooldown = 90,
 		duration = 5
 	},
+	[5277] = { -- Evasion
+		cooldown = 120,
+		duration = 5,
+		alias = 199754
+	},
 })
