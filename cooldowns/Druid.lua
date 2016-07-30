@@ -7,12 +7,11 @@ local SPEC_GUARDIAN = 104
 local SPEC_RESTORATION = 105
 
 Cooldowns:RegisterSpells("DRUID", {
-	[106898] = { -- Stampeding Roar
-		cooldown = 120,
+	[77764] = { -- Stampeding Roar
+		cooldown = function(unit) return unit:HasTalent(22424) and 60 or 120 end,
 		duration = 8,
 		alias = 77761, -- Bear
 		spec = { SPEC_FERAL, SPEC_GUARDIAN }
-		-- TODO: Bear have less cooldown with talent (-50%)
 	},
 
 	-- Balance
@@ -32,15 +31,18 @@ Cooldowns:RegisterSpells("DRUID", {
 	-- Resto
 	[740] = { -- Tranquility
 		cooldown = 180,
-		duration = 8,
+		duration = 7,
 		spec = SPEC_RESTORATION
-		-- TODO: Check artifact
 	},
 	[102342] = { -- Ironbark
-		cooldown = 90,
+		cooldown = function(unit) return unit:HasTalent(21651) and 60 or 90 end,
 		duration = 12,
 		spec = SPEC_RESTORATION
-		-- TODO: Affected by talent
+	},
+	[102793] = { -- Ursol's Vortex
+		cooldown = 60,
+		duration = 10,
+		spec = SPEC_RESTORATION
 	},
 
 	-- Shared
@@ -61,19 +63,15 @@ Cooldowns:RegisterSpells("DRUID", {
 		duration = 30,
 		talent = true
 	},
-	[102793] = { -- Ursol's Vortex
-		cooldown = 60,
-		duration = 10,
-		talent = true
-	},
 	[102359] = { -- Mass Entanglement
 		cooldown = 30,
 		duration = 20,
 		talent = true
 	},
-	[132469] = { -- Typhoon
+	[61391] = { -- Typhoon
 		cooldown = 30,
 		duration = 6,
-		talent = true
+		talent = 18577,
+		icon = 236170
 	},
 })
