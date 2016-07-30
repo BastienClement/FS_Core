@@ -17,17 +17,23 @@ Cooldowns:RegisterSpells("PRIEST", {
 		duration = 8,
 		spec = SPEC_DISCIPLINE
 	},
+	[47536] = { -- Rapture
+		cooldown = 120,
+		duration = 8,
+		spec = SPEC_DISCIPLINE
+	},
 
 	-- Holy
 	[64843] = { -- Divine Hymn
 		cooldown = 180,
-		duration = 8,
+		duration = 7,
 		spec = SPEC_HOLY
 	},
 	[47788] = { -- Guardian Spirit
 		cooldown = 240,
 		duration = 10,
 		spec = SPEC_HOLY
+		-- Talent reduces CD by 50% if no proc
 	},
 
 	-- Shadow
