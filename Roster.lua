@@ -2,7 +2,7 @@ local _, FS = ...
 local Roster = FS:RegisterModule("Roster", "AceTimer-3.0")
 
 local LGIST = LibStub:GetLibrary("LibGroupInSpecT-1.1")
-local LAD = LibStub:GetLibrary("LibArtifactData-1.0")
+local LAD = LibStub:GetLibrary("LibArtifactData-FS")
 
 -------------------------------------------------------------------------------
 -- Roster config
@@ -46,6 +46,7 @@ function Roster:OnInitialize()
 	self.group = {}
 	self.infos = {}
 	self.artifacts = {}
+	self.playerArtifact = nil
 
 	LGIST.RegisterCallback(self, "GroupInSpecT_Update", "RosterUpdate")
 	LGIST.RegisterCallback(self, "GroupInSpecT_Remove", "RosterRemove")
@@ -180,6 +181,10 @@ function Roster:HasArtifactInfo(guid)
 	return not not self.artifacts[guid]
 end
 
+function Roster:PlayerArtifactData()
+	return self.playerArtifact
+end
+
 --------------------------------------------------------------------------------
 
 do
@@ -203,19 +208,22 @@ do
 		end
 	end
 
-	function Roster:ArtifactUpdate(tpe, ...)
-		self:SendMessage("FS_ROSTER_" .. tpe, ...)
-
+	local function rebuild()
 		local guid = UnitGUID("player")
 
 		local data = LAD:GetAllArtifactsInfo()
 		local activeID = LAD:GetActiveArtifactID()
 
+		Roster.playerArtifact = FS:Clone(data)
+		Roster.playerArtifact.active = activeID
+
 		if activeID and data[activeID] then
 			local traits = {}
 
 			for i, trait in ipairs(data[activeID].traits) do
-				traits[trait.spellID] = trait.currentRank
+				if trait.currentRank > 0 then
+					traits[trait.spellID] = trait.currentRank
+				end
 			end
 
 			data = traits
@@ -226,6 +234,24 @@ do
 		Roster.artifacts[guid] = data
 		Roster:SendMessage("FS_ROSTER_UPDATE", guid, "player", Roster:GetInfo(guid))
 		Roster:ScheduleArtifactBroadcast()
+		Roster:SendMessage("FS_ROSTER_ARTIFACT_REBUILT")
+	end
+
+	local rebuild_pending = false
+
+	function Roster:ScheduleArtifactRebuild()
+		if not rebuild_pending then
+			rebuild_pending = true
+			C_Timer.After(0.5, function()
+				rebuild()
+				rebuild_pending = false
+			end)
+		end
+	end
+
+	function Roster:ArtifactUpdate(tpe, ...)
+		self:SendMessage("FS_ROSTER_" .. tpe, ...)
+		self:ScheduleArtifactRebuild()
 	end
 
 	function Roster:FS_MSG_ROSTER_ARTIFACT(_, data)

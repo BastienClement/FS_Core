@@ -60,3 +60,4 @@ AutoInvite.lua
 
 cooldowns\Cooldowns.xml
 pacman\Pacman.xml
+artifact\Artifact.xml
