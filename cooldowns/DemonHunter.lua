@@ -4,11 +4,9 @@ local Cooldowns = FS:GetModule("Cooldowns")
 local SPEC_HAVOC = 577
 local SPEC_VENGEANCE = 581
 
-local function QuickenedSigils(base)
-	return function(unit)
-		return unit:HasTalent(22511) and (base * 0.8) or base
-	end
-end
+local function QuickenedSigils(unit) return unit:HasTalentSpell(209281) and 0.8 or 1.0 end
+local function ConcentratedSigils(unit) return unit:HasTalentSpell(207666) and 2 or 0 end
+local function UnleasedPower(unit) return unit:HasTalentSpell(206477) and 20 or 0 end
 
 Cooldowns:RegisterSpells("DEMONHUNTER", {
 	[196718] = { -- Darkness
@@ -22,7 +20,7 @@ Cooldowns:RegisterSpells("DEMONHUNTER", {
 
 	-- Havoc
 	[179057] = { -- Chaos Nova
-		cooldown = 60,
+		cooldown = function(unit) return 60 - UnleasedPower(unit) end,
 		duration = 5,
 		spec = SPEC_HAVOC,
 		icon = 135795
@@ -42,15 +40,15 @@ Cooldowns:RegisterSpells("DEMONHUNTER", {
 
 	-- Vengeance
 	[202138] = { -- Sigil of Chains
-		cooldown = QuickenedSigils(120),
+		cooldown = function(unit) return 120 * QuickenedSigils(unit) end,
 		spec = SPEC_VENGEANCE
 	},
 	[202137] = { -- Sigil of Silence
-		cooldown = QuickenedSigils(60),
+		cooldown = function(unit) return 60 * QuickenedSigils(unit) end,
 		spec = SPEC_VENGEANCE
 	},
 	[207684] = { -- Sigil of Misery
-		cooldown = QuickenedSigils(60),
+		cooldown = function(unit) return 60 * QuickenedSigils(unit) end,
 		spec = SPEC_VENGEANCE
 	},
 	[187827] = { -- Metamorphosis

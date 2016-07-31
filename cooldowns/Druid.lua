@@ -6,9 +6,19 @@ local SPEC_FERAL = 103
 local SPEC_GUARDIAN = 104
 local SPEC_RESTORATION = 105
 
+local function GutturalRoars(unit) return unit:HasTalentSpell(204012) and 0.5 or 1.0 end
+local function InnerPeace(unit) return unit:HasTalentSpell(197073) and 60 or 0 end
+local function Stonebark(unit) return unit:HasTalentSpell(197061) and 30 or 0 end
+local function SurvivalOfTheFittest(unit) return unit:HasTalentSpell(203965) and 2/3 or 1 end
+
+local function HonedInstincts(unit) return unit:GetArtifactSpellRank(210557) * 1 end
+local function LightOfTheSun(unit) return unit:GetArtifactSpellRank(202918) * 15 end
+local function PerpetualSpring(unit) return 1 - unit:GetArtifactSpellRank(200402) * 0.03 end
+local function UrsocsEndurance(unit) return unit:GetArtifactSpellRank(200399) * 0.5 end
+
 Cooldowns:RegisterSpells("DRUID", {
 	[77764] = { -- Stampeding Roar
-		cooldown = function(unit) return unit:HasTalent(22424) and 60 or 120 end,
+		cooldown = function(unit) return 120 * GutturalRoars(unit) end,
 		duration = 8,
 		alias = 77761, -- Bear
 		spec = { SPEC_FERAL, SPEC_GUARDIAN }
@@ -16,7 +26,7 @@ Cooldowns:RegisterSpells("DRUID", {
 
 	-- Balance
 	[78675] = { -- Solar Beam
-		cooldown = 60,
+		cooldown = function(unit) return 60 - LightOfTheSun(unit) end,
 		duration = 8,
 		spec = SPEC_BALANCE
 	},
@@ -28,25 +38,25 @@ Cooldowns:RegisterSpells("DRUID", {
 		spec = SPEC_GUARDIAN
 	},
 	[22812] = { -- Barkskin
-		cooldown = 60,
+		cooldown = function(unit) return (60 + UrsocsEndurance(unit)) * PerpetualSpring(unit) * SurvivalOfTheFittest(unit) end,
 		duration = 12,
 		spec = SPEC_GUARDIAN
 	},
 	[61336] = { -- Survival Instinct
 		cooldown = 180,
-		duration = 6,
+		duration = function(unit) return (6 + HonedInstincts(unit)) * SurvivalOfTheFittest(unit) end,
 		charges = 2,
 		spec = SPEC_GUARDIAN
 	},
 
 	-- Resto
 	[740] = { -- Tranquility
-		cooldown = 180,
+		cooldown = function(unit) return 180 - InnerPeace(unit) end,
 		duration = 7,
 		spec = SPEC_RESTORATION
 	},
 	[102342] = { -- Ironbark
-		cooldown = function(unit) return unit:HasTalent(21651) and 60 or 90 end,
+		cooldown = function(unit) return 90 - Stonebark(unit) end,
 		duration = 12,
 		spec = SPEC_RESTORATION
 	},

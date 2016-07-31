@@ -5,11 +5,13 @@ local SPEC_ARCANE = 62
 local SPEC_FIRE = 63
 local SPEC_FROST = 64
 
+local function ColdSnap(unit) return unit:HasTalentSpell(11958) and 1 or 0 end
+
 Cooldowns:RegisterSpells("MAGE", {
 	[45438] = { -- Ice block
 		cooldown = 300,
 		duration = 10,
-		charges = function(unit) return unit:HasTalent(16025) and 2 or 1 end
+		charges = function(unit) return 1 + ColdSnap(unit) end
 	},
 	[2139] = { -- Counterspell
 		cooldown = 24

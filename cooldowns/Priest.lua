@@ -5,6 +5,11 @@ local SPEC_DISCIPLINE = 256
 local SPEC_HOLY = 257
 local SPEC_SHADOW = 258
 
+local function GuardianAngel(unit) return unit:HasTalentSpell(200209) and 120 or 0 end
+
+local function FromTheShadows(unit) return unit:GetArtifactSpellRank(193642) * 10 end
+local function PainIsInYourMind(unit) return unit:GetArtifactSpellRank(197713) * 10 end
+
 Cooldowns:RegisterSpells("PRIEST", {
 	-- Discipline
 	[62618] = { -- Power Word: Barrier
@@ -13,7 +18,7 @@ Cooldowns:RegisterSpells("PRIEST", {
 		spec = SPEC_DISCIPLINE
 	},
 	[33206] = { -- Pain Suppression
-		cooldown = 240,
+		cooldown = function(unit) return 240 - PainIsInYourMind(unit) end,
 		duration = 8,
 		spec = SPEC_DISCIPLINE
 	},
@@ -43,7 +48,7 @@ Cooldowns:RegisterSpells("PRIEST", {
 		spec = SPEC_SHADOW
 	},
 	[47585] = { -- Dispersion
-		cooldown = 120,
+		cooldown = function(unit) return 120 - FromTheShadows(unit) end,
 		duration = 6,
 		spec = SPEC_SHADOW
 	},

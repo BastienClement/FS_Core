@@ -1,6 +1,8 @@
 local _, FS = ...
 local Roster = FS:RegisterModule("Roster", "AceTimer-3.0")
+
 local LGIST = LibStub:GetLibrary("LibGroupInSpecT-1.1")
+local LAD = LibStub:GetLibrary("LibArtifactData-1.0")
 
 -------------------------------------------------------------------------------
 -- Roster config
@@ -31,7 +33,7 @@ local roster_config = {
 	}, "FS.Roster"),
 	events = FS.Config:MakeDoc("Emitted events", 3000, {
 		{"_JOINED ( guid , unit )", "Emitted when a new unit has joined the group."},
-		{"_UPDATE ( guid , info , info )", "Emitted when talents info are updated for a unit."},
+		{"_UPDATE ( guid , unit , info )", "Emitted when talents info are updated for a unit."},
 		{"_LEFT ( guid )", "Emitted when a unit has left the group."},
 	}, "FS_ROSTER")
 }
@@ -40,9 +42,23 @@ local roster_config = {
 
 function Roster:OnInitialize()
 	FS.Config:Register("Roster tracker", roster_config)
+
 	self.group = {}
+	self.infos = {}
+	self.artifacts = {}
+
 	LGIST.RegisterCallback(self, "GroupInSpecT_Update", "RosterUpdate")
 	LGIST.RegisterCallback(self, "GroupInSpecT_Remove", "RosterRemove")
+
+	LAD.RegisterCallback(self, "ARTIFACT_ADDED", "ArtifactUpdate")
+	LAD.RegisterCallback(self, "ARTIFACT_ACTIVE_CHANGED", "ArtifactUpdate")
+	LAD.RegisterCallback(self, "ARTIFACT_KNOWLEDGE_CHANGED", "ArtifactUpdate")
+	LAD.RegisterCallback(self, "ARTIFACT_POWER_CHANGED", "ArtifactUpdate")
+	LAD.RegisterCallback(self, "ARTIFACT_RELIC_CHANGED", "ArtifactUpdate")
+	LAD.RegisterCallback(self, "ARTIFACT_TRAITS_CHANGED", "ArtifactUpdate")
+
+	self:RegisterMessage("FS_MSG_ROSTER_ARTIFACT")
+	self:RegisterEvent("GROUP_ROSTER_UPDATE", "ScheduleArtifactBroadcast")
 end
 
 function Roster:OnEnable()
@@ -154,7 +170,73 @@ function Roster:GetUnit(guid)
 end
 
 function Roster:GetInfo(guid)
-	return LGIST:GetCachedInfo(guid)
+	local info = self.infos[guid]
+	if not info then return end
+	info.artifact = self.artifacts[guid]
+	return info
+end
+
+function Roster:HasArtifactInfo(guid)
+	return not not self.artifacts[guid]
+end
+
+--------------------------------------------------------------------------------
+
+do
+	local function broadcast()
+		local guid = UnitGUID("player")
+		FS:Send("ROSTER_ARTIFACT", { guid, Roster.artifacts[guid] })
+	end
+
+	local pending = false
+	local last_update = 0
+
+	function Roster:ScheduleArtifactBroadcast()
+		if not pending and IsInGroup() then
+			pending = true
+			local delta = GetTime() - last_update
+			C_Timer.After((delta < 30) and 30 or 5, function()
+				broadcast()
+				pending = false
+				last_update = GetTime()
+			end)
+		end
+	end
+
+	function Roster:ArtifactUpdate(tpe, ...)
+		self:SendMessage("FS_ROSTER_" .. tpe, ...)
+
+		local guid = UnitGUID("player")
+
+		local data = LAD:GetAllArtifactsInfo()
+		local activeID = LAD:GetActiveArtifactID()
+
+		if activeID and data[activeID] then
+			local traits = {}
+
+			for i, trait in ipairs(data[activeID].traits) do
+				traits[trait.spellID] = trait.currentRank
+			end
+
+			data = traits
+		else
+			data = nil
+		end
+
+		Roster.artifacts[guid] = data
+		Roster:SendMessage("FS_ROSTER_UPDATE", guid, "player", Roster:GetInfo(guid))
+		Roster:ScheduleArtifactBroadcast()
+	end
+
+	function Roster:FS_MSG_ROSTER_ARTIFACT(_, data)
+		local guid = data[1]
+		local info = data[2]
+
+		if guid == UnitGUID("player") then return end
+
+		Roster.artifacts[guid] = info
+		Roster:SendMessage("FS_ROSTER_UPDATE", guid, Roster:GetUnit(guid), Roster:GetInfo(guid))
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -164,10 +246,13 @@ function Roster:RosterUpdate(_, guid, unit, info)
 		self:SendMessage("FS_ROSTER_JOINED", guid, unit)
 		self.group[guid] = true
 	end
-	self:SendMessage("FS_ROSTER_UPDATE", guid, unit, info)
+	self.infos[guid] = info
+	self:SendMessage("FS_ROSTER_UPDATE", guid, unit, self:GetInfo(guid))
 end
 
 function Roster:RosterRemove(_, guid)
 	self.group[guid] = nil
+	self.infos[guid] = nil
+	self.artifacts[guid] = nil
 	self:SendMessage("FS_ROSTER_LEFT", guid)
 end

@@ -275,6 +275,24 @@ function Unit:HasTalent(tid)
 	return self.info.talents[tid] ~= nil
 end
 
+function Unit:HasTalentSpell(sid)
+	for _, talent in pairs(self.info.talents) do
+		if talent.spell_id == sid then return true end
+	end
+	return false
+end
+
+function Unit:GetArtifactSpellRank(spellID)
+	local data = self.info.artifact
+	return (data and data[spellID]) or 0
+end
+
+function Unit:GetArtifactSpellEffect(spellID, zero, ...)
+	local rank = self:GetArtifactSpellRank(spellID)
+	if rank < 1 then return zero end
+	return select(rank, ...)
+end
+
 -- Returns the cooldown object for a given spell
 -- If tag is given, the function will try to find the most appropriate
 -- spell with the tag that is ready. If there is no spell with the tag

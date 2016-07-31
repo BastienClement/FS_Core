@@ -7,9 +7,11 @@ local SPEC_SURVIVAL = 255
 
 local SPEC_RANGED = { SPEC_BEASTMASTERY, SPEC_MARKSMANSHIP }
 
+local function EmbraceOfTheAspects(unit) return 1 - unit:GetArtifactSpellRank(225092) * 0.2 end
+
 Cooldowns:RegisterSpells("HUNTER", {
 	[186265] = { -- Aspect of the Turtle
-		cooldown = 180,
+		cooldown = function(unit) return 180 * EmbraceOfTheAspects(unit) end,
 		duration = 8
 	},
 
