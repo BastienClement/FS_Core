@@ -40,7 +40,7 @@ function ArtifactInspect:OnInitialize()
 
 		local available = true
 
-		if Roster:GetUnit(UnitGUID(unit)) then
+		if UnitIsConnected(unit) and UnitIsFriend(unit, "player") and UnitIsPlayer(unit) then
 			local unitName = GetUnitName(currentDropDown.unit, true)
 			available = ArtifactInspect:IsInspectable(unitName)
 		else
@@ -72,7 +72,6 @@ function ArtifactInspect:OnInitialize()
 						if value == "ARTIFACT_INSPECT" then
 							if available then
 								UIDropDownMenu_EnableButton(level, tempCount)
-								print(level, tempCount)
 							else
 								if notClickable == 1 then
 									UIDropDownMenu_SetButtonNotClickable(level, tempCount)
