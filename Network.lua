@@ -58,7 +58,7 @@ local version_gui = {
 			Network:Print("Enabling/Disabling the network module requires a /reload to take effect.")
 		end
 	},
-	burst = {
+	--[[burst = {
 		type = "toggle",
 		name = "Network burst",
 		desc = "Increase addon message rate. May cause disconnect.",
@@ -68,7 +68,7 @@ local version_gui = {
 			Network.settings.burst = v
 			Network:Print("Enabling/Disabling network burst requires a /reload to take effect.")
 		end
-	},
+	},]]
 }
 
 local version_check
@@ -161,11 +161,11 @@ function Network:OnEnable()
 
 	self:BroadcastAnnounce()
 
-	if self.settings.burst then
+	--if self.settings.burst then
 		ChatThrottleLib.MAX_CPS = 2000
-		ChatThrottleLib.BURST = 16000
+		ChatThrottleLib.BURST = 24000
 		ChatThrottleLib.MIN_FPS = 0
-	end
+	--end
 end
 
 -------------------------------------------------------------------------------
