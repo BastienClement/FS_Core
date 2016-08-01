@@ -81,6 +81,105 @@
 					</Anchors>
 				</Texture>
 			</Layer>
+
+			<!-- Animation Textures -->
+			<Layer level="OVERLAY" textureSubLevel="4">
+				<Texture parentKey="Whirls" alpha="0" atlas="ArtifactsFX-Whirls" useAtlasSize="true">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+				<Texture parentKey="BigWhirls" alpha="0" alphaMode="ADD" atlas="ArtifactsFX-Whirls" useAtlasSize="true">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+					<Color r="1" g="0.83921568627451" b="0.45098039215686"/>
+				</Texture>
+				<Texture parentKey="SpinningGlows" alpha="0" alphaMode="ADD" atlas="ArtifactsFX-SpinningGlowys"
+				         useAtlasSize="true">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+				<Texture parentKey="SpinningGlows2" alpha="0" alphaMode="ADD" atlas="ArtifactsFX-SpinningGlowys"
+				         useAtlasSize="true">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+				<Texture parentKey="RingGlow" alpha="0" alphaMode="ADD" atlas="ArtifactsFX-YellowRing"
+				         useAtlasSize="true">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+				<Texture parentKey="RingBurst" alpha="0" alphaMode="ADD" atlas="ArtifactsFX-YellowRing"
+				         useAtlasSize="true">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+				<Texture parentKey="BigGlow" alpha="0" alphaMode="ADD" atlas="Artifacts-PerkRing-MainProc-Glow"
+				         useAtlasSize="true">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+				<Texture parentKey="DragonShake" alpha="0" alphaMode="ADD" atlas="Artifacts-PerkRing-GoldMedal"
+				         useAtlasSize="true">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+				<Texture parentKey="RelicRingBurstGlow" alpha="0" alphaMode="ADD">
+					<Anchors>
+						<Anchor point="CENTER" relativeKey="$parent.Icon"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+			<Layer level="OVERLAY" textureSubLevel="6">
+				<Texture parentKey="StarBurst" alpha="0" alphaMode="ADD" atlas="ArtifactsFX-StarBurst" useAtlasSize="true">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+				<Texture parentKey="WhiteStarBurst" alpha="0" alphaMode="ADD" atlas="AftLevelup-WhiteStarBurst" useAtlasSize="true">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+				<Texture parentKey="PointBurstLeft" alpha="0" alphaMode="ADD" atlas="ArtifactsFX-PointSideBurstLeft" useAtlasSize="true">
+					<Anchors>
+						<Anchor point="RIGHT" relativeKey="$parent.RankBorder" relativePoint="LEFT" x="14" y="0"/>
+					</Anchors>
+				</Texture>
+				<Texture parentKey="PointBurstRight" alpha="0" alphaMode="ADD" atlas="ArtifactsFX-PointSideBurstRight" useAtlasSize="true">
+					<Anchors>
+						<Anchor point="LEFT" relativeKey="$parent.RankBorder" relativePoint="RIGHT" x="-14" y="0"/>
+					</Anchors>
+				</Texture>
+				<Texture parentKey="RelicTraitBurst" alpha="0" alphaMode="ADD">
+					<Anchors>
+						<Anchor point="CENTER" relativeKey="$parent.Icon"/>
+					</Anchors>
+				</Texture>
+				<Texture parentKey="TraitGlow" alpha="0" alphaMode="ADD" atlas="Artifacts-PerkRing-WhiteGlow" useAtlasSize="true">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+				<Texture parentKey="YellowRing" alpha="0" atlas="ArtifactsFX-YellowRing" useAtlasSize="true">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+				<Texture parentKey="YellowRingStationary" alpha="0" atlas="ArtifactsFX-YellowRing" useAtlasSize="true">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+			<!-- Animation Textures -->
 		</Layers>
 		<Scripts>
 			<OnEnter method="OnEnter"/>

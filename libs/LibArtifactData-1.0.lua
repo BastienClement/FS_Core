@@ -208,8 +208,17 @@ local function ScanRelics(artifactID)
 		if name then
 			itemID = strmatch(link, "item:(%d+):")
 		end
+		local affectedTrait = C_ArtifactUI.GetPowersAffectedByRelic(i)
 
-		relics[i] = { type = slotType, isLocked = isLocked, name = name, icon = icon, itemID = itemID, link = link }
+		relics[i] = {
+			type = slotType,
+			isLocked = isLocked,
+			name = name,
+			icon = icon,
+			itemID = itemID,
+			link = link,
+			affectedTrait = affectedTrait
+		}
 	end
 
 	if artifactID then

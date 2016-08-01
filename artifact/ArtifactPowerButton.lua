@@ -51,5 +51,8 @@ FSArtifactPowerButtonMixin.IsStart = ArtifactPowerButtonMixin.IsStart
 FSArtifactPowerButtonMixin.IsFinal = ArtifactPowerButtonMixin.IsFinal
 FSArtifactPowerButtonMixin.IsGoldMedal = ArtifactPowerButtonMixin.IsGoldMedal
 FSArtifactPowerButtonMixin.IsCompletelyPurchased = ArtifactPowerButtonMixin.IsCompletelyPurchased
+FSArtifactPowerButtonMixin.ApplyRelicType = ArtifactPowerButtonMixin.ApplyRelicType
+FSArtifactPowerButtonMixin.RemoveRelicType = ArtifactPowerButtonMixin.RemoveRelicType
+FSArtifactPowerButtonMixin.SetRelicHighlightEnabled = ArtifactPowerButtonMixin.SetRelicHighlightEnabled
 
 function FSArtifactPowerButtonMixin:StopAllAnimations() end

@@ -203,6 +203,10 @@ function ArtifactInspect:IsPowerKnown(powerID)
 	return false
 end
 
+function ArtifactInspect:GetPowersAffectedByRelic(relicSlotIndex)
+	return self:GetActiveArtifact().relics[relicSlotIndex].affectedTrait
+end
+
 --------------------------------------------------------------------------------
 -- Events
 

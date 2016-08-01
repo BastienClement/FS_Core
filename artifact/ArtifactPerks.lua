@@ -103,7 +103,7 @@ function FSArtifactPerksMixin:RefreshPower()
 
 	self:HideUnusedWidgets(self.PowerButtons, #powers)
 	self:RefreshDependencies(powers)
-	--self:RefreshRelics()
+	self:RefreshRelics()
 end
 
 function FSArtifactPerksMixin:GetOrCreatePowerButton(powerIndex)
@@ -171,6 +171,38 @@ function FSArtifactPerksMixin:RefreshDependencies(powers)
 	end
 
 	self:HideUnusedWidgets(self.DependencyLines, numUsedLines, OnUnusedLineHidden);
+end
+
+local function RelicRefreshHelper(self, relicSlotIndex, powersAffected, ...)
+	for i = 1, select("#", ...) do
+		local powerID = select(i, ...)
+		if powerID then
+			powersAffected[powerID] = true
+			self:AddRelicToPower(powerID, relicSlotIndex)
+		end
+	end
+end
+
+function FSArtifactPerksMixin:RefreshRelics()
+	local powersAffected = {};
+	for relicSlotIndex = 1, AI:GetNumRelicSlots() do
+		RelicRefreshHelper(self, relicSlotIndex, powersAffected, AI:GetPowersAffectedByRelic(relicSlotIndex));
+	end
+
+	for powerID, button in pairs(self.powerIDToPowerButton) do
+		if not powersAffected[powerID] then
+			button:RemoveRelicType()
+		end
+	end
+end
+
+function FSArtifactPerksMixin:AddRelicToPower(powerID, relicSlotIndex)
+	local button = self.powerIDToPowerButton[powerID]
+	if button then
+		local relicType = AI:GetRelicSlotType(relicSlotIndex)
+		local lockedReason, relicName, relicIcon, relicLink = AI:GetRelicInfo(relicSlotIndex)
+		button:ApplyRelicType(relicType, relicLink, true)
+	end
 end
 
 FSArtifactPerksMixin.HideAllLines = ArtifactPerksMixin.HideAllLines
