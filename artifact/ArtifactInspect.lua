@@ -20,6 +20,10 @@ function ArtifactInspect:OnInitialize()
 	self:RegisterMessage("FS_MSG_AI_REQUEST")
 	self:RegisterMessage("FS_MSG_AI_DATA")
 
+	--self:RegisterMessage("FS_ROSTER_ARTIFACT_REBUILT", function(...)
+	--	self:FS_MSG_AI_DATA(nil, Roster:PlayerArtifactData())
+	--end)
+
 	UnitPopupButtons["ARTIFACT_INSPECT"] = { text = "Inspect Artifact", dist = 0 }
 
 	for menu, items in pairs(UnitPopupMenus) do

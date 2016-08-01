@@ -112,7 +112,41 @@ function FSArtifactPerksMixin:GetOrCreatePowerButton(powerIndex)
 	return CreateFrame("BUTTON", nil, self, "FSArtifactPowerButtonTemplate");
 end
 
+local LINE_FADE_ANIM_TYPE_CONNECTED = 1
+local LINE_FADE_ANIM_TYPE_UNLOCKED = 2
+
+local function PlayLineFadeAnim(lineContainer, lineAnimType)
+	lineContainer.FadeAnim:Finish()
+
+	lineContainer.FadeAnim.Background:SetFromAlpha(lineContainer.Background:GetAlpha())
+	lineContainer.FadeAnim.Fill:SetFromAlpha(lineContainer.Fill:GetAlpha())
+	lineContainer.FadeAnim.FillScroll1:SetFromAlpha(lineContainer.FillScroll1:GetAlpha())
+	lineContainer.FadeAnim.FillScroll2:SetFromAlpha(lineContainer.FillScroll2:GetAlpha())
+
+	if lineAnimType == LINE_FADE_ANIM_TYPE_CONNECTED then
+		lineContainer.ScrollAnim:Play();
+		lineContainer.FadeAnim.Background:SetToAlpha(0.0)
+		lineContainer.FadeAnim.Fill:SetToAlpha(1.0)
+		lineContainer.FadeAnim.FillScroll1:SetToAlpha(1.0)
+		lineContainer.FadeAnim.FillScroll2:SetToAlpha(1.0)
+
+	elseif lineAnimType == LINE_FADE_ANIM_TYPE_UNLOCKED then
+		lineContainer.ScrollAnim:Stop()
+		lineContainer.FadeAnim.Background:SetToAlpha(1.0)
+		lineContainer.FadeAnim.Fill:SetToAlpha(0.0)
+		lineContainer.FadeAnim.FillScroll1:SetToAlpha(0.0)
+		lineContainer.FadeAnim.FillScroll2:SetToAlpha(0.0)
+	end
+
+	lineContainer.animType = lineAnimType
+	lineContainer.FadeAnim:Play()
+end
+
 local function OnUnusedLineHidden(lineContainer)
+	lineContainer.animType = nil
+	lineContainer.FadeAnim:Stop()
+	lineContainer.RevealAnim:Stop()
+
 	lineContainer.Background:SetAlpha(0.0)
 	lineContainer.Fill:SetAlpha(0.0)
 	lineContainer.FillScroll1:SetAlpha(0.0)
@@ -121,8 +155,8 @@ end
 
 function FSArtifactPerksMixin:RefreshDependencies(powers)
 	local numUsedLines = 0
-
 	local textureKit, titleName, titleR, titleG, titleB, barConnectedR, barConnectedG, barConnectedB, barDisconnectedR, barDisconnectedG, barDisconnectedB = AI:GetArtifactArtInfo()
+
 	for i, fromPower in ipairs(powers) do
 		local fromPowerID = fromPower.traitID
 		local fromButton = self.powerIDToPowerButton[fromPowerID]
@@ -137,29 +171,28 @@ function FSArtifactPerksMixin:RefreshDependencies(powers)
 
 						lineContainer.Fill:SetStartPoint("CENTER", fromButton)
 						lineContainer.Fill:SetEndPoint("CENTER", toButton)
-						lineContainer.FillScroll1:SetStartPoint("CENTER", fromButton)
-						lineContainer.FillScroll1:SetEndPoint("CENTER", toButton)
-						lineContainer.FillScroll2:SetStartPoint("CENTER", fromButton)
-						lineContainer.FillScroll2:SetEndPoint("CENTER", toButton)
-
-						lineContainer.Fill:SetAlpha(1.0)
-						lineContainer.FillScroll1:SetAlpha(1.0)
-						lineContainer.FillScroll2:SetAlpha(1.0)
 
 						if (fromButton.isCompletelyPurchased and toButton.hasSpentAny) or (toButton.isCompletelyPurchased and fromButton.hasSpentAny) then
 							lineContainer.Fill:SetVertexColor(barConnectedR, barConnectedG, barConnectedB)
 							lineContainer.FillScroll1:SetVertexColor(barConnectedR, barConnectedG, barConnectedB)
 							lineContainer.FillScroll2:SetVertexColor(barConnectedR, barConnectedG, barConnectedB)
-							lineContainer.ScrollAnim:Play()
+
+							lineContainer.FillScroll1:Show()
+							lineContainer.FillScroll1:SetStartPoint("CENTER", fromButton)
+							lineContainer.FillScroll1:SetEndPoint("CENTER", toButton)
+
+							lineContainer.FillScroll2:Show()
+							lineContainer.FillScroll2:SetStartPoint("CENTER", fromButton)
+							lineContainer.FillScroll2:SetEndPoint("CENTER", toButton)
+
+							PlayLineFadeAnim(lineContainer, LINE_FADE_ANIM_TYPE_CONNECTED)
 						else
-							local avg = 0.2126 * barConnectedR + 0.7152 * barConnectedG + 0.0722 * barConnectedB
-							local r = (avg + barConnectedR) / 4
-							local g = (avg + barConnectedG) / 4
-							local b = (avg + barConnectedB) / 4
-							lineContainer.Fill:SetVertexColor(r, g, b)
-							lineContainer.FillScroll1:SetVertexColor(r, g, b)
-							lineContainer.FillScroll2:SetVertexColor(r, g, b)
-							lineContainer.ScrollAnim:Stop()
+							lineContainer.Fill:SetVertexColor(barDisconnectedR, barDisconnectedG, barDisconnectedB)
+
+							lineContainer.Background:SetStartPoint("CENTER", fromButton)
+							lineContainer.Background:SetEndPoint("CENTER", toButton)
+
+							PlayLineFadeAnim(lineContainer, LINE_FADE_ANIM_TYPE_UNLOCKED)
 						end
 
 						fromButton.links[toPowerID] = lineContainer
