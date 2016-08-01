@@ -124,6 +124,7 @@
 								<Color r="0" g="0" b="0"/>
 							</Shadow>
 						</FontString>
+						<!--
 						<FontString parentKey="PointsRemainingLabel" inherits="SystemFont_Shadow_Large">
 							<Anchors>
 								<Anchor point="BOTTOM" y="-2"/>
@@ -136,6 +137,7 @@
 							</Anchors>
 							<Color r=".901" g=".8" b=".501"/>
 						</FontString>
+						-->
 					</Layer>
 				</Layers>
 				<Frames>

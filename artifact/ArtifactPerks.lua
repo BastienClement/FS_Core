@@ -187,7 +187,7 @@ local FSArtifactTitleTemplateMixin = FSArtifactTitleTemplateMixin
 function FSArtifactTitleTemplateMixin:Refresh()
 	self:RefreshTitle()
 	self:EvaluateRelics()
-	self:SetPointsRemaining(AI:GetPointsRemaining())
+	--self:SetPointsRemaining(AI:GetPointsRemaining())
 end
 
 function FSArtifactTitleTemplateMixin:RefreshTitle()

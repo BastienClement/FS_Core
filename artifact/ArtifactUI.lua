@@ -74,11 +74,30 @@ function FSArtifactUIMixin:RefreshKnowledgeRanks()
 	end
 end
 
+local function formatBigNumber(num)
+	num = tostring(num)
+	local len = #num
+	local res = ""
+	for j = 0, len - 1 do
+		local i = len - j
+		if j > 0 and j % 3 == 0 then
+			res = "," .. res
+		end
+		res = num:sub(i, i) .. res
+	end
+	return res
+end
 
 function FSArtifactUIMixin:OnKnowledgeEnter(knowledgeFrame)
 	GameTooltip:SetOwner(knowledgeFrame, "ANCHOR_BOTTOMRIGHT", -25, 27)
 	local textureKit, titleName, titleR, titleG, titleB, barConnectedR, barConnectedG, barConnectedB, barDisconnectedR, barDisconnectedG, barDisconnectedB = AI:GetArtifactArtInfo()
 	GameTooltip:SetText(titleName, titleR, titleG, titleB)
+
+	local a = AI:GetActiveArtifact()
+
+	GameTooltip:AddLine(" ")
+	GameTooltip:AddLine("Available artifact power:", HIGHLIGHT_FONT_COLOR:GetRGB())
+	GameTooltip:AddLine(("%s / %s"):format(formatBigNumber(a.unspentPower), formatBigNumber(a.maxPower)))
 
 	local knowledgeLevel = AI:GetArtifactKnowledgeLevel()
 	if knowledgeLevel then
