@@ -58,6 +58,7 @@ do
 			end,
 			order = order
 		}
+		misc_defaults.profile[name] = default
 		order = order + 1
 		features[name] = fn
 	end
@@ -71,30 +72,17 @@ end
 -- Features
 -------------------------------------------------------------------------------
 
-Misc:RegisterFeature(
-	"TalkingHead",
-	"Disable Talking Head",
-	"Disables the Talking Head feature that is used for some quest and event dialogues.",
-	function(state)
-		if state then
-			UIParent:UnregisterEvent("TALKINGHEAD_REQUESTED")
-		else
-			UIParent:RegisterEvent("TALKINGHEAD_REQUESTED")
-		end
-	end
-)
-
 do
-	local enabled = false
 	Misc:RegisterFeature(
-		"SlashRL",
-		"Enable /rl",
-		"Enables the short version for reloading the interface.",
+		"TalkingHead",
+		"Disable Talking Head",
+		"Disables the Talking Head feature that is used for some quest and event dialogues.",
 		false,
 		function(state)
-			if state and not enabled then
-				enabled = true
-				FS.Console:RegisterChatCommand("rl", function() ReloadUI() end)
+			if state then
+				UIParent:UnregisterEvent("TALKINGHEAD_REQUESTED")
+			else
+				UIParent:RegisterEvent("TALKINGHEAD_REQUESTED")
 			end
 		end
 	)
