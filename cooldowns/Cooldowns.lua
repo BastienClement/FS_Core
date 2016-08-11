@@ -826,9 +826,24 @@ do
 	end
 end
 
-function Cooldowns:ENCOUNTER_END()
-	for guid, unit in Cooldowns:IterateUnits() do
-		unit:Reset()
+do
+	local raids = {
+		[3] = true,
+		[4] = true,
+		[5] = true,
+		[6] = true,
+		[7] = true,
+		[9] = true,
+		[14] = true,
+		[15] = true
+	}
+	
+	function Cooldowns:ENCOUNTER_END(_, id, name, difficulty, size, status)
+		if raids[difficulty] then
+			for guid, unit in Cooldowns:IterateUnits() do
+				unit:Reset()
+			end
+		end
 	end
 end
 
