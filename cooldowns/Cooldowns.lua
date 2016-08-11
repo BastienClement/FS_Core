@@ -835,7 +835,9 @@ do
 		[7] = true,
 		[9] = true,
 		[14] = true,
-		[15] = true
+		[15] = true,
+		[16] = true,
+		[17] = true,
 	}
 	
 	function Cooldowns:ENCOUNTER_END(_, id, name, difficulty, size, status)
