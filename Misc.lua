@@ -29,7 +29,6 @@ local misc_config = {
 -------------------------------------------------------------------------------
 -- Life-cycle
 -------------------------------------------------------------------------------
-
 function Misc:OnInitialize()
 	self.db = FS.db:RegisterNamespace("Miscellaneous", misc_defaults)
 	self.settings = self.db.profile
@@ -73,8 +72,36 @@ end
 -------------------------------------------------------------------------------
 
 do
-	Misc:RegisterFeature(
-		"TalkingHead",
+	Misc:RegisterFeature("MaxCam",
+		"Maximize camera distance",
+		"Automatically reset your camera to max distance when logging in.",
+		true,
+		function(state)
+			if state then
+				C_Timer.After(0.3, function()
+					SetCVar("cameraDistanceMaxFactor", 2.6)
+					MoveViewOutStart(50000)
+				end)
+			end
+		end)
+end
+
+do
+	local enabled = false
+	Misc:RegisterFeature("SlashRL",
+		"Enable /rl",
+		"Enables the short version for reloading the interface.",
+		true,
+		function(state)
+			if state and not enabled then
+				enabled = true
+				FS.Console:RegisterChatCommand("rl", function() ReloadUI() end)
+			end
+		end)
+end
+
+do
+	Misc:RegisterFeature("TalkingHead",
 		"Disable Talking Head",
 		"Disables the Talking Head feature that is used for some quest and event dialogues.",
 		false,
@@ -84,22 +111,5 @@ do
 			else
 				UIParent:RegisterEvent("TALKINGHEAD_REQUESTED")
 			end
-		end
-	)
-end
-
-do
-	local enabled = false
-	Misc:RegisterFeature(
-		"SlashRL",
-		"Enable /rl",
-		"Enables the short version for reloading the interface.",
-		true,
-		function(state)
-			if state and not enabled then
-				enabled = true
-				FS.Console:RegisterChatCommand("rl", function() ReloadUI() end)
-			end
-		end
-	)
+		end)
 end
