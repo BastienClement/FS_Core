@@ -839,7 +839,7 @@ do
 		[16] = true,
 		[17] = true,
 	}
-	
+
 	function Cooldowns:ENCOUNTER_END(_, id, name, difficulty, size, status)
 		if raids[difficulty] then
 			for guid, unit in Cooldowns:IterateUnits() do
