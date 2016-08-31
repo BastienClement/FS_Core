@@ -11,6 +11,8 @@ if _G.AdiDebug then
 	Debug = _G.AdiDebug:Embed({}, MAJOR)
 end
 
+--function Debug(...) print(...) end
+
 -- local store
 local artifacts = {}
 local equippedID, viewedID, activeID
@@ -276,6 +278,7 @@ local function GetViewedArtifactData()
 		return
 	end
 	viewedID = itemID
+	if not name then return end
 	Debug("GetViewedArtifactData", name, itemID)
 	local numRanksPurchasable, power, maxPower = GetNumPurchasableTraits(numRanksPurchased, unspentPower)
 	local traits = ScanTraits()

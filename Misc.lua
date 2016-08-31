@@ -121,10 +121,13 @@ do
 		false,
 		function(state)
 			if state then
-				local b = OrderHallCommandBar
-				b:UnregisterAllEvents()
-				b:HookScript("OnShow", b.Hide)
-				b:Hide()
+				C_Timer.After(0.3, function()
+					LoadAddOn("Blizzard_OrderHallUI")
+					local b = OrderHallCommandBar
+					b:UnregisterAllEvents()
+					b:HookScript("OnShow", b.Hide)
+					b:Hide()
+				end)
 			end
 		end)
 end
