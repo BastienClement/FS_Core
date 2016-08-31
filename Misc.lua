@@ -113,3 +113,18 @@ do
 			end
 		end)
 end
+
+do
+	Misc:RegisterFeature("HideOrderHallBar",
+		"Disable Order Hall Command Bar",
+		"Hides the information bar inside your class' Order Hall.",
+		false,
+		function(state)
+			if state then
+				local b = OrderHallCommandBar
+				b:UnregisterAllEvents()
+				b:HookScript("OnShow", b.Hide)
+				b:Hide()
+			end
+		end)
+end
