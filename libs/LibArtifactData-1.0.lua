@@ -523,7 +523,7 @@ function lib.GetAcquiredArtifactPower(_, artifactID)
 		total = total + data.unspentPower
 		local rank = 1
 		while rank <= data.numRanksPurchased do
-			total = total + GetCostForPointAtRank(rank)
+			total = total + (GetCostForPointAtRank(rank) or 0)
 			rank = rank + 1
 		end
 
@@ -535,7 +535,7 @@ function lib.GetAcquiredArtifactPower(_, artifactID)
 			total = total + data.unspentPower
 			local rank = 1
 			while rank <= data.numRanksPurchased do
-				total = total + GetCostForPointAtRank(rank)
+				total = total + (GetCostForPointAtRank(rank) or 0)
 				rank = rank + 1
 			end
 		end
