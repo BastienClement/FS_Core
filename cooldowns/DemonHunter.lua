@@ -9,16 +9,18 @@ local function ConcentratedSigils(unit) return unit:HasTalentSpell(207666) and 2
 local function UnleasedPower(unit) return unit:HasTalentSpell(206477) and 20 or 0 end
 
 Cooldowns:RegisterSpells("DEMONHUNTER", {
-	[196718] = { -- Darkness
-		cooldown = 180,
-		duration = 8,
-	},
 	[183752] = { -- Consume Magic
 		cooldown = 15,
 		duration = 3,
 	},
 
 	-- Havoc
+	[196718] = {
+		-- Darkness
+		cooldown = 180,
+		duration = 8,
+		spec = SPEC_HAVOC,
+	},
 	[179057] = { -- Chaos Nova
 		cooldown = function(unit) return 60 - UnleasedPower(unit) end,
 		duration = 5,

@@ -38,13 +38,14 @@ Cooldowns:RegisterSpells("DRUID", {
 		spec = SPEC_GUARDIAN
 	},
 	[22812] = { -- Barkskin
-		cooldown = function(unit) return (60 + UrsocsEndurance(unit)) * PerpetualSpring(unit) * SurvivalOfTheFittest(unit) end,
+		cooldown = function(unit) return 90 * PerpetualSpring(unit) * SurvivalOfTheFittest(unit) end,
+		duration = function(unit) return 12 + UrsocsEndurance(unit) end,
 		duration = 12,
 		spec = SPEC_GUARDIAN
 	},
 	[61336] = { -- Survival Instinct
-		cooldown = 180,
-		duration = function(unit) return (6 + HonedInstincts(unit)) * SurvivalOfTheFittest(unit) end,
+		cooldown = function(unit) return 240 * SurvivalOfTheFittest(unit) end,
+		duration = function(unit) return 6 + HonedInstincts(unit) end,
 		charges = 2,
 		spec = SPEC_GUARDIAN
 	},
