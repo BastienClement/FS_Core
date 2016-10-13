@@ -2,6 +2,7 @@ local _, Core = ...
 
 FS = LibStub("AceAddon-3.0"):NewAddon(Core, "FS")
 FS.Util = {}
+FS.PTR = GetBuildInfo() == "7.1.0"
 
 LibStub("AceEvent-3.0"):Embed(FS)
 LibStub("AceConsole-3.0"):Embed(FS)

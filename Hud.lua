@@ -1,9 +1,11 @@
 local _, FS = ...
+if FS.PTR then return end
+
 local Hud = FS:RegisterModule("Hud")
 local Map, Geometry, Tracker
 
 -- Math aliases
-local sin, cos, atan2, abs = math.sin, math.cos, math.atan2
+local sin, cos, atan2 = math.sin, math.cos, math.atan2
 local abs, floor, min, max = math.abs, math.floor, math.min, math.max
 local pi2, pi_2 = math.pi * 2, math.pi / 2
 

@@ -71,7 +71,7 @@ end
 -- Features
 -------------------------------------------------------------------------------
 
-do
+if not FS.PTR then
 	Misc:RegisterFeature("MaxCam",
 		"Maximize camera distance",
 		"Automatically reset your camera to max distance when logging in.",
