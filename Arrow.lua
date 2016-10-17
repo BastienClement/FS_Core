@@ -1,4 +1,5 @@
 local _, FS = ...
+if FS.PTR then return end
 
 local Arrow = FS:RegisterModule("Arrow")
 local Map, Console

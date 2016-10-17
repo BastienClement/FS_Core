@@ -117,7 +117,7 @@ end
 do
 	Misc:RegisterFeature("HideOrderHallBar",
 		"Disable Order Hall Command Bar",
-		"Hides the information bar inside your class' Order Hall.",
+		"Hides the information bar inside your class Order Hall.",
 		false,
 		function(state)
 			if state then
