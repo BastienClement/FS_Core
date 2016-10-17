@@ -36,24 +36,16 @@ libs\LibArtifactData-1.0.lua
 
 Core.lua
 
-utils\Operators.lua
-utils\Stream.lua
-utils\Deferred.lua
-
 Config.lua
 Debug.lua
 
-Geometry.lua
 Format.lua
 Network.lua
 Console.lua
-Map.lua
 
 Roster.lua
-Arrow.lua
 BigWigs.lua
 Tracker.lua
-Hud.lua
 Encounters.lua
 Token.lua
 Misc.lua
