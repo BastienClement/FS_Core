@@ -690,6 +690,8 @@ do
 			unit.info = info
 		end
 
+		if not info then return end
+
 		-- Matches spell definition criteria with current unit
 		local function match(criterion, value, key)
 			if criterion == nil then
