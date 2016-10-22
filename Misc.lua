@@ -71,7 +71,7 @@ end
 -- Features
 -------------------------------------------------------------------------------
 
-if not FS.PTR then
+do
 	Misc:RegisterFeature("MaxCam",
 		"Maximize camera distance",
 		"Automatically reset your camera to max distance when logging in.",
@@ -79,7 +79,11 @@ if not FS.PTR then
 		function(state)
 			if state then
 				C_Timer.After(0.3, function()
-					SetCVar("cameraDistanceMaxFactor", 2.6)
+					if FS.PTR then
+						SetCVar("cameraDistanceMaxZoomFactor", 2.6)
+					else
+						SetCVar("cameraDistanceMaxFactor", 2.6)
+					end
 					MoveViewOutStart(50000)
 				end)
 			end
