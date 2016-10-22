@@ -33,6 +33,8 @@ function Misc:OnInitialize()
 	self.db = FS.db:RegisterNamespace("Miscellaneous", misc_defaults)
 	self.settings = self.db.profile
 	FS.Config:Register("Miscellaneous", misc_config, 12)
+
+	self:RegisterEvent("ADDON_LOADED")
 end
 
 function Misc:OnEnable()
@@ -65,6 +67,12 @@ end
 
 function Misc:SyncFeature(name)
 	features[name](Misc.settings[name])
+end
+
+function Misc:ADDON_LOADED(event, addon)
+	if addon == "Blizzard_TalkingHeadUI" then
+		self:SyncFeature("TalkingHead")
+	end
 end
 
 -------------------------------------------------------------------------------
@@ -105,15 +113,17 @@ do
 end
 
 do
+	local enabled = false
 	Misc:RegisterFeature("TalkingHead",
 		"Disable Talking Head",
 		"Disables the Talking Head feature that is used for some quest and event dialogues.",
 		false,
 		function(state)
-			if state then
-				UIParent:UnregisterEvent("TALKINGHEAD_REQUESTED")
-			else
-				UIParent:RegisterEvent("TALKINGHEAD_REQUESTED")
+			if not enabled and TalkingHeadFrame_PlayCurrent then
+				enabled = true
+				hooksecurefunc("TalkingHeadFrame_PlayCurrent", function()
+					if state then TalkingHeadFrame:Hide() end
+				end)
 			end
 		end)
 end
