@@ -69,9 +69,6 @@ local frame = lib.frame
 frame:UnregisterAllEvents() -- deactivate old versions
 frame:SetScript("OnEvent", function(_, event, ...) private[event](event, ...) end)
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
-frame:RegisterEvent("ARTIFACT_CLOSE")
-frame:RegisterEvent("ARTIFACT_XP_UPDATE")
-frame:RegisterUnitEvent("PLAYER_SPECIALIZATION_CHANGED", "player")
 
 local function CopyTable(tbl)
 	if not tbl then return {} end
@@ -292,6 +289,17 @@ local function GetViewedArtifactData()
 	end
 end
 
+local function ScanEquipped()
+	if HasArtifactEquipped() then
+		PrepareForScan()
+		SocketInventoryItem(INVSLOT_MAINHAND)
+		GetViewedArtifactData()
+		Clear()
+		RestoreStateAfterScan()
+		frame:UnregisterEvent("UNIT_INVENTORY_CHANGED")
+	end
+end
+
 local function ScanContainer(container, numObtained)
 	for slot = 1, GetContainerNumSlots(container) do
 		local _, _, _, quality, _, _, _, _, _, itemID = GetContainerItemInfo(container, slot)
@@ -302,69 +310,65 @@ local function ScanContainer(container, numObtained)
 				SocketContainerItem(container, slot)
 				GetViewedArtifactData()
 				Clear()
-				numObtained = numObtained - 1
-				if numObtained <= 0 then break end
+				if numObtained <= lib:GetNumObtainedArtifacts() then break end
 			end
 		end
 	end
-
-	return numObtained
 end
 
 local function IterateContainers(from, to, numObtained)
-	for container = from, to do
-		numObtained = ScanContainer(container, numObtained)
-		if numObtained <= 0 then break end
-	end
-
-	return numObtained
-end
-
-local function ScanBank(numObtained)
 	PrepareForScan()
-	numObtained = ScanContainer(BANK_CONTAINER, numObtained)
-	if numObtained > 0 then
-		IterateContainers(NUM_BAG_SLOTS + 1, NUM_BAG_SLOTS + NUM_BANKBAGSLOTS, numObtained)
+	for container = from, to do
+		ScanContainer(container, numObtained)
+		if numObtained <= lib:GetNumObtainedArtifacts() then break end
 	end
 	RestoreStateAfterScan()
 end
 
-local function InitializeScan(event)
-	if _G.ArtifactFrame and _G.ArtifactFrame:IsShown() then
-		Debug("InitializeScan", "aborted because ArtifactFrame is open.")
-		return
-	end
-
-	local numObtained = GetNumObtainedArtifacts() -- not available at cold login
-	Debug("InitializeScan", event, "numObtained", numObtained)
-
-	if numObtained > 0 then
+local function ScanBank(numObtained)
+	if numObtained > lib:GetNumObtainedArtifacts() then
 		PrepareForScan()
-		if HasArtifactEquipped() then -- scan equipped
-		SocketInventoryItem(INVSLOT_MAINHAND)
-		GetViewedArtifactData()
-		Clear()
-		numObtained = numObtained - 1
-		end
-		if numObtained > 0 then -- scan bags
-		numObtained = IterateContainers(BACKPACK_CONTAINER, NUM_BAG_SLOTS, numObtained)
-		end
-		if numObtained > 0 then -- scan bank
-		frame:RegisterEvent("BANKFRAME_OPENED")
-		Debug("ARTIFACT_DATA_MISSING", "artifact", numObtained)
-		lib.callbacks:Fire("ARTIFACT_DATA_MISSING", numObtained)
-		end
+		ScanContainer(BANK_CONTAINER, numObtained)
 		RestoreStateAfterScan()
+	end
+	if numObtained > lib:GetNumObtainedArtifacts() then
+		IterateContainers(NUM_BAG_SLOTS + 1, NUM_BAG_SLOTS + NUM_BANKBAGSLOTS, numObtained)
 	end
 end
 
 function private.PLAYER_ENTERING_WORLD(event)
 	frame:UnregisterEvent(event)
-	_G.C_Timer.After(5, function()
-		InitializeScan(event)
-		frame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
-		frame:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
-	end)
+	frame:RegisterUnitEvent("UNIT_INVENTORY_CHANGED", "player")
+	frame:RegisterEvent("BAG_UPDATE_DELAYED")
+	frame:RegisterEvent("BANKFRAME_OPENED")
+	frame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
+	frame:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
+	frame:RegisterEvent("ARTIFACT_CLOSE")
+	frame:RegisterEvent("ARTIFACT_XP_UPDATE")
+	frame:RegisterUnitEvent("PLAYER_SPECIALIZATION_CHANGED", "player")
+end
+
+-- bagged artifact data becomes obtainable
+function private.BAG_UPDATE_DELAYED(event)
+	local numObtained = GetNumObtainedArtifacts()
+	if numObtained <= 0 then return end
+
+	-- prevent double-scanning if UNIT_INVENTORY_CHANGED fired first
+	-- UNIT_INVENTORY_CHANGED does not fire after /reload
+	if not equippedID and HasArtifactEquipped() then
+		ScanEquipped()
+	end
+
+	if numObtained > lib:GetNumObtainedArtifacts() then
+		IterateContainers(BACKPACK_CONTAINER, NUM_BAG_SLOTS, numObtained)
+	end
+
+	frame:UnregisterEvent(event)
+end
+
+-- equipped artifact data becomes obtainable
+function private.UNIT_INVENTORY_CHANGED(event)
+	ScanEquipped(event)
 end
 
 function private.ARTIFACT_CLOSE()
@@ -376,6 +380,10 @@ function private.ARTIFACT_UPDATE(event, newItem)
 	if newItem then
 		GetViewedArtifactData()
 	else
+		if not GetNumRelicSlots() then
+			Debug("|cffff0000ERROR:|r", "artifact data unobtainable.")
+			return
+		end
 		local newRelics = ScanRelics()
 		local oldRelics = artifacts[viewedID].relics
 
@@ -403,8 +411,7 @@ function private.ARTIFACT_XP_UPDATE(event)
 
 	local artifact = artifacts[itemID]
 	if not artifact then
-		Debug("|cffff0000ERROR:|r", "artifact", itemID, "not found.")
-		return
+		return lib.ForceUpdate()
 	end
 	local diff = unspentPower - artifact.unspentPower
 
@@ -428,8 +435,8 @@ function private.ARTIFACT_XP_UPDATE(event)
 end
 
 function private.BANKFRAME_OPENED()
-	local numObtained = lib:GetNumObtainedArtifacts()
-	if numObtained ~= GetNumObtainedArtifacts() then
+	local numObtained = GetNumObtainedArtifacts()
+	if numObtained > lib:GetNumObtainedArtifacts() then
 		ScanBank(numObtained)
 	end
 end
@@ -448,7 +455,7 @@ function private.PLAYER_EQUIPMENT_CHANGED(event, slot)
 		local itemID = GetEquippedArtifactInfo()
 
 		if itemID and not artifacts[itemID] then
-			InitializeScan(event)
+			ScanEquipped(event)
 		end
 
 		InformEquippedArtifactChanged(itemID)
@@ -525,7 +532,7 @@ function lib.GetAcquiredArtifactPower(_, artifactID)
 		local data = artifacts[artifactID]
 		total = total + data.unspentPower
 		local rank = 1
-		while rank <= data.numRanksPurchased do
+		while rank < data.numRanksPurchased do
 			total = total + (GetCostForPointAtRank(rank) or 0)
 			rank = rank + 1
 		end
@@ -537,7 +544,7 @@ function lib.GetAcquiredArtifactPower(_, artifactID)
 		if tonumber(itemID) then
 			total = total + data.unspentPower
 			local rank = 1
-			while rank <= data.numRanksPurchased do
+			while rank < data.numRanksPurchased do
 				total = total + (GetCostForPointAtRank(rank) or 0)
 				rank = rank + 1
 			end
@@ -548,5 +555,13 @@ function lib.GetAcquiredArtifactPower(_, artifactID)
 end
 
 function lib.ForceUpdate()
-	InitializeScan("FORCE_UPDATE")
+	if _G.ArtifactFrame and _G.ArtifactFrame:IsShown() then
+		Debug("ForceUpdate", "aborted because ArtifactFrame is open.")
+		return
+	end
+	local numObtained = GetNumObtainedArtifacts()
+	if numObtained > 0 then
+		ScanEquipped("FORCE_UPDATE")
+		IterateContainers(BACKPACK_CONTAINER, NUM_BAG_SLOTS, numObtained)
+	end
 end
