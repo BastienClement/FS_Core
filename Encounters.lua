@@ -702,8 +702,8 @@ end
 -- Emits
 -------------------------------------------------------------------------------
 
-function Module:Send(event, data, target)
-	FS:Send("ENCOUNTERS", { event = event, data = data }, target)
+function Module:Send(event, data, ...)
+	FS:Send("ENCOUNTERS", { event = event, data = data }, ...)
 end
 
 function Module:Emit(msg, ...)

@@ -97,7 +97,7 @@ local token_config = {
 		{"token", "List active tokens state and owner."},
 	}, "/fs "),
 	docs = FS.Config:MakeDoc("Public API", 2000, {
-		{":Create ( name , level , default , promote ) -> token", "Creates a new service token with the given name. At any given time, only one player in the group can hold a token with a given name. The actual token holder will be selected primarly based on their token level. If multiple players have the same token level, the player with the highest game uptime (since last reload) will be elected as the token holder."},
+		{":Create ( name , level , default ) -> token", "Creates a new service token with the given name. At any given time, only one player in the group can hold a token with a given name. The actual token holder will be selected primarly based on their token level. If multiple players have the same token level, the player with the highest game uptime (since last reload) will be elected as the token holder."},
 	}, "FS.Token"),
 	token = FS.Config:MakeDoc("Token API", 3000, {
 		{":Enable ( )", "Enable this token and participate in the holder election process."},
@@ -377,7 +377,7 @@ function TokenObj:New(name, level)
 end
 
 function TokenObj:RequirePromote(flag)
-	self.promote = true
+	self.promote = flag
 	return self
 end
 
