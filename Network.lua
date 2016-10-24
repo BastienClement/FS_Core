@@ -241,6 +241,12 @@ do
 			channel = "RAID"
 		end
 
+		-- When attempting to broadcast to raid while solo, fallback to whisper to self
+		if (channel == "RAID" or channel == "INSTANCE_CHAT") and not IsInGroup() then
+			channel = "WHISPER"
+			target = UnitName("player")
+		end
+
 		-- Serialize and compress data
 		local serialized = self:Serialize(label, data, multicast)
 		serialized = Compress:CompressHuffman(serialized)
@@ -363,6 +369,11 @@ function Network:OnCommReceived(text, channel, source)
 			end
 		end
 		if not me then return end
+	end
+
+	if label == "BW_NET_MSG" then
+		if BigWigsLoader then BigWigsLoader:SendMessage("BW_NET_MSG", data or EMPTY_TABLE, channel, source) end
+		return
 	end
 
 	-- Emit
