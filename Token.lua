@@ -552,16 +552,15 @@ end
 
 --------------------------------------------------------------------------------
 
-function Token:OnSlash()
-	self:Printf("Listing %s enabled token", enabled_count)
-	if enabled_count == 0 then return end
-
+function Token:OnSlash(arg, ...)
 	local lines = {}
-	for _, token in pairs(enabled) do
+	for _, token in pairs(arg == "all" and tokens or enabled) do
 		local owner_name = token.state >= STATE_CLAIMING and token.owner_name or ""
 		local line = ("  |cffc79c6e%s  |cff999999%s  %s  %s"):format(token.name, token.level, state_name[token.state], owner_name)
 		table.insert(lines, line)
 	end
+
+	self:Printf("Listing %s |4token:tokens;", #lines)
 
 	table.sort(lines)
 	for _, line in ipairs(lines) do
