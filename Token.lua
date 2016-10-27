@@ -138,6 +138,7 @@ function Token:OnEnable()
 	self:RegisterEvent("GROUP_ROSTER_UPDATE", "UpdateAcquirable")
 
 	-- Check entering / exiting instances
+	self:RegisterEvent("ZONE_CHANGED", "UpdateAcquirable")
 	self:RegisterEvent("ZONE_CHANGED_NEW_AREA", "UpdateAcquirable")
 
 	-- Force an initial check
@@ -156,7 +157,7 @@ function Token:EnableToken(token)
 end
 
 function Token:DisableToken(token)
-	enabled[token.name] = token
+	enabled[token.name] = nil
 	enabled_count = enabled_count - 1
 	if enabled_count == 0 then
 		self:CancelAllTimers()

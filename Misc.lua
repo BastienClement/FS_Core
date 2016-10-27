@@ -87,11 +87,7 @@ do
 		function(state)
 			if state then
 				C_Timer.After(0.3, function()
-					if FS.PTR then
-						SetCVar("cameraDistanceMaxZoomFactor", 2.6)
-					else
-						SetCVar("cameraDistanceMaxFactor", 2.6)
-					end
+					SetCVar("cameraDistanceMaxZoomFactor", 2.6)
 					MoveViewOutStart(50000)
 				end)
 			end
