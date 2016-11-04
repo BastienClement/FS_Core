@@ -350,8 +350,15 @@ function Token:FS_MSG_TOKEN(_, data, channel, sender)
 	-- Token renew heartbeat
 	elseif data.heartbeat then
 		local token = enabled[data.heartbeat.name]
-		if token and data.id.guid == token.owner then
-			token.ping = GetTime()
+		if token then
+			-- Not the rightful owner
+			if compare(token.id, id, data.heartbeat, data.id) > 0 then
+				token:Claim()
+			elseif data.id.guid == token.owner then
+				token.ping = GetTime()
+			else
+				token:SetOwner(data.id.guid, sender)
+			end
 		end
 	end
 end
