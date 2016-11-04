@@ -53,4 +53,3 @@ Misc.lua
 AutoInvite.lua
 
 cooldowns\Cooldowns.xml
-artifact\Artifact.xml

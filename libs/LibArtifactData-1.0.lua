@@ -1,4 +1,4 @@
-local MAJOR, MINOR = "LibArtifactData-FS", 1
+local MAJOR, MINOR = "LibArtifactData-1.0", 11
 
 assert(_G.LibStub, MAJOR .. " requires LibStub")
 local lib = _G.LibStub:NewLibrary(MAJOR, MINOR)
@@ -11,8 +11,6 @@ if _G.AdiDebug then
 	Debug = _G.AdiDebug:Embed({}, MAJOR)
 end
 
---function Debug(...) print(...) end
-
 -- local store
 local artifacts = {}
 local equippedID, viewedID, activeID
@@ -24,8 +22,8 @@ local _G = _G
 local BACKPACK_CONTAINER = _G.BACKPACK_CONTAINER
 local BANK_CONTAINER = _G.BANK_CONTAINER
 local INVSLOT_MAINHAND = _G.INVSLOT_MAINHAND
-local LE_ITEM_CLASS_WEAPON = _G.LE_ITEM_CLASS_WEAPON
 local LE_ITEM_CLASS_ARMOR = _G.LE_ITEM_CLASS_ARMOR
+local LE_ITEM_CLASS_WEAPON = _G.LE_ITEM_CLASS_WEAPON
 local LE_ITEM_QUALITY_ARTIFACT = _G.LE_ITEM_QUALITY_ARTIFACT
 local NUM_BAG_SLOTS = _G.NUM_BAG_SLOTS
 local NUM_BANKBAGSLOTS = _G.NUM_BANKBAGSLOTS
@@ -130,7 +128,7 @@ local function InformTraitsChanged(artifactID)
 	lib.callbacks:Fire("ARTIFACT_TRAITS_CHANGED", artifactID, CopyTable(artifacts[artifactID].traits))
 end
 
-local function StoreArtifact(artifactID, name, icon, unspentPower, numRanksPurchased, numRanksPurchasable, power, maxPower, traits, relics, meta)
+local function StoreArtifact(artifactID, name, icon, unspentPower, numRanksPurchased, numRanksPurchasable, power, maxPower, traits, relics)
 	if not artifacts[artifactID] then
 		artifacts[artifactID] = {
 			name = name,
@@ -143,7 +141,6 @@ local function StoreArtifact(artifactID, name, icon, unspentPower, numRanksPurch
 			powerForNextRank = maxPower - power,
 			traits = traits,
 			relics = relics,
-			meta = meta
 		}
 		Debug("ARTIFACT_ADDED", artifactID, name)
 		lib.callbacks:Fire("ARTIFACT_ADDED", artifactID)
@@ -157,7 +154,6 @@ local function StoreArtifact(artifactID, name, icon, unspentPower, numRanksPurch
 		current.powerForNextRank = maxPower - power
 		current.traits = traits
 		current.relics = relics
-		current.meta = meta
 	end
 end
 
@@ -167,24 +163,22 @@ local function ScanTraits(artifactID)
 
 	for i = 1, #powers do
 		local traitID = powers[i]
-		local spellID, _, currentRank, maxRank, bonusRanks, x, y, prereqsMet, isStart, isGold, isFinal = GetPowerInfo(traitID)
-		local name, _, icon = GetSpellInfo(spellID)
-		traits[#traits + 1] = {
-			traitID = traitID,
-			spellID = spellID,
-			name = name,
-			icon = icon,
-			currentRank = currentRank,
-			maxRank = maxRank,
-			bonusRanks = bonusRanks,
-			isGold = isGold,
-			isStart = isStart,
-			isFinal = isFinal,
-			x = x,
-			y = y,
-			prereqsMet = prereqsMet,
-			links = C_ArtifactUI.GetPowerLinks(traitID)
-		}
+		local spellID, _, currentRank, maxRank, bonusRanks, _, _, _, isStart, isGold, isFinal = GetPowerInfo(traitID)
+		if currentRank > 0 then
+			local name, _, icon = GetSpellInfo(spellID)
+			traits[#traits + 1] = {
+				traitID = traitID,
+				spellID = spellID,
+				name = name,
+				icon = icon,
+				currentRank = currentRank,
+				maxRank = maxRank,
+				bonusRanks = bonusRanks,
+				isGold = isGold,
+				isStart = isStart,
+				isFinal = isFinal,
+			}
+		end
 	end
 
 	if artifactID then
@@ -204,17 +198,8 @@ local function ScanRelics(artifactID)
 		if name then
 			itemID = strmatch(link, "item:(%d+):")
 		end
-		local affectedTrait = C_ArtifactUI.GetPowersAffectedByRelic(i)
 
-		relics[i] = {
-			type = slotType,
-			isLocked = isLocked,
-			name = name,
-			icon = icon,
-			itemID = itemID,
-			link = link,
-			affectedTrait = affectedTrait
-		}
+		relics[i] = { type = slotType, isLocked = isLocked, name = name, icon = icon, itemID = itemID, link = link }
 	end
 
 	if artifactID then
@@ -222,38 +207,6 @@ local function ScanRelics(artifactID)
 	end
 
 	return relics
-end
-
-local function ScanMeta(artifactID)
-	local itemID, altItemID, _, _, _, _, _, artifactAppearanceID, appearanceModID, itemAppearanceID, altItemAppearanceID, altOnTop = C_ArtifactUI.GetArtifactInfo()
-	local textureKit, titleName, titleR, titleG, titleB, barConnectedR, barConnectedG, barConnectedB, barDisconnectedR, barDisconnectedG, barDisconnectedB = C_ArtifactUI.GetArtifactArtInfo()
-	local _, _, _, _, _, _, uiCameraID, altHandUICameraID, _, _, _, modelAlpha, modelDesaturation, suppressGlobalAnim = C_ArtifactUI.GetAppearanceInfoByID(artifactAppearanceID)
-
-	return {
-		itemID = itemID,
-		altItemID = altItemID,
-		artifactAppearanceID = artifactAppearanceID,
-		appearanceModID = appearanceModID,
-		itemAppearanceID = itemAppearanceID,
-		altItemAppearanceID = altItemAppearanceID,
-		altOnTop = altOnTop,
-		uiCameraID = uiCameraID,
-		altHandUICameraID = altHandUICameraID,
-		modelAlpha = modelAlpha,
-		modelDesaturation = modelDesaturation,
-		suppressGlobalAnim = suppressGlobalAnim,
-		textureKit = textureKit,
-		titleName = titleName,
-		titleR = titleR,
-		titleG = titleG,
-		titleB = titleB,
-		barConnectedR = barConnectedR,
-		barConnectedG = barConnectedG,
-		barConnectedB = barConnectedB,
-		barDisconnectedR = barDisconnectedR,
-		barDisconnectedG = barDisconnectedG,
-		barDisconnectedB = barDisconnectedB
-	}
 end
 
 local function GetArtifactKnowledge()
@@ -275,13 +228,11 @@ local function GetViewedArtifactData()
 		return
 	end
 	viewedID = itemID
-	if not name then return end
 	Debug("GetViewedArtifactData", name, itemID)
 	local numRanksPurchasable, power, maxPower = GetNumPurchasableTraits(numRanksPurchased, unspentPower)
 	local traits = ScanTraits()
 	local relics = ScanRelics()
-	local meta = ScanMeta()
-	StoreArtifact(itemID, name, icon, unspentPower, numRanksPurchased, numRanksPurchasable, power, maxPower, traits, relics, meta)
+	StoreArtifact(itemID, name, icon, unspentPower, numRanksPurchased, numRanksPurchasable, power, maxPower, traits, relics)
 
 	if IsViewedArtifactEquipped() then
 		InformEquippedArtifactChanged(itemID)
@@ -413,6 +364,7 @@ function private.ARTIFACT_XP_UPDATE(event)
 	if not artifact then
 		return lib.ForceUpdate()
 	end
+
 	local diff = unspentPower - artifact.unspentPower
 
 	if numRanksPurchased ~= artifact.numRanksPurchased then
@@ -533,7 +485,7 @@ function lib.GetAcquiredArtifactPower(_, artifactID)
 		total = total + data.unspentPower
 		local rank = 1
 		while rank < data.numRanksPurchased do
-			total = total + (GetCostForPointAtRank(rank) or 0)
+			total = total + GetCostForPointAtRank(rank)
 			rank = rank + 1
 		end
 
@@ -545,7 +497,7 @@ function lib.GetAcquiredArtifactPower(_, artifactID)
 			total = total + data.unspentPower
 			local rank = 1
 			while rank < data.numRanksPurchased do
-				total = total + (GetCostForPointAtRank(rank) or 0)
+				total = total + GetCostForPointAtRank(rank)
 				rank = rank + 1
 			end
 		end
