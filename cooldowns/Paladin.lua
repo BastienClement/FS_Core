@@ -58,7 +58,7 @@ Cooldowns:RegisterSpells("PALADIN", {
 	},
 	[31821] = { -- Aura Mastery
 		cooldown = 180,
-		duration = function(unit) return 8 + TemplarOfTheLight(unit) end,
+		duration = function(unit) return 6 + TemplarOfTheLight(unit) end,
 		spec = SPEC_HOLY
 	},
 
