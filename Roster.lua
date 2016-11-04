@@ -2,7 +2,7 @@ local _, FS = ...
 local Roster = FS:RegisterModule("Roster", "AceTimer-3.0")
 
 local LGIST = LibStub:GetLibrary("LibGroupInSpecT-1.1")
-local LAD = LibStub:GetLibrary("LibArtifactData-FS")
+local LAD = LibStub:GetLibrary("LibArtifactData-1.0")
 
 -------------------------------------------------------------------------------
 -- Roster config
