@@ -141,3 +141,27 @@ do
 			end
 		end)
 end
+
+
+-------------------------------------------------------------------------------
+-- C_ArtifactUI.GetTotalPurchasedRanks() shenanigans
+-------------------------------------------------------------------------------
+
+do
+	local OnShow
+
+	local function OnShowHook(self)
+		if C_ArtifactUI.GetTotalPurchasedRanks() then
+			OnShow(self)
+		else
+			ArtifactFrame:Hide()
+		end
+	end
+
+	hooksecurefunc("ArtifactFrame_LoadUI", function()
+		if not OnShow then
+			OnShow = ArtifactFrame:GetScript("OnShow")
+			ArtifactFrame:SetScript("OnShow", OnShowHook)
+		end
+	end)
+end
