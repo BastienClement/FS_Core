@@ -472,9 +472,14 @@ function TokenObj:Claim()
 	end
 
 	-- Claiming the token
-	self.state = STATE_CLAIMING
-	self.owner = PLAYER_GUID
-	self.owner_name = PLAYER_NAME
+	-- When claiming as bullying, do not change the state flag
+	-- This ensure that the token is not lost until after the election is completed
+	-- (and we won it again)
+	if not self:IsMine()  then
+		self.state = STATE_CLAIMING
+		self.owner = PLAYER_GUID
+		self.owner_name = PLAYER_NAME
+	end
 
 	self.claim_msg = Token:Broadcast({ claim = self.id }, function()
 		self.claim_msg = nil
