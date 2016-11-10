@@ -150,8 +150,8 @@ function Token:EnableToken(token)
 	enabled_count = enabled_count + 1
 
 	if enabled_count == 1 then
-		self:ScheduleRepeatingTimer("FlushBuffers", 1)
-		self:ScheduleRepeatingTimer("BroadcastHeartbeat", 15)
+		self:ScheduleRepeatingTimer("FlushBuffers", 0.5)
+		self:ScheduleRepeatingTimer("BroadcastSync", 15)
 		self:ScheduleRepeatingTimer("CheckLiveness", 5)
 	end
 end
@@ -236,11 +236,11 @@ do
 	end
 end
 
--- Broadcast token heartbeats
-function Token:BroadcastHeartbeat()
+-- Broadcast token syncs
+function Token:BroadcastSync()
 	for name, token in pairs(enabled) do
 		if token:IsMine() then
-			self:Broadcast({ heartbeat = token.id })
+			self:Broadcast({ sync = token.id })
 		end
 	end
 end
@@ -347,12 +347,12 @@ function Token:FS_MSG_TOKEN(_, data, channel, sender)
 			token:Claim()
 		end
 
-	-- Token renew heartbeat
-	elseif data.heartbeat then
-		local token = enabled[data.heartbeat.name]
+	-- Token renew sync
+	elseif data.sync then
+		local token = enabled[data.sync.name]
 		if token then
 			-- Not the rightful owner
-			if compare(token.id, id, data.heartbeat, data.id) > 0 then
+			if compare(token.id, id, data.sync, data.id) > 0 then
 				token:Claim()
 			elseif data.id.guid == token.owner then
 				token.ping = GetTime()
@@ -485,7 +485,7 @@ function TokenObj:Claim()
 		self.claim_msg = nil
 		if self.state == STATE_CLAIMING then
 			-- If we get no answers after 3 sec, consider we have acquired the token
-			C_Timer.After(3, function()
+			C_Timer.After(2, function()
 				if self.state == STATE_CLAIMING then
 					self:SetOwner(PLAYER_GUID, PLAYER_NAME)
 					Token:Broadcast({ acquire = self.id })
