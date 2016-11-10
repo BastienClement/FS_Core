@@ -409,7 +409,7 @@ function TokenObj:Enable()
 		-- Search the current owner
 		Token:Broadcast({ search = self.id }, function()
 			-- If no answers after 3 sec, claim it
-			C_Timer.After(3, function()
+			C_Timer.After(2, function()
 				if self.state == STATE_INIT then
 					self:Claim()
 				end
