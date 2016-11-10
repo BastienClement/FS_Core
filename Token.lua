@@ -23,7 +23,7 @@ local whisper_buffers_empty = true
 local id = {
 	time = 0,
 	dev  = FS.version == "dev",
-	guid = "Player-?"
+	guid = "?"
 }
 
 -- Track solo status
@@ -124,7 +124,7 @@ end
 
 function Token:OnEnable()
 	-- Fetch player's GUID
-	PLAYER_GUID = UnitGUID("player")
+	PLAYER_GUID = UnitGUID("player"):sub(8)
 	PLAYER_NAME = GetUnitName("player", true)
 
 	-- Update ID table
