@@ -23,6 +23,7 @@ local whisper_buffers_empty = true
 local id = {
 	time = 0,
 	dev  = FS.version == "dev",
+	ping = true,
 	guid = "?"
 }
 
@@ -58,18 +59,22 @@ local function compare(tid_a, oid_a, tid_b, oid_b)
 		-- Highest level wins
 		-- This is the basis of token versioning
 		return (tid_a.level > tid_b.level) and 1 or -1
+	elseif oid_a.ping ~= oid_b.ping then
+		-- Good network health wins
+		-- Prevent issue with high-latency connection
+		return oid_a.ping and 1 or -1
 	elseif oid_a.dev ~= oid_b.dev then
 		-- Dev wins
 		-- The intent here is that error should be thrown on dev players
 		return oid_a.dev and 1 or -1
 	elseif oid_a.time ~= oid_b.time then
 		-- Lowest time wins
-		-- Highest game uptime is probably a good sign that network is not an issue
+		-- Highest game uptime is probably a good sign that overall network is not an issue
 		return (oid_a.time < oid_b.time) and 1 or -1
 	else
-		-- Highest GUID wins
+		-- Lowest GUID wins
 		-- Nothing else to compare...
-		return (oid_b.guid > oid_b.guid) and -1 or 1
+		return (oid_b.guid < oid_b.guid) and 1 or -1
 	end
 end
 
@@ -142,6 +147,7 @@ function Token:OnEnable()
 	self:RegisterEvent("ZONE_CHANGED_NEW_AREA", "UpdateAcquirable")
 
 	-- Force an initial check
+	self:UpdateNetworkHealth()
 	self:UpdateAcquirable()
 end
 
@@ -151,8 +157,10 @@ function Token:EnableToken(token)
 
 	if enabled_count == 1 then
 		self:ScheduleRepeatingTimer("FlushBuffers", 0.5)
+		self:ScheduleRepeatingTimer("UpdateNetworkHealth", 10)
+		self:ScheduleRepeatingTimer("BroadcastHeartbeat", 2)
 		self:ScheduleRepeatingTimer("BroadcastSync", 15)
-		self:ScheduleRepeatingTimer("CheckLiveness", 5)
+		self:ScheduleRepeatingTimer("CheckLiveness", 4)
 	end
 end
 
@@ -236,6 +244,16 @@ do
 	end
 end
 
+-- Broadcast player heartbeats
+function Token:BroadcastHeartbeat()
+	for name, token in pairs(enabled) do
+		if token:IsMine() then
+			self:Broadcast({ heartbeat = true })
+			return
+		end
+	end
+end
+
 -- Broadcast token syncs
 function Token:BroadcastSync()
 	for name, token in pairs(enabled) do
@@ -247,9 +265,10 @@ end
 
 -- Check token owner liveness
 function Token:CheckLiveness()
+	if not id.ping then return end
 	local now = GetTime()
 	for name, token in pairs(enabled) do
-		if token.state == STATE_ACQUIRED and not token:IsMine() and now - token.ping > 18 then
+		if token.state == STATE_ACQUIRED and not token:IsMine() and now - token.ping > 4 then
 			token:Claim()
 		end
 	end
@@ -278,6 +297,11 @@ function Token:DoUpdateAcquirable()
 			token:Enable()
 		end
 	end
+end
+
+function Token:UpdateNetworkHealth()
+	local _, _, latencyHome, latencyWorld = GetNetStats()
+	id.ping = latencyHome < 500 and latencyWorld < 500
 end
 
 --------------------------------------------------------------------------------
@@ -360,6 +384,16 @@ function Token:FS_MSG_TOKEN(_, data, channel, sender)
 				token:SetOwner(data.id.guid, sender)
 			end
 		end
+
+	-- Player heartbeat
+	elseif data.heartbeat then
+		for name, token in pairs(enabled) do
+			-- Uptime ping for each token belonging to the player
+			if token.state == STATE_ACQUIRED and token.owner == data.id.guid then
+				token.ping = GetTime()
+			end
+		end
+
 	end
 end
 
