@@ -2,6 +2,14 @@ local _, FS = ...
 local Token = FS:RegisterModule("Token", "AceTimer-3.0")
 local Network, Console, Roster
 
+-- Aliases
+local GetTime, GetNetStats, GetServerTime = GetTime, GetNetStats, GetServerTime
+local UnitIsGroupLeader, UnitIsGroupAssistant, IsInGroup = UnitIsGroupLeader, UnitIsGroupAssistant, IsInGroup
+local UnitPosition, UnitGUID, UnitName = UnitPosition, UnitGUID, UnitName
+local pairs, ipairs, wipe, select, setmetatable, type = pairs, ipairs, wipe, select, setmetatable, type
+local tinsert, tsort, tremove = table.insert, table.sort, table.remove
+local After = C_Timer.After
+
 -- Player's GUID
 local PLAYER_GUID
 local PLAYER_NAME
@@ -20,15 +28,25 @@ local whisper_buffers = {}
 local whisper_buffers_empty = true
 
 -- Player's node ID
+local K_NETSTATUS = "p"
+local K_DEV = "d"
+local K_LOADTIME = "t"
+local K_GUID = "g"
+
 local id = {
-	time = 0,
-	dev  = FS.version == "dev",
-	ping = true,
-	guid = "?"
+	[K_NETSTATUS] = true,
+	[K_DEV] = FS.version == "dev",
+	[K_LOADTIME] = 0,
+	[K_GUID] = "?"
 }
 
--- Track solo status
-local is_solo = true
+-- Debug trace
+local debug = id[K_DEV]
+function trace(...)
+	if debug then
+		print("TKN2", ...)
+	end
+end
 
 -- States
 local STATE_DISABLED    = 1 -- Token is disabled and completely ignored
@@ -39,6 +57,17 @@ local STATE_CLAIMED     = 5 -- Someone higher priority claimed the token
 local STATE_ACQUIRED    = 6 -- Election is done, someone broadcasted acquire message
 local STATE_DISPOSED    = 7 -- Token is disposed and should never be used again
 
+-- Messages types
+local MSG_PACKED    = "P"
+local MSG_QUERY     = "Q"
+local MSG_OWNER     = "O"
+local MSG_CLAIM     = "C"
+local MSG_ACQUIRE   = "A"
+local MSG_RELEASE   = "R"
+local MSG_HEARTBEAT = "H"
+local MSG_SENDERID  = "I"
+
+-- Colored states names
 local state_name = {
 	[STATE_DISABLED]    = "|cffc41f3bDISABLED|r",
 	[STATE_UNAVAILABLE] = "|cffff7d0aUNAVAILABLE|r",
@@ -49,33 +78,43 @@ local state_name = {
 	[STATE_DISPOSED]    = "|cffc41f3bDISPOSED|r"
 }
 
+-- Track solo status
+local is_solo = true
+
 local acquirable_throttled = false
 
 --------------------------------------------------------------------------------
 
--- Compare tokens level and owners GUID to chose the most rightful one
-local function compare(tid_a, oid_a, tid_b, oid_b)
-	if tid_a.level ~= tid_b.level then
-		-- Highest level wins
-		-- This is the basis of token versioning
-		return (tid_a.level > tid_b.level) and 1 or -1
-	elseif oid_a.ping ~= oid_b.ping then
-		-- Good network health wins
-		-- Prevent issue with high-latency connection
-		return oid_a.ping and 1 or -1
-	elseif oid_a.dev ~= oid_b.dev then
-		-- Dev wins
-		-- The intent here is that error should be thrown on dev players
-		return oid_a.dev and 1 or -1
-	elseif oid_a.time ~= oid_b.time then
-		-- Lowest time wins
-		-- Highest game uptime is probably a good sign that overall network is not an issue
-		return (oid_a.time < oid_b.time) and 1 or -1
+local function compareNumber(a, b, key)
+	a, b = a[key], b[key]
+	if a == b then
+		return false
 	else
-		-- Lowest GUID wins
-		-- Nothing else to compare...
-		return (oid_b.guid < oid_b.guid) and 1 or -1
+		-- Lower is better
+		return (a < b) and 1 or -1
 	end
+end
+
+local function compareBoolean(a, b, key)
+	a, b = a[key], b[key]
+	if a == b then
+		return false
+	else
+		-- True is better than False
+		return a and 1 or -1
+	end
+end
+
+-- Compare players IDs to chose the most rightful one
+local function compare(a, b)
+	if not a then return -1 end
+	if not b then return 1 end
+	return
+		compareBoolean(a, b, K_NETSTATUS) or -- Good network health wins
+		compareBoolean(a, b, K_DEV) or -- Dev wins
+		compareNumber(a, b, K_LOADTIME) or -- Lowest load time wins
+		compareNumber(a, b, K_GUID) or -- Lowest GUID wins
+		0
 end
 
 --------------------------------------------------------------------------------
@@ -102,7 +141,7 @@ local token_config = {
 		{"token", "List active tokens state and owner."},
 	}, "/fs "),
 	docs = FS.Config:MakeDoc("Public API", 2000, {
-		{":Create ( name , level , default ) -> token", "Creates a new service token with the given name. At any given time, only one player in the group can hold a token with a given name. The actual token holder will be selected primarly based on their token level. If multiple players have the same token level, the player with the highest game uptime (since last reload) will be elected as the token holder."},
+		{":Create ( name , default ) -> token", "Creates a new service token with the given name. At any given time, only one player in the group can hold a token with a given name."},
 	}, "FS.Token"),
 	token = FS.Config:MakeDoc("Token API", 3000, {
 		{":Enable ( )", "Enable this token and participate in the holder election process."},
@@ -123,6 +162,7 @@ function Token:OnInitialize()
 	Network = FS.Network
 	Roster = FS.Roster
 	Console = FS.Console
+
 	Console:RegisterCommand("token", self)
 	FS.Config:Register("Service token", token_config)
 end
@@ -130,14 +170,14 @@ end
 function Token:OnEnable()
 	-- Fetch player's GUID
 	PLAYER_GUID = UnitGUID("player"):sub(8)
-	PLAYER_NAME = GetUnitName("player", true)
+	PLAYER_NAME = UnitName("player")
 
 	-- Update ID table
-	id.guid = PLAYER_GUID
-	id.time = GetServerTime()
+	id[K_GUID] = PLAYER_GUID
+	id[K_LOADTIME] = GetServerTime()
 
 	-- Bind token network messages
-	self:RegisterMessage("FS_MSG_TOKEN")
+	self:RegisterMessage("FS_MSG_TKN2")
 
 	-- Check group composition change
 	self:RegisterEvent("GROUP_ROSTER_UPDATE", "UpdateAcquirable")
@@ -152,21 +192,24 @@ function Token:OnEnable()
 end
 
 function Token:EnableToken(token)
+	if enabled[token.name] then return end
+
 	enabled[token.name] = token
 	enabled_count = enabled_count + 1
 
 	if enabled_count == 1 then
-		self:ScheduleRepeatingTimer("FlushBuffers", 0.5)
 		self:ScheduleRepeatingTimer("UpdateNetworkHealth", 10)
 		self:ScheduleRepeatingTimer("BroadcastHeartbeat", 2)
-		self:ScheduleRepeatingTimer("BroadcastSync", 15)
-		self:ScheduleRepeatingTimer("CheckLiveness", 4)
+		self:ScheduleRepeatingTimer("CheckTimeouts", 2)
 	end
 end
 
 function Token:DisableToken(token)
+	if not enabled[token.name] then return end
+
 	enabled[token.name] = nil
 	enabled_count = enabled_count - 1
+
 	if enabled_count == 0 then
 		self:CancelAllTimers()
 		self:FlushBuffers()
@@ -180,7 +223,8 @@ function Token:Broadcast(msg, callback)
 	if type(callback) == "function" then
 		msg._callback = callback
 	end
-	table.insert(broadcast_buffer, msg)
+	tinsert(broadcast_buffer, msg)
+	self:ScheduleFlushBuffers()
 	return msg
 end
 
@@ -190,7 +234,7 @@ function Token:CancelBroadcast(msg)
 	if #broadcast_buffer < 1 then return end
 	for i, m in ipairs(broadcast_buffer) do
 		if m == msg then
-			table.remove(broadcast_buffer, i)
+			tremove(broadcast_buffer, i)
 			return
 		end
 	end
@@ -207,11 +251,15 @@ function Token:Whisper(msg, target, callback)
 	if type(callback) == "function" then
 		msg._callback = callback
 	end
-	table.insert(target_buffer, msg)
+	tinsert(target_buffer, msg)
+	self:ScheduleFlushBuffers()
 	return msg
 end
 
 do
+	-- Is an output buffer flush scheduled?
+	local flush_scheduled = false
+
 	-- Execute every registered callbacks
 	local function execute_callback(msgs)
 		for _, msg in ipairs(msgs) do
@@ -227,8 +275,11 @@ do
 	function Token:FlushBuffers()
 		if #broadcast_buffer > 0 then
 			execute_callback(broadcast_buffer)
-			if IsInGroup(LE_PARTY_CATEGORY_HOME) then
-				Network:Send("TOKEN", { packed = broadcast_buffer, id = id }, "RAID_STRICT")
+			if IsInGroup() then
+				Network:Send("TKN2", {
+					[MSG_PACKED] = broadcast_buffer,
+					[MSG_SENDERID] = id
+				}, "RAID")
 			end
 			wipe(broadcast_buffer)
 		end
@@ -236,11 +287,23 @@ do
 		if not whisper_buffers_empty then
 			for target, buffer in pairs(whisper_buffers) do
 				execute_callback(buffer)
-				Network:Send("TOKEN", { packed = buffer, id = id }, target)
+				Network:Send("TKN2", {
+					[MSG_PACKED] = buffer,
+					[MSG_SENDERID] = id
+				}, target)
 			end
 			wipe(whisper_buffers)
 			whisper_buffers_empty = true
 		end
+	end
+
+	function Token:ScheduleFlushBuffers()
+		if flush_scheduled then return end
+		flush_scheduled = true
+		After(0.5, function()
+			flush_scheduled = false
+			Token:FlushBuffers()
+		end)
 	end
 end
 
@@ -248,28 +311,26 @@ end
 function Token:BroadcastHeartbeat()
 	for name, token in pairs(enabled) do
 		if token:IsMine() then
-			self:Broadcast({ heartbeat = true })
+			self:Broadcast({ [MSG_HEARTBEAT] = true })
 			return
 		end
 	end
 end
 
--- Broadcast token syncs
-function Token:BroadcastSync()
-	for name, token in pairs(enabled) do
-		if token:IsMine() then
-			self:Broadcast({ sync = token.id })
-		end
-	end
-end
-
 -- Check token owner liveness
-function Token:CheckLiveness()
-	if not id.ping then return end
+function Token:CheckTimeouts()
+	-- Do not check timeouts if we have more than 500 ms latency
+	if not id[K_NETSTATUS] then return end
+
 	local now = GetTime()
 	for name, token in pairs(enabled) do
-		if token.state == STATE_ACQUIRED and not token:IsMine() and now - token.ping > 4 then
-			token:Claim()
+		if (token.state == STATE_ACQUIRED and not token:IsMine()) or
+				token.state == STATE_CLAIMED then
+			-- Token stuck in CLAIMED or no heartbeats from owner
+			if now - token.ping > 5 then
+				trace("#", token.name, "timed out", state_name[token.state])
+				token:Claim()
+			end
 		end
 	end
 end
@@ -285,15 +346,17 @@ function Token:DoUpdateAcquirable()
 	acquirable_throttled = false
 	PLAYER_ZONE = select(4, UnitPosition("player"))
 
-	local in_group = IsInGroup(LE_PARTY_CATEGORY_HOME)
+	local in_group = IsInGroup()
 	local entering_group = is_solo and in_group
 	is_solo = not in_group
 
 	for name, token in pairs(tokens) do
 		local acquirable = token:IsAcquirable()
 		if token:IsEnabled() and not acquirable then
+			trace("#", token.name, "is no longer acquirable")
 			token:Disable(true, entering_group)
 		elseif token.state == STATE_UNAVAILABLE and acquirable then
+			trace("#", token.name, "is now acquirable")
 			token:Enable()
 		end
 	end
@@ -301,96 +364,105 @@ end
 
 function Token:UpdateNetworkHealth()
 	local _, _, latencyHome, latencyWorld = GetNetStats()
-	id.ping = latencyHome < 500 and latencyWorld < 500
+	id[K_NETSTATUS] = latencyHome < 500 and latencyWorld < 500
 end
 
 --------------------------------------------------------------------------------
 
 -- Received a token-related network message
-function Token:FS_MSG_TOKEN(_, data, channel, sender)
+function Token:FS_MSG_TKN2(_, data, channel, sender)
+	local senderid = data[MSG_SENDERID]
+	if not senderid then return end
+
 	-- Packed messages
-	if data.packed then
+	if data[MSG_PACKED] then
 		-- Ignore our own messages
-		if data.id.guid == PLAYER_GUID then return end
+		if senderid[K_GUID] == PLAYER_GUID then return end
 
 		-- Iterate for each message
-		for _, item in ipairs(data.packed) do
-			item.id = data.id
-			self:FS_MSG_TOKEN(nil, item, channel, sender)
+		for _, item in ipairs(data[MSG_PACKED]) do
+			item[MSG_SENDERID] = senderid
+			self:FS_MSG_TKN2(nil, item, channel, sender)
 		end
 
 	-- Search request on token init
-	elseif data.search then
-		local token = enabled[data.search.name]
-		if token and token:IsMine() and compare(token.id, id, data.search, data.id) > 0 then
-			-- We should not respond to a search query if the requested token is higher level than ours
-			-- If we do not respond, the requester will trigger a claim and win the election
-			self:Whisper({ own = token.id }, sender)
+	elseif data[MSG_QUERY] then
+		local token = enabled[data[MSG_QUERY]]
+		if token then
+			trace("<", "QUERY", data[MSG_QUERY], sender)
+			if token:IsMine() then
+				trace(">", "OWNER", token.name, sender)
+				self:Whisper({ [MSG_OWNER] = token.name }, sender)
+			end
 		end
 
 	-- Current token owner response
-	elseif data.own then
-		local token = enabled[data.own.name]
-		if token and token.state == STATE_INIT then
-			token:SetOwner(data.id.guid, sender)
+	elseif data[MSG_OWNER] then
+		local token = enabled[data[MSG_OWNER]]
+		if token then
+			trace("<", "OWNER", data[MSG_OWNER], sender)
+			if token.state == STATE_INIT then
+				if id[K_DEV] and compare(id, senderid) > 0 then
+					-- Only devs bullies when system is stable
+					token:Claim()
+				else
+					-- Righteous answer to MSG_QUERY
+					token:SetOwner(senderid, sender)
+				end
+			end
 		end
 
 	-- Token claim
-	elseif data.claim then
-		local token = enabled[data.claim.name]
+	elseif data[MSG_CLAIM] then
+		local token = enabled[data[MSG_CLAIM]]
 		if token then
+			trace("<", "CLAIM", data[MSG_CLAIM], sender)
+			local now = GetTime()
 			-- Claimer ID is lower priority than me, bully
-			if compare(token.id, id, data.claim, data.id) > 0 then
-				token:Claim()
-			else
+			if compare(id, senderid) > 0 then
+				if now - token.ping > 2 then
+					token:Claim()
+				end
+			elseif (GetTime() - token.ping > 3) or
+					(compare(senderid, token.owner) > 0) then
 				if token.state == STATE_CLAIMING then
 					token:CancelClaim()
 				end
 				token.state = STATE_CLAIMED
-				token.owner = data.id.guid
+				token.owner = senderid
 				token.owner_name = sender
+				token.ping = GetTime()
 			end
 		end
 
 	-- Token acquire announce
-	elseif data.acquire then
-		local token = enabled[data.acquire.name]
+	elseif data[MSG_ACQUIRE] then
+		local token = enabled[data[MSG_ACQUIRE]]
 		if token then
+			trace("<", "ACQUIRE", data[MSG_ACQUIRE], sender)
 			-- Not the rightful owner
-			if compare(token.id, id, data.acquire, data.id) > 0 then
+			if compare(id, senderid) > 0 then
 				token:Claim()
 			else
-				token:SetOwner(data.id.guid, sender)
+				token:SetOwner(senderid, sender)
 			end
 		end
 
 	-- Token released
-	elseif data.release then
-		local token = enabled[data.release.name]
+	elseif data[MSG_RELEASE] then
+		local token = enabled[data[MSG_RELEASE]]
 		if token then
+			trace("<", "RELEASE", data[MSG_RELEASE], sender)
 			token:Claim()
 		end
 
-	-- Token renew sync
-	elseif data.sync then
-		local token = enabled[data.sync.name]
-		if token then
-			-- Not the rightful owner
-			if compare(token.id, id, data.sync, data.id) > 0 then
-				token:Claim()
-			elseif data.id.guid == token.owner then
-				token.ping = GetTime()
-			else
-				token:SetOwner(data.id.guid, sender)
-			end
-		end
-
 	-- Player heartbeat
-	elseif data.heartbeat then
+	elseif data[MSG_HEARTBEAT] then
+		local now = GetTime()
 		for name, token in pairs(enabled) do
 			-- Uptime ping for each token belonging to the player
-			if token.state == STATE_ACQUIRED and token.owner == data.id.guid then
-				token.ping = GetTime()
+			if token.state == STATE_ACQUIRED and compare(token.owner, senderid) == 0 then
+				token.ping = now
 			end
 		end
 
@@ -403,11 +475,9 @@ local TokenObj = {}
 TokenObj.__index = TokenObj
 
 -- Creates a new Token object
-function TokenObj:New(name, level)
+function TokenObj:New(name)
 	return setmetatable({
 		name = name,
-		level = level,
-		id = { name = name, level = level },
 		promote = false,
 		zone = false,
 		state = STATE_DISABLED,
@@ -440,11 +510,15 @@ function TokenObj:Enable()
 		self.state = STATE_INIT
 		Token:EnableToken(self)
 
+		trace("#", self.name, "is now enabled")
+		trace(">", "QUERY", self.name)
+
 		-- Search the current owner
-		Token:Broadcast({ search = self.id }, function()
+		Token:Broadcast({ [MSG_QUERY] = self.name }, function()
 			-- If no answers after 3 sec, claim it
-			C_Timer.After(2, function()
+			After(3, function()
 				if self.state == STATE_INIT then
+					trace("#", self.name, "no responses to QUERY")
 					self:Claim()
 				end
 			end)
@@ -457,7 +531,8 @@ function TokenObj:Disable(unavailable, no_release)
 	if self.state ~= STATE_DISABLED and self.state ~= STATE_DISPOSED then
 		-- Release the token if we own it
 		if self:IsMine() and not no_release then
-			Token:Broadcast({ release = self.id })
+			trace(">", "RELEASE", self.name)
+			Token:Broadcast({ [MSG_RELEASE] = self.name })
 		end
 
 		-- Disable the token if previously enabled
@@ -476,6 +551,8 @@ function TokenObj:Disable(unavailable, no_release)
 		self.owner = nil
 		self.owner_name = nil
 		self.last_owner = nil
+
+		trace("#", self.name, "is now disabled")
 	end
 end
 
@@ -493,7 +570,7 @@ end
 
 -- Check if the token is acquirable (require raid promote and we have it)
 function TokenObj:IsAcquirable()
-	local solo = not IsInGroup(LE_PARTY_CATEGORY_HOME)
+	local solo = not IsInGroup()
 	local promoted = UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")
 	return (solo or (not self.promote or promoted)) and (not self.zone or self.zone == PLAYER_ZONE)
 end
@@ -508,24 +585,29 @@ function TokenObj:Claim()
 	-- Claiming the token
 	-- When claiming as bullying, do not change the state flag
 	-- This ensure that the token is not lost until after the election is completed
-	-- (and we won it again)
 	if not self:IsMine()  then
 		self.state = STATE_CLAIMING
-		self.owner = PLAYER_GUID
+		self.owner = id
 		self.owner_name = PLAYER_NAME
+		self.ping = GetTime()
+		trace("#", self.name, "claim started")
+	else
+		trace("#", self.name, "bullying")
 	end
 
-	self.claim_msg = Token:Broadcast({ claim = self.id }, function()
+	trace(">", "CLAIM", self.name)
+	self.claim_msg = Token:Broadcast({ [MSG_CLAIM] = self.name }, function()
 		self.claim_msg = nil
-		if self.state == STATE_CLAIMING then
-			-- If we get no answers after 3 sec, consider we have acquired the token
-			C_Timer.After(2, function()
-				if self.state == STATE_CLAIMING then
-					self:SetOwner(PLAYER_GUID, PLAYER_NAME)
-					Token:Broadcast({ acquire = self.id })
-				end
-			end)
-		end
+		-- If we get no answers after 3 sec, consider we have acquired the token
+		After(3, function()
+			if (self.state == STATE_CLAIMING or self.state == STATE_ACQUIRED) and
+					self.owner[K_GUID] == PLAYER_GUID then
+				trace("#", self.name, "no responses to CLAIM")
+				self:SetOwner(id, PLAYER_NAME)
+				Token:Broadcast({ [MSG_ACQUIRE] = self.name })
+				trace(">", "ACQUIRE", self.name)
+			end
+		end)
 	end)
 end
 
@@ -534,34 +616,37 @@ function TokenObj:CancelClaim()
 	local claim = self.claim_msg
 	if claim then
 		Token:CancelBroadcast(claim)
+		self.claim_msg = nil
+		trace("#", self.name, "claim canceled")
 	end
 end
 
 -- Sets the token owner and state to ACQUIRED
-function TokenObj:SetOwner(guid, name)
+function TokenObj:SetOwner(ownerid, name)
 	-- Checks if we previsouly were the token owner
 	local was_mine = self.last_owner == PLAYER_GUID
-	local is_mine = guid == PLAYER_GUID
+	local is_mine = ownerid[K_GUID] == PLAYER_GUID
 
 	-- Update state
 	self.state = STATE_ACQUIRED
-	self.owner = guid
+	self.owner = ownerid
 	self.owner_name = name
 	self.ping = GetTime()
 
-	if guid ~= self.last_owner then
+	if ownerid[K_GUID] ~= self.last_owner then
 		if was_mine then Token:SendMessage("FS_TOKEN_LOST", self.name, self) end
 		Token:SendMessage("FS_TOKEN_ACQUIRED", self.name, self)
 		if is_mine then Token:SendMessage("FS_TOKEN_WON", self.name, self) end
 	end
 
-	self.last_owner = guid
+	trace("#", self.name, "owner set to", name)
+	self.last_owner = ownerid[K_GUID]
 end
 
 -- Returns the token owner GUID and name
 function TokenObj:Owner()
 	if self.state == STATE_ACQUIRED then
-		return self.owner, self.owner_name
+		return self.owner[K_GUID], self.owner_name
 	else
 		return nil, nil
 	end
@@ -569,7 +654,7 @@ end
 
 -- Checks if we are the current owner of the token
 function TokenObj:IsMine()
-	return self.state == STATE_ACQUIRED and self.owner == PLAYER_GUID
+	return self.state == STATE_ACQUIRED and self.owner[K_GUID] == PLAYER_GUID
 end
 
 -- Dispose of the token, never doing anything with it again
@@ -581,15 +666,15 @@ end
 --------------------------------------------------------------------------------
 
 -- Create a new token object
-function Token:Create(name, level, default)
+function Token:Create(name, default)
 	local old = tokens[name]
 	if old then old:Dispose(false, true) end
 
-	local token = TokenObj:New(name, level)
+	local token = TokenObj:New(name)
 	tokens[name] = token
 
 	if default ~= false then
-		C_Timer.After(0, function()
+		After(0, function()
 			token:Enable()
 		end)
 	end
@@ -603,13 +688,13 @@ function Token:OnSlash(arg, ...)
 	local lines = {}
 	for _, token in pairs(arg == "all" and tokens or enabled) do
 		local owner_name = token.state >= STATE_CLAIMING and token.owner_name or ""
-		local line = ("  |cffc79c6e%s  |cff999999%s  %s  %s"):format(token.name, token.level, state_name[token.state], owner_name)
-		table.insert(lines, line)
+		local line = ("  |cffc79c6e%s  |cff999999%s  %s"):format(token.name, state_name[token.state], owner_name)
+		tinsert(lines, line)
 	end
 
 	self:Printf("Listing %s |4token:tokens;", #lines)
 
-	table.sort(lines)
+	tsort(lines)
 	for _, line in ipairs(lines) do
 		print(line)
 	end
