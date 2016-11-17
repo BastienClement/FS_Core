@@ -63,6 +63,9 @@ Cooldowns:RegisterSpells("PRIEST", {
 		cooldown = 90,
 		spec = { SPEC_DISCIPLINE, SPEC_HOLY }
 	},
+	[32375] = { -- Mass Dispell
+		cooldown = 15
+	},
 
 	-- Talents
 	[200183] = { -- Apotheosis
