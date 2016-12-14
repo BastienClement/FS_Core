@@ -167,7 +167,7 @@ function BW:OnEnable()
 			BigWigsLoader.SendMessage = SendMessage_Hook
 
 			BigWigs:Enable()
-			BigWigs:RegisterMessage("BigWigs_CoreDisabled", function(...)
+			BigWigsLoader.RegisterMessage({}, "BigWigs_CoreDisabled", function(...)
 				BigWigs:Enable()
 			end)
 		else
