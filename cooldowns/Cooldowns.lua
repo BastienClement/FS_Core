@@ -2,6 +2,7 @@ local _, FS = ...
 local Cooldowns = FS:RegisterModule("Cooldowns")
 
 local FsCooldownsTooltip = FsCooldownsTooltip
+local Roster
 
 -------------------------------------------------------------------------------
 -- Cooldowns config
@@ -93,6 +94,7 @@ local currentEncounter = 0
 
 function Cooldowns:OnInitialize()
 	FS.Config:Register("Cooldowns tracker", cooldowns_config)
+	Roster = FS.Roster
 
 	self.db = FS.db:RegisterNamespace("Cooldowns", cooldowns_default)
 	self.settings = self.db.profile
@@ -686,14 +688,16 @@ do
 		local unit = self.units[guid]
 
 		-- Create or update unit
-		if not unit then
+		if not unit and info then
 			unit = Unit:New(guid, info)
 			self.units[guid] = unit
 		elseif info then
 			unit.info = info
+		elseif unit then
+			info = unit.info
 		end
 
-		if not info then return end
+		if not info or not unit then return end
 
 		-- Matches spell definition criteria with current unit
 		local function match(criterion, value, key)
