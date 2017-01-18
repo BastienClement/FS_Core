@@ -12,13 +12,13 @@ Cooldowns:RegisterSpells({
 		available = function(info) return info.spec_role == "HEALER" end
 	},
 	[210296] = { -- Resonant Barrier (Tank)
-		cooldown = 30,
+		cooldown = 180,
 		duration = 6,
 		encounter = 1866,
 		available = function(info) return info.spec_role == "TANK" end
 	},
 	[210339] = { -- Time Dilation (DPS)
-		cooldown = 30,
+		cooldown = 45,
 		duration = 10,
 		encounter = 1866,
 		available = function(info) return info.spec_role == "DAMAGER" end
