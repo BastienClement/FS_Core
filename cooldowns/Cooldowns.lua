@@ -89,6 +89,8 @@ Cooldowns.spells = {}
 Cooldowns.units = {}
 Cooldowns.aliases = {}
 
+local currentEncounter = 0
+
 function Cooldowns:OnInitialize()
 	FS.Config:Register("Cooldowns tracker", cooldowns_config)
 
@@ -100,6 +102,7 @@ function Cooldowns:OnEnable()
 	self:RegisterMessage("FS_ROSTER_UPDATE")
 	self:RegisterMessage("FS_ROSTER_LEFT")
 	self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+	self:RegisterEvent("ENCOUNTER_START")
 	self:RegisterEvent("ENCOUNTER_END")
 	self:RegisterMessage("FS_MSG_COOLDOWNS")
 end
@@ -742,6 +745,7 @@ do
 			and match(s.spec,   info.global_spec_id)
 			and match(s.talent, info.talents)
 			and match(s.talent_spell, info.talents, "spell_id")
+			and match(s.encounter, currentEncounter)
 			and match(s.available) then
 				if not cd then
 					cd = Cooldown:New(unit, spell)
@@ -842,12 +846,19 @@ do
 		[17] = true,
 	}
 
+	function Cooldowns:ENCOUNTER_START(_, id, name, difficulty, size)
+		currentEncounter = id
+		self:UpdateAll()
+	end
+
 	function Cooldowns:ENCOUNTER_END(_, id, name, difficulty, size, status)
+		currentEncounter = 0
 		if raids[difficulty] then
 			for guid, unit in Cooldowns:IterateUnits() do
 				unit:Reset()
 			end
 		end
+		self:UpdateAll()
 	end
 end
 

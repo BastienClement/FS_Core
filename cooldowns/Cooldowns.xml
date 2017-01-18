@@ -20,4 +20,5 @@
 	<Script file="Shaman.lua" />
 	<Script file="Warlock.lua" />
 	<Script file="Warrior.lua" />
+	<Script file="Encounters.lua" />
 </Ui>
