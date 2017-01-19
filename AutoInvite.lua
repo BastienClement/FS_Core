@@ -1,4 +1,8 @@
 local _, FS = ...
+
+-- XXX KILL MODULE
+do return end
+
 local AutoInvite = FS:RegisterModule("AutoInvite")
 
 local Console
@@ -138,7 +142,7 @@ local function update(typeCriteria,arg1,arg2)
 	end
 
 	local connectedMates=GetConnected() -- Get all ppl connected in guild
-	
+
 	local grouped=GetPplGroup()
 
 	if connectedMates then
@@ -179,7 +183,7 @@ local function update(typeCriteria,arg1,arg2)
 					end
 				end
 
-				if invitation then 
+				if invitation then
 					for j=1,#invited,1 do
 						if connectedSelected[i].name == invited[j] then
 							invitation=false
@@ -236,7 +240,7 @@ function AutoInvite:InviteRank(guildRank)
 		end
 
 		self:Printf("Inviting members with rank %s",guildRank)
-		update("rank",rank) 
+		update("rank",rank)
 		loopTok=C_Timer.NewTicker(self.settings.freq, function() update("rank",rank) end)
 	end
 end

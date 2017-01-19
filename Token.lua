@@ -41,7 +41,7 @@ local id = {
 }
 
 -- Debug trace
-local debug = id[K_DEV]
+local debug = false and id[K_DEV]
 function trace(...)
 	if debug then
 		print("TKN2", ...)

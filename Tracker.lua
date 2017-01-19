@@ -1,4 +1,9 @@
 local _, FS = ...
+
+-- XXX KILL MODULE
+FS.Tracker = {}
+do return end
+
 local Tracker = FS:RegisterModule("Tracker")
 local max = math.max
 
@@ -47,10 +52,10 @@ function Tracker:OnInitialize()
 end
 
 function Tracker:OnEnable()
-	self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-	self:RegisterEvent("UNIT_TARGET")
-	self:RegisterEvent("NAME_PLATE_UNIT_ADDED")
-	self.gc = C_Timer.NewTicker(5, function() self:GC() end)
+	--self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+	--self:RegisterEvent("UNIT_TARGET")
+	--self:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+	--self.gc = C_Timer.NewTicker(5, function() self:GC() end)
 end
 
 --------------------------------------------------------------------------------
