@@ -73,13 +73,11 @@ end
 do
 	local role_order = {
 		["tank"] = 1,
-		["TANK"] = 1,
 		["melee"] = 3,
-		["DAMAGER"] = 5,
+		["damager"] = 5,
 		["ranged"] = 7,
-		["HEALER"] = 9,
 		["healer"] = 9,
-		["NONE"] = 11
+		["none"] = 11
 	}
 
 	local function solo_iterator()
@@ -117,7 +115,7 @@ do
 			for unit, idx in Roster:Iterate(limit) do
 				table.insert(order, unit)
 				local info = Roster:GetInfo(UnitGUID(unit))
-				roles[unit] = info and (info.spec_role_detailed or info.spec_role) or UnitGroupRolesAssigned(unit)
+				roles[unit] = info and (info.spec_role_detailed or info.spec_role) or UnitGroupRolesAssigned(unit):lower()
 				indices[unit] = idx
 			end
 
