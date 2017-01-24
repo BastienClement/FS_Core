@@ -74,12 +74,12 @@ do
 	local role_order = {
 		["tank"] = 1,
 		["TANK"] = 1,
-		["melee"] = 2,
-		["DAMAGER"] = 3,
-		["ranged"] = 4,
-		["HEALER"] = 5,
-		["healer"] = 5,
-		["NONE"] = 6
+		["melee"] = 3,
+		["DAMAGER"] = 5,
+		["ranged"] = 7,
+		["HEALER"] = 9,
+		["healer"] = 9,
+		["NONE"] = 11
 	}
 
 	local function solo_iterator()
@@ -102,7 +102,7 @@ do
 		end
 	end
 
-	local function raid_iterator(limit, sorted)
+	local function raid_iterator(limit, sorted, overrides)
 		local order
 
 		if type(limit) ~= "number" then
@@ -123,7 +123,9 @@ do
 
 			table.sort(order, function(a, b)
 				if roles[a] ~= roles[b] then
-					return role_order[roles[a]] < role_order[roles[b]]
+					local a_order = (overrides and overrides[roles[a]]) or role_order[roles[a]]
+					local b_order = (overrides and overrides[roles[b]]) or role_order[roles[b]]
+					return a_order < b_order
 				else
 					return indices[a] < indices[b]
 				end
@@ -147,13 +149,13 @@ do
 		end
 	end
 
-	function Roster:Iterate(limit, sorted)
+	function Roster:Iterate(limit, sorted, overrides)
 		if not IsInGroup() then
 			return solo_iterator()
 		elseif not IsInRaid() then
 			return party_iterator()
 		else
-			return raid_iterator(limit, sorted)
+			return raid_iterator(limit, sorted, overrides)
 		end
 	end
 end
