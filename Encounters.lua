@@ -1,3 +1,5 @@
+do return end
+
 local _, FS = ...
 local Encounters = FS:RegisterModule("Encounters", "AceTimer-3.0")
 local Events = LibStub("AceAddon-3.0"):NewAddon("FS_Core_Encounters_Event", "AceEvent-3.0")
