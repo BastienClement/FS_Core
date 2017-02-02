@@ -77,7 +77,6 @@ do
 		["damager"] = 5,
 		["ranged"] = 7,
 		["healer"] = 9,
-		["none"] = 11
 	}
 
 	local function solo_iterator()
