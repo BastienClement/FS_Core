@@ -506,8 +506,9 @@ function Nameplates:DrawTimer(guid, radius, duration)
 	local rotate = 0
 
 	function timer:Progress()
+		if not duration then return 0 end
 		local dt = GetTime() - start
-		return dt < duration and dt / duration or (duration < 0 and 0 or 1)
+		return dt < duration and dt / duration or 0
 	end
 
 	-- Hook the Update() function directly to let the OnUpdate() hook available for user code
