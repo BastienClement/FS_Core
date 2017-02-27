@@ -509,14 +509,31 @@ function Nameplates:DrawTimer(guid, radius, duration)
 	local timer = self:DrawCircle(guid, radius, "Interface\\AddOns\\FS_Core\\media\\timer")
 
 	-- Timer informations
-	local start = GetTime()
 	local done = false
 	local rotate = 0
 
-	function timer:Progress()
-		if not duration then return 0 end
-		local dt = GetTime() - start
-		return dt < duration and dt / duration or 0
+	if (type(duration) == "string" or duration < 0) and UnitExists(guid) then
+		local spell = type(duration) == "string" and duration or GetSpellInfo(-duration)
+		function timer:Progress()
+			local _, _, _, _, _, duration, expires = UnitAura(guid, spell)
+			if not duration then return 0 end
+			return 1 - (expires - GetTime()) / duration
+		end
+	else
+		local start = GetTime()
+
+		function timer:Progress()
+			if not duration then return 0 end
+			local dt = GetTime() - start
+			return dt < duration and dt / duration or 0
+		end
+
+		function timer:Reset(d)
+			start = GetTime()
+			duration = d
+			done = false
+			return self
+		end
 	end
 
 	-- Hook the Update() function directly to let the OnUpdate() hook available for user code
@@ -535,13 +552,6 @@ function Nameplates:DrawTimer(guid, radius, duration)
 
 	function timer:Rotate()
 		return rotate
-	end
-
-	function timer:Reset(d)
-		start = GetTime()
-		duration = d
-		done = false
-		return self
 	end
 
 	return timer
