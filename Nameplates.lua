@@ -550,6 +550,11 @@ function Nameplates:DrawLine(a, b, thickness)
 	anchorA.OnAttachChange = update_line_visibility
 	anchorB.OnAttachChange = update_line_visibility
 
+	function anchorA:SetThickness(thickness)
+		line:SetThickness(thickness)
+		return self
+	end
+
 	local obj_remove = anchorA.Remove
 	function anchorA:Remove()
 		obj_remove(anchorA)
