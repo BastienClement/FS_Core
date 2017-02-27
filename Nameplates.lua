@@ -4,13 +4,16 @@ FS.Hud = Nameplates
 
 local pi2, pi_2 = math.pi * 2, math.pi / 2
 
-local hud = CreateFrame("Frame", nil, UIParent)
+local hud = CreateFrame("Frame", "FSNameplateHUD", UIParent)
 hud:SetFrameStrata("BACKGROUND")
 hud:SetAllPoints()
 hud:Hide()
 
-local fakePlayerPlate = CreateFrame("Frame", nil, hud)
-fakePlayerPlate:SetPoint("CENTER")
+local fakePlayerPlate = CreateFrame("Frame", "FSNameplatePlayerFake", hud)
+fakePlayerPlate:SetWidth(10)
+fakePlayerPlate:SetHeight(10)
+fakePlayerPlate:SetPoint("BOTTOM", hud, "CENTER", 0, 0)
+fakePlayerPlate:Show()
 fakePlayerPlate.token = "player"
 
 local Makers_Color = {
