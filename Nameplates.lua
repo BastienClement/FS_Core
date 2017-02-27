@@ -9,6 +9,10 @@ hud:SetFrameStrata("BACKGROUND")
 hud:SetAllPoints()
 hud:Hide()
 
+local fakePlayerPlate = CreateFrame("Frame", nil, hud)
+fakePlayerPlate:SetPoint("CENTER")
+fakePlayerPlate.token = "player"
+
 local Makers_Color = {
 	{ 0.98, 0.93, 0.33 },
 	{ 1.00, 0.57, 0.00 },
@@ -151,7 +155,11 @@ end
 -------------------------------------------------------------------------------
 
 function Nameplates:GetNameplateByGUID(guid)
-	return self.index[guid]
+	if guid == UnitGUID("player") then
+		return fakePlayerPlate
+	else
+		return self.index[guid]
+	end
 end
 
 function Nameplates:RegisterObject(obj, name, remove)
