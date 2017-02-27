@@ -227,6 +227,7 @@ do
 
 	function free_frame(frame)
 		frame:Hide()
+		frame:SetScript("OnUpdate", nil)
 		table.insert(pool, frame)
 	end
 end
