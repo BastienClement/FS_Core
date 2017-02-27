@@ -1,5 +1,6 @@
 local _, FS = ...
 local Nameplates = FS:RegisterModule("Nameplates", "AceTimer-3.0")
+FS.Hud = Nameplates
 
 local pi2, pi_2 = math.pi * 2, math.pi / 2
 
