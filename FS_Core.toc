@@ -44,12 +44,13 @@ Network.lua
 Console.lua
 
 Roster.lua
-BigWigs.lua
-Tracker.lua
-Encounters.lua
+#BigWigs.lua
+#Tracker.lua
+#Encounters.lua
 Token.lua
 Misc.lua
 
-AutoInvite.lua
+#AutoInvite.lua
+Nameplates.lua
 
 cooldowns\Cooldowns.xml

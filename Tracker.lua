@@ -1,9 +1,4 @@
 local _, FS = ...
-
--- XXX KILL MODULE
-FS.Tracker = {}
-do return end
-
 local Tracker = FS:RegisterModule("Tracker")
 local max = math.max
 
