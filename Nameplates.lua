@@ -493,32 +493,28 @@ function Nameplates:DrawTimer(guid, radius, duration)
 
 	-- Timer informations
 	local start = GetTime()
-	timer.pct = 0
-
 	local done = false
+	local rotate = 0
+
+	function timer:Progress()
+		local dt = GetTime() - start
+		return dt < duration and dt / duration or 1
+	end
 
 	-- Hook the Update() function directly to let the OnUpdate() hook available for user code
 	local circle_update = timer.Update
 	function timer:Update()
-		local dt = GetTime() - start
-		if dt < duration then
-			self.pct = dt / duration
-		else
-			self.pct = 1
-		end
-
-		if self.pct == 1 and not done then
+		local pct = self:Progress()
+		if pct == 1 and not done then
 			done = true
-			if self.OnDone then
-				self:OnDone()
-			end
+			if self.OnDone then self:OnDone() end
 		end
-
+		rotate = pi2 * pct
 		circle_update(timer)
 	end
 
 	function timer:Rotate()
-		return pi2 * self.pct
+		return rotate
 	end
 
 	function timer:Reset(d)
