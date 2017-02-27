@@ -506,6 +506,8 @@ function Nameplates:DrawTimer(guid, radius, duration)
 	local circle_update = timer.Update
 	function timer:Update()
 		local pct = self:Progress()
+		if pct < 0 then pct = 0 end
+		if pct > 1 then pct = 1 end
 		if pct == 1 and not done then
 			done = true
 			if self.OnDone then self:OnDone() end
