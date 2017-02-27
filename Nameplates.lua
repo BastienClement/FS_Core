@@ -155,10 +155,18 @@ end
 -------------------------------------------------------------------------------
 
 function Nameplates:GetNameplateByGUID(guid)
+	if UnitExists(guid) then
+		guid = UnitGUID(guid)
+	end
 	if guid == UnitGUID("player") then
 		return fakePlayerPlate
 	else
-		return self.index[guid]
+		local nameplate = self.index[guid]
+		if nameplate then
+			if UnitGUID(nameplate.token) == guid then
+				return nameplate
+			end
+		end
 	end
 end
 
