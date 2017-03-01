@@ -117,6 +117,7 @@ function Nameplates:OnEnable()
 	self:RegisterEvent("NAME_PLATE_CREATED")
 	self:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 	self:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
+	self:RegisterEvent("ENCOUNTER_END")
 	self:ScheduleRepeatingTimer("GC", 60)
 	if self.settings.enable then
 		hud:Show()
@@ -134,6 +135,14 @@ function Nameplates:RefreshBidings()
 			for obj in pairs(objects) do
 				obj:Attach(nameplate)
 			end
+		end
+	end
+end
+
+function Nameplates:ENCOUNTER_END()
+	for owner, objects in pairs(self.objects) do
+		for obj, timestamp in pairs(objects) do
+			obj:Remove()
 		end
 	end
 end
