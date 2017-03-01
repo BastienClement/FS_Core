@@ -515,7 +515,11 @@ function Nameplates:DrawTimer(guid, radius, duration)
 	local done = false
 	local rotate = 0
 
-	if (type(duration) == "string" or duration < 0) and UnitExists(guid) then
+	if not duration then
+		function timer:Progress()
+			return 0
+		end
+	elseif (type(duration) == "string" or duration < 0) and UnitExists(guid) then
 		local spell = type(duration) == "string" and duration or GetSpellInfo(-duration)
 		function timer:Progress()
 			local _, _, _, _, _, duration, expires = UnitAura(guid, spell)
