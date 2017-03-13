@@ -36,6 +36,7 @@ local nameplates_defaults = {
 		enable = true,
 		clickthrough = false,
 		offset = 0,
+		nametext = false,
 	}
 }
 
@@ -94,6 +95,17 @@ local nameplates_config = {
 			Nameplates:RefreshBidings()
 		end,
 		order = 10
+	},
+	enable = {
+		type = "toggle",
+		name = "Enable",
+		descStyle = "inline",
+		width = "full",
+		get = function() return Nameplates.settings.nametext end,
+		set = function(_, v)
+			Nameplates.settings.nametext = v
+		end,
+		order = 2
 	},
 }
 
@@ -328,6 +340,29 @@ function NameplateObject:UseText()
 	return text
 end
 
+function NameplateObject:UseNameText()
+	local guid = self.owner
+	local nameplate = self.index[guid]
+
+	local _, class, _, _, _, name = GetPlayerInfoByGUID(guid)
+
+	if name then
+		if not self.frame.nametext then
+			self.frame.nametext = self.frame:CreateFontString(nil, "OVERLAY")
+		end
+		local nametext = self.frame.nametext
+		nametext:SetPoint('BOTTOM',circle.frame,'TOP',0,-25)
+		local size = 12
+		local font = "Fonts\\FRIZQT__.TTF"
+		local outline = "OUTLINE"
+		nametext:SetFont(font, size, outline)
+		nametext:SetTextColor(unpack(CLASS_COLOURS[class]))
+		nametext:SetText(name)
+		nametext:Show()
+		return nametext
+	end
+end
+
 function NameplateObject:SetOffset(x, y)
 	self.offset_x = x
 	self.offset_y = y
@@ -485,6 +520,10 @@ function Nameplates:DrawCircle(guid, radius, tex_path)
 	local tex = circle:UseTexture(tex_path)
 	tex:SetBlendMode("ADD")
 	tex:SetVertexColor(0.8, 0.8, 0.8, 0.5)
+
+	if self.settings.nametext then
+		local nametext = circle:UseNameText()
+	end
 
 	function circle:SetRadius(radius)
 		self.radius = radius
