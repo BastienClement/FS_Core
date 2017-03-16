@@ -948,3 +948,26 @@ function Nameplates:DrawTimer(guid, radius, duration)
 	end
 	return timer
 end
+
+function Nameplates:DrawThreat(unit, radius)
+	if UnitExists(unit) and UnitCanAttack("unit", "player") then
+		local unitTarget = unit .. "target"
+		local previous = UnitGUID(unitTarget)
+		local circle = self:DrawCircle(unitTarget, radius, "Interface\\AddOns\\FS_Core\\media\\circle512")
+
+	        local circle_update = circle.Update
+		function circle:Update(dt)
+			local unitTarget = unit .. "target"
+			if UnitDetailedThreatSituation(unitTarget, unit) and previous ~= UnitGUID(unitTarget) then
+				previous = UnitGUID(unitTarget)
+				circle:Detach()
+				local nameplate = self:GetNameplateByGUID(previous)
+				if nameplate then
+					obj:Attach(nameplate)
+				end
+			end
+			circle_update(circle)
+		end
+		return circle
+	end
+end
