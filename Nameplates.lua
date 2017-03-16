@@ -96,16 +96,16 @@ local nameplates_config = {
 		end,
 		order = 10
 	},
-	enable = {
+	nametext = {
 		type = "toggle",
-		name = "Enable",
+		name = "Add Names over the HUD",
 		descStyle = "inline",
 		width = "full",
 		get = function() return Nameplates.settings.nametext end,
 		set = function(_, v)
 			Nameplates.settings.nametext = v
 		end,
-		order = 2
+		order = 4
 	},
 }
 
@@ -258,6 +258,7 @@ do
 		if frame.tex then frame.tex:Hide() end
 		if frame.line then frame.line:Hide() end
 		if frame.text then frame.text:Hide() end
+		if frame.nametext then frame.nametext:Hide() end
 		return frame
 	end
 
@@ -342,8 +343,6 @@ end
 
 function NameplateObject:UseNameText()
 	local guid = self.owner
-	local nameplate = self.index[guid]
-
 	local _, class, _, _, _, name = GetPlayerInfoByGUID(guid)
 
 	if name then
@@ -351,12 +350,12 @@ function NameplateObject:UseNameText()
 			self.frame.nametext = self.frame:CreateFontString(nil, "OVERLAY")
 		end
 		local nametext = self.frame.nametext
-		nametext:SetPoint('BOTTOM',circle.frame,'TOP',0,-25)
+		nametext:SetPoint('BOTTOM',self.frame,'TOP',0,-20)
 		local size = 12
 		local font = "Fonts\\FRIZQT__.TTF"
 		local outline = "OUTLINE"
 		nametext:SetFont(font, size, outline)
-		nametext:SetTextColor(unpack(CLASS_COLOURS[class]))
+		nametext:SetTextColor(RAID_CLASS_COLORS[class].r,RAID_CLASS_COLORS[class].g, RAID_CLASS_COLORS[class].b)
 		nametext:SetText(name)
 		nametext:Show()
 		return nametext
@@ -390,6 +389,9 @@ function NameplateObject:SetColor(r, g, b, a, ...)
 	end
 	if self.frame.text then
 		self.frame.text:SetTextColor(r, g, b, a, ...)
+	end
+	if self.spinner then
+		self.spinner:SetVertexColor(r, g, b, a, ...)
 	end
 	return self
 end
@@ -563,7 +565,7 @@ function Nameplates:DrawTarget(guid, radius)
 end
 
 -- Timer
-function Nameplates:DrawTimer(guid, radius, duration)
+function Nameplates:DrawTimerOld(guid, radius, duration)
 	local timer = self:DrawCircle(guid, radius, "Interface\\AddOns\\FS_Core\\media\\timer")
 
 	-- Timer informations
@@ -679,4 +681,270 @@ function Nameplates:DrawText(owner, label, size)
 	end
 
 	return obj
+end
+
+--- SPINNER ---
+
+-- Usage:
+-- spinner = CreateSpinner(parent)
+-- spinner:SetTexture('texturePath')
+-- spinner:SetBlendMode('blendMode')
+-- spinner:SetVertexColor(r, g, b)
+-- spinner:SetClockwise(boolean) -- true to fill clockwise, false to fill counterclockwise
+-- spinner:SetReverse(boolean) -- true to empty the bar instead of filling it
+-- spinner:SetValue(percent) -- value between 0 and 1 to fill the bar to
+
+-- Some math stuff
+local cos, sin, pi2, halfpi = math.cos, math.sin, math.rad(360), math.rad(90)
+local function Transform(tx, x, y, angle, aspect) -- Translates texture to x, y and rotates about its center
+    local c, s = cos(angle), sin(angle)
+    local y, oy = y / aspect, 0.5 / aspect
+    local ULx, ULy = 0.5 + (x - 0.5) * c - (y - oy) * s, (oy + (y - oy) * c + (x - 0.5) * s) * aspect
+    local LLx, LLy = 0.5 + (x - 0.5) * c - (y + oy) * s, (oy + (y + oy) * c + (x - 0.5) * s) * aspect
+    local URx, URy = 0.5 + (x + 0.5) * c - (y - oy) * s, (oy + (y - oy) * c + (x + 0.5) * s) * aspect
+    local LRx, LRy = 0.5 + (x + 0.5) * c - (y + oy) * s, (oy + (y + oy) * c + (x + 0.5) * s) * aspect
+    tx:SetTexCoord(ULx, ULy, LLx, LLy, URx, URy, LRx, LRy)
+end
+
+-- Permanently pause our rotation animation after it starts playing
+local function OnPlayUpdate(self)
+    self:SetScript('OnUpdate', nil)
+    self:Pause()
+end
+
+local function OnPlay(self)
+    self:SetScript('OnUpdate', OnPlayUpdate)
+end
+
+local function SetValue(self, value)
+    -- Correct invalid ranges, preferably just don't feed it invalid numbers
+    if value > 1 then value = 1
+    elseif value < 0 then value = 0 end
+
+    -- Reverse our normal behavior
+    if self._reverse then
+        value = 1 - value
+    end
+
+    -- Determine which quadrant we're in
+    local q, quadrant = self._clockwise and (1 - value) or value -- 4 - floor(value / 0.25)
+    if q >= 0.75 then
+        quadrant = 1
+    elseif q >= 0.5 then
+        quadrant = 2
+    elseif q >= 0.25 then
+        quadrant = 3
+    else
+        quadrant = 4
+    end
+
+    if self._quadrant ~= quadrant then
+        self._quadrant = quadrant
+        -- Show/hide necessary textures if we need to
+        if self._clockwise then
+            for i = 1, 4 do
+                self._textures[i]:SetShown(i < quadrant)
+            end
+        else
+            for i = 1, 4 do
+                self._textures[i]:SetShown(i > quadrant)
+            end
+        end
+        -- Move scrollframe/wedge to the proper quadrant
+        self._scrollframe:Hide();
+        self._scrollframe:SetAllPoints(self._textures[quadrant])
+        self._scrollframe:Show();
+    end
+
+    -- Rotate the things
+    local rads = value * pi2
+    if not self._clockwise then rads = -rads + halfpi end
+    Transform(self._wedge, -0.5, -0.5, rads, self._aspect)
+    self._rotation:SetDuration(0.000001)
+    self._rotation:SetEndDelay(2147483647)
+    self._rotation:SetOrigin('BOTTOMRIGHT', 0, 0)
+    self._rotation:SetRadians(-rads);
+    self._group:Play();
+end
+
+local function SetClockwise(self, clockwise)
+    self._clockwise = clockwise
+end
+
+local function SetReverse(self, reverse)
+    self._reverse = reverse
+end
+
+local function OnSizeChanged(self, width, height)
+    self._wedge:SetSize(width, height) -- it's important to keep this texture sized correctly
+    self._aspect = width / height -- required to calculate the texture coordinates
+end
+
+-- Creates a function that calls a method on all textures at once
+local function CreateTextureFunction(func, self, ...)
+    return function(self, ...)
+        for i = 1, 4 do
+            local tx = self._textures[i]
+            tx[func](tx, ...)
+        end
+        self._wedge[func](self._wedge, ...)
+    end
+end
+
+local function Hide(self)
+	for i = 1, 4 do
+		self._textures[i]:Hide();
+	end
+	self._wedge:Hide();
+	if self._refresh then
+		self._refresh:Hide()
+	end
+end
+
+-- Pass calls to these functions on our frame to its textures
+local TextureFunctions = {
+    SetTexture = CreateTextureFunction('SetTexture'),
+    SetBlendMode = CreateTextureFunction('SetBlendMode'),
+    SetVertexColor = CreateTextureFunction('SetVertexColor'),
+}
+
+local function CreateSpinner(parent)
+    local spinner = CreateFrame('Frame', nil, parent)
+
+    -- ScrollFrame clips the actively animating portion of the spinner
+    local scrollframe = CreateFrame('ScrollFrame', nil, spinner)
+    scrollframe:SetPoint('BOTTOMLEFT', spinner, 'CENTER')
+    scrollframe:SetPoint('TOPRIGHT')
+    spinner._scrollframe = scrollframe
+
+    local scrollchild = CreateFrame('frame', nil, scrollframe)
+    scrollframe:SetScrollChild(scrollchild)
+    scrollchild:SetAllPoints(scrollframe)
+
+    -- Wedge thing
+    local wedge = scrollchild:CreateTexture()
+    wedge:SetPoint('BOTTOMRIGHT', spinner, 'CENTER')
+    spinner._wedge = wedge
+
+    -- Top Right
+    local trTexture = spinner:CreateTexture()
+    trTexture:SetPoint('BOTTOMLEFT', spinner, 'CENTER')
+    trTexture:SetPoint('TOPRIGHT')
+    trTexture:SetTexCoord(0.5, 1, 0, 0.5)
+
+    -- Bottom Right
+    local brTexture = spinner:CreateTexture()
+    brTexture:SetPoint('TOPLEFT', spinner, 'CENTER')
+    brTexture:SetPoint('BOTTOMRIGHT')
+    brTexture:SetTexCoord(0.5, 1, 0.5, 1)
+
+    -- Bottom Left
+    local blTexture = spinner:CreateTexture()
+    blTexture:SetPoint('TOPRIGHT', spinner, 'CENTER')
+    blTexture:SetPoint('BOTTOMLEFT')
+    blTexture:SetTexCoord(0, 0.5, 0.5, 1)
+
+    -- Top Left
+    local tlTexture = spinner:CreateTexture()
+    tlTexture:SetPoint('BOTTOMRIGHT', spinner, 'CENTER')
+    tlTexture:SetPoint('TOPLEFT')
+    tlTexture:SetTexCoord(0, 0.5, 0, 0.5)
+
+    -- /4|1\ -- Clockwise texture arrangement
+    -- \3|2/ --
+
+    spinner._textures = {trTexture, brTexture, blTexture, tlTexture}
+    spinner._quadrant = nil -- Current active quadrant
+    spinner._clockwise = true -- fill clockwise
+    spinner._reverse = false -- Treat the provided value as its inverse, eg. 75% will display as 25%
+    spinner._aspect = 1 -- aspect ratio, width / height of spinner frame
+    spinner:HookScript('OnSizeChanged', OnSizeChanged)
+
+    for method, func in pairs(TextureFunctions) do
+        spinner[method] = func
+    end
+
+    spinner.SetClockwise = SetClockwise
+    spinner.SetReverse = SetReverse
+    spinner.SetValue = SetValue
+    spinner.Hide = Hide
+
+    local group = wedge:CreateAnimationGroup()
+    group:SetScript('OnFinished', function() group:Play() end);
+    local rotation = group:CreateAnimation('Rotation')
+    spinner._rotation = rotation
+    spinner._group = group;
+    return spinner
+end
+
+function Nameplates:DrawTimer(guid, radius, duration)
+	local timer = self:DrawCircle(guid, radius, "Interface\\AddOns\\FS_Core\\media\\circle512")
+	local done = false
+
+	timer.spinner = CreateSpinner(timer.frame)
+	local spinner = timer.spinner
+	spinner:SetPoint('CENTER', timer.frame, 'CENTER')
+	local size = radius * 2.3
+	spinner:SetTexture('Interface\\AddOns\\FS_Core\\media\\ring512')
+	spinner:SetSize(size, size)
+	spinner:SetBlendMode('BLEND')
+
+	spinner:SetClockwise(true)
+	spinner:SetReverse(true)
+
+	if not duration then
+		function timer:Progress()
+			return 0
+		end
+	elseif (type(duration) == "string" or duration < 0) and UnitExists(guid) then
+		local spell = type(duration) == "string" and duration or GetSpellInfo(-duration)
+		function timer:Progress()
+			local _, _, _, _, _, duration, expires = UnitDebuff(guid, spell)
+			if not duration then return 1 end
+			return 1 - (expires - GetTime()) / duration
+		end
+	else
+		local start = GetTime()
+
+		function timer:Progress()
+			if not duration then return 0 end
+			local dt = GetTime() - start
+			return dt < duration and dt / duration or 1
+		end
+
+		function timer:Reset(d)
+			start = GetTime()
+			duration = d
+			done = false
+			return self
+		end
+	end
+
+	-- Hook the Update() function directly to let the OnUpdate() hook available for user code
+	local circle_update = timer.Update
+	function timer:Update(dt)
+		local pct = self:Progress()
+		if pct < 0 then pct = 0 end
+		if pct > 1 then pct = 1 end
+		self.spinner:SetValue(pct)
+		if pct == 1 and not done then
+			done = true
+			if self.OnDone then self:OnDone() end
+		end
+		circle_update(timer)
+	end
+
+	function timer:OnDone()
+		self:OnRemove()
+	end
+
+	function timer:OnRemove()
+		if self.spinner then
+			self.Update = circle_update
+			self.spinner:Hide()
+			self.spinner = nil
+			timer.OnRemove = nil
+		end
+	end
+	return timer
 end
