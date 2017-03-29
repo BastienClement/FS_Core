@@ -369,6 +369,13 @@ function NameplateObject:SetMarkerColor(marker, a)
 	end
 end
 
+function NameplateObject:SetBlendMode(...)
+	if self.frame.tex then
+		self.frame.tex:SetBlendMode(...)
+	end
+	return self
+end
+
 function NameplateObject:Register(name, remove)
 	Nameplates:RegisterObject(self, name, remove)
 	return self
