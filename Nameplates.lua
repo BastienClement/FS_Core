@@ -68,7 +68,7 @@ local nameplates_config = {
 		end,
 		order = 2
 	},
-	clickthrough = {
+	--[[clickthrough = {
 		type = "toggle",
 		name = "Click through friendly nameplates",
 		descStyle = "inline",
@@ -79,7 +79,7 @@ local nameplates_config = {
 			C_NamePlate.SetNamePlateFriendlyClickThrough(v)
 		end,
 		order = 3
-	},
+	},]]
 	offset = {
 		type = "range",
 		name = "Offset",
@@ -106,7 +106,7 @@ function Nameplates:OnInitialize()
 	self.settings = self.db.profile
 	FS.Config:Register("Nameplates HUD", nameplates_config)
 
-	C_NamePlate.SetNamePlateFriendlyClickThrough(self.settings.clickthrough)
+	--C_NamePlate.SetNamePlateFriendlyClickThrough(self.settings.clickthrough)
 
 	self.index = {}
 	self.objects = {}
@@ -114,9 +114,9 @@ function Nameplates:OnInitialize()
 end
 
 function Nameplates:OnEnable()
-	self:RegisterEvent("NAME_PLATE_CREATED")
-	self:RegisterEvent("NAME_PLATE_UNIT_ADDED")
-	self:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
+	--self:RegisterEvent("NAME_PLATE_CREATED")
+	--self:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+	--self:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
 	self:RegisterEvent("ENCOUNTER_END")
 	self:ScheduleRepeatingTimer("GC", 60)
 	if self.settings.enable then
