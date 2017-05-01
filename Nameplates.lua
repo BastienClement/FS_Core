@@ -114,9 +114,9 @@ function Nameplates:OnInitialize()
 end
 
 function Nameplates:OnEnable()
-	--self:RegisterEvent("NAME_PLATE_CREATED")
-	--self:RegisterEvent("NAME_PLATE_UNIT_ADDED")
-	--self:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
+	self:RegisterEvent("NAME_PLATE_CREATED")
+	self:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+	self:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
 	self:RegisterEvent("ENCOUNTER_END")
 	self:ScheduleRepeatingTimer("GC", 60)
 	if self.settings.enable then
