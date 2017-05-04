@@ -261,6 +261,24 @@ do
 end
 
 -------------------------------------------------------------------------------
+-- Aura tracking
+-------------------------------------------------------------------------------
+
+local function setup_aura_tracking(guid, aura, buff)
+	local unit = UnitExists(guid) and guid or FS.Roster:GetUnit(guid)
+	if not unit then
+		error("Cannot find unit " .. guid .. " for aura-tracking HUD object")
+	end
+	local spell = type(aura) == "string" and duration or GetSpellInfo(aura < 0 and -aura or aura)
+	local auraType = buff and UnitBuff or UnitDebuff
+	return function(self)
+		local _, _, _, _, _, duration, expires = auraType(guid, spell)
+		if not duration then return 1 end
+		return 1 - (expires - GetTime()) / duration
+	end
+end
+
+-------------------------------------------------------------------------------
 -- Object API
 -------------------------------------------------------------------------------
 
@@ -393,6 +411,7 @@ function NameplateObject:Remove()
 	if not next(objects) then
 		Nameplates.objects[self.owner] = nil
 	end
+	if self.CleanupHook then self:CleanupHook() end
 	if self.OnRemove then self:OnRemove() end
 	free_frame(self.frame)
 end
@@ -527,24 +546,21 @@ function Nameplates:DrawTarget(guid, radius)
 end
 
 -- Timer
-function Nameplates:DrawTimerOld(guid, radius, duration)
+function Nameplates:DrawTimer(guid, radius, duration, buff)
 	local timer = self:DrawCircle(guid, radius, "Interface\\AddOns\\FS_Core\\media\\timer")
 
 	-- Timer informations
 	local done = false
 	local rotate = 0
 
+	local isAuraTracker = (type(duration) == "string" or duration < 0)
+
 	if not duration then
 		function timer:Progress()
 			return 0
 		end
-	elseif (type(duration) == "string" or duration < 0) and UnitExists(guid) then
-		local spell = type(duration) == "string" and duration or GetSpellInfo(-duration)
-		function timer:Progress()
-			local _, _, _, _, _, duration, expires = UnitAura(guid, spell)
-			if not duration then return 0 end
-			return 1 - (expires - GetTime()) / duration
-		end
+	elseif isAuraTracker then
+		timer.Progress = setup_aura_tracking(guid, duration, buff)
 	else
 		local start = GetTime()
 
@@ -574,6 +590,12 @@ function Nameplates:DrawTimerOld(guid, radius, duration)
 		end
 		rotate = pi2 * pct
 		circle_update(timer)
+	end
+
+	if isAuraTracker then
+		function timer:OnDone()
+			self:Remove()
+		end
 	end
 
 	function timer:Rotate()
@@ -645,268 +667,130 @@ function Nameplates:DrawText(owner, label, size)
 	return obj
 end
 
---- SPINNER ---
 
--- Usage:
--- spinner = CreateSpinner(parent)
--- spinner:SetTexture('texturePath')
--- spinner:SetBlendMode('blendMode')
--- spinner:SetVertexColor(r, g, b)
--- spinner:SetClockwise(boolean) -- true to fill clockwise, false to fill counterclockwise
--- spinner:SetReverse(boolean) -- true to empty the bar instead of filling it
--- spinner:SetValue(percent) -- value between 0 and 1 to fill the bar to
+do
+	local spinner_pool = {}
 
--- Some math stuff
-local cos, sin, pi2, halfpi = math.cos, math.sin, math.rad(360), math.rad(90)
-local function Transform(tx, x, y, angle, aspect) -- Translates texture to x, y and rotates about its center
-    local c, s = cos(angle), sin(angle)
-    local y, oy = y / aspect, 0.5 / aspect
-    local ULx, ULy = 0.5 + (x - 0.5) * c - (y - oy) * s, (oy + (y - oy) * c + (x - 0.5) * s) * aspect
-    local LLx, LLy = 0.5 + (x - 0.5) * c - (y + oy) * s, (oy + (y + oy) * c + (x - 0.5) * s) * aspect
-    local URx, URy = 0.5 + (x + 0.5) * c - (y - oy) * s, (oy + (y - oy) * c + (x + 0.5) * s) * aspect
-    local LRx, LRy = 0.5 + (x + 0.5) * c - (y + oy) * s, (oy + (y + oy) * c + (x + 0.5) * s) * aspect
-    tx:SetTexCoord(ULx, ULy, LLx, LLy, URx, URy, LRx, LRy)
-end
-
--- Permanently pause our rotation animation after it starts playing
-local function OnPlayUpdate(self)
-    self:SetScript('OnUpdate', nil)
-    self:Pause()
-end
-
-local function OnPlay(self)
-    self:SetScript('OnUpdate', OnPlayUpdate)
-end
-
-local function SetValue(self, value)
-    -- Correct invalid ranges, preferably just don't feed it invalid numbers
-    if value > 1 then value = 1
-    elseif value < 0 then value = 0 end
-
-    -- Reverse our normal behavior
-    if self._reverse then
-        value = 1 - value
-    end
-
-    -- Determine which quadrant we're in
-    local q, quadrant = self._clockwise and (1 - value) or value -- 4 - floor(value / 0.25)
-    if q >= 0.75 then
-        quadrant = 1
-    elseif q >= 0.5 then
-        quadrant = 2
-    elseif q >= 0.25 then
-        quadrant = 3
-    else
-        quadrant = 4
-    end
-
-    if self._quadrant ~= quadrant then
-        self._quadrant = quadrant
-        -- Show/hide necessary textures if we need to
-        if self._clockwise then
-            for i = 1, 4 do
-                self._textures[i]:SetShown(i < quadrant)
-            end
-        else
-            for i = 1, 4 do
-                self._textures[i]:SetShown(i > quadrant)
-            end
-        end
-        -- Move scrollframe/wedge to the proper quadrant
-        self._scrollframe:Hide();
-        self._scrollframe:SetAllPoints(self._textures[quadrant])
-        self._scrollframe:Show();
-    end
-
-    -- Rotate the things
-    local rads = value * pi2
-    if not self._clockwise then rads = -rads + halfpi end
-    Transform(self._wedge, -0.5, -0.5, rads, self._aspect)
-    self._rotation:SetDuration(0.000001)
-    self._rotation:SetEndDelay(2147483647)
-    self._rotation:SetOrigin('BOTTOMRIGHT', 0, 0)
-    self._rotation:SetRadians(-rads);
-    self._group:Play();
-end
-
-local function SetClockwise(self, clockwise)
-    self._clockwise = clockwise
-end
-
-local function SetReverse(self, reverse)
-    self._reverse = reverse
-end
-
-local function OnSizeChanged(self, width, height)
-    self._wedge:SetSize(width, height) -- it's important to keep this texture sized correctly
-    self._aspect = width / height -- required to calculate the texture coordinates
-end
-
--- Creates a function that calls a method on all textures at once
-local function CreateTextureFunction(func, self, ...)
-    return function(self, ...)
-        for i = 1, 4 do
-            local tx = self._textures[i]
-            tx[func](tx, ...)
-        end
-        self._wedge[func](self._wedge, ...)
-    end
-end
-
-local function Hide(self)
-	for i = 1, 4 do
-		self._textures[i]:Hide();
+	local function alloc_spinner(anchor)
+		local spinner
+		if #spinner_pool > 0 then
+			spinner = table.remove(spinner_pool)
+		else
+			spinner = FS.Util.Spinner.Create()
+		end
+		spinner:SetParent(anchor.frame)
+		spinner:SetPoint("CENTER", anchor.frame, "CENTER")
+		spinner:Show()
+		return spinner
 	end
-	self._wedge:Hide();
-	if self._refresh then
-		self._refresh:Hide()
+
+	local function free_spinner(spinner)
+		spinner:Hide()
+		table.insert(spinner_pool, spinner)
 	end
-end
 
--- Pass calls to these functions on our frame to its textures
-local TextureFunctions = {
-    SetTexture = CreateTextureFunction('SetTexture'),
-    SetBlendMode = CreateTextureFunction('SetBlendMode'),
-    SetVertexColor = CreateTextureFunction('SetVertexColor'),
-}
-
-local function CreateSpinner(parent)
-    local spinner = CreateFrame('Frame', nil, parent)
-
-    -- ScrollFrame clips the actively animating portion of the spinner
-    local scrollframe = CreateFrame('ScrollFrame', nil, spinner)
-    scrollframe:SetPoint('BOTTOMLEFT', spinner, 'CENTER')
-    scrollframe:SetPoint('TOPRIGHT')
-    spinner._scrollframe = scrollframe
-
-    local scrollchild = CreateFrame('frame', nil, scrollframe)
-    scrollframe:SetScrollChild(scrollchild)
-    scrollchild:SetAllPoints(scrollframe)
-
-    -- Wedge thing
-    local wedge = scrollchild:CreateTexture()
-    wedge:SetPoint('BOTTOMRIGHT', spinner, 'CENTER')
-    spinner._wedge = wedge
-
-    -- Top Right
-    local trTexture = spinner:CreateTexture()
-    trTexture:SetPoint('BOTTOMLEFT', spinner, 'CENTER')
-    trTexture:SetPoint('TOPRIGHT')
-    trTexture:SetTexCoord(0.5, 1, 0, 0.5)
-
-    -- Bottom Right
-    local brTexture = spinner:CreateTexture()
-    brTexture:SetPoint('TOPLEFT', spinner, 'CENTER')
-    brTexture:SetPoint('BOTTOMRIGHT')
-    brTexture:SetTexCoord(0.5, 1, 0.5, 1)
-
-    -- Bottom Left
-    local blTexture = spinner:CreateTexture()
-    blTexture:SetPoint('TOPRIGHT', spinner, 'CENTER')
-    blTexture:SetPoint('BOTTOMLEFT')
-    blTexture:SetTexCoord(0, 0.5, 0.5, 1)
-
-    -- Top Left
-    local tlTexture = spinner:CreateTexture()
-    tlTexture:SetPoint('BOTTOMRIGHT', spinner, 'CENTER')
-    tlTexture:SetPoint('TOPLEFT')
-    tlTexture:SetTexCoord(0, 0.5, 0, 0.5)
-
-    -- /4|1\ -- Clockwise texture arrangement
-    -- \3|2/ --
-
-    spinner._textures = {trTexture, brTexture, blTexture, tlTexture}
-    spinner._quadrant = nil -- Current active quadrant
-    spinner._clockwise = true -- fill clockwise
-    spinner._reverse = false -- Treat the provided value as its inverse, eg. 75% will display as 25%
-    spinner._aspect = 1 -- aspect ratio, width / height of spinner frame
-    spinner:HookScript('OnSizeChanged', OnSizeChanged)
-
-    for method, func in pairs(TextureFunctions) do
-        spinner[method] = func
-    end
-
-    spinner.SetClockwise = SetClockwise
-    spinner.SetReverse = SetReverse
-    spinner.SetValue = SetValue
-    spinner.Hide = Hide
-
-    local group = wedge:CreateAnimationGroup()
-    group:SetScript('OnFinished', function() group:Play() end);
-    local rotation = group:CreateAnimation('Rotation')
-    spinner._rotation = rotation
-    spinner._group = group;
-    return spinner
-end
-
-function Nameplates:DrawTimer(guid, radius, duration)
-	local timer = self:DrawCircle(guid, radius, "Interface\\AddOns\\FS_Core\\media\\circle512")
-	local done = false
-
-	timer.spinner = CreateSpinner(timer.frame)
-	local spinner = timer.spinner
-	spinner:SetPoint('CENTER', timer.frame, 'CENTER')
-	local size = radius * 2.3
-	spinner:SetTexture('Interface\\AddOns\\FS_Core\\media\\ring512')
-	spinner:SetSize(size, size)
-	spinner:SetBlendMode('BLEND')
-
-	spinner:SetClockwise(true)
-	spinner:SetReverse(true)
-
-	if not duration then
-		function timer:Progress()
-			return 0
+	local emptyOptions = {}
+	local function get_opt(opts, key, default)
+		if opts[key] == nil then
+			return default
+		else
+			return opts[key]
 		end
-	elseif (type(duration) == "string" or duration < 0) and UnitExists(guid) then
-		local spell = type(duration) == "string" and duration or GetSpellInfo(-duration)
-		function timer:Progress()
-			local _, _, _, _, _, duration, expires = UnitDebuff(guid, spell)
-			if not duration then return 1 end
-			return 1 - (expires - GetTime()) / duration
-		end
-	else
-		local start = GetTime()
+	end
 
-		function timer:Progress()
-			if not duration then return 0 end
-			local dt = GetTime() - start
-			return dt < duration and dt / duration or 1
+	function Nameplates:DrawSpinner(guid, radius, duration, opts)
+		opts = opts or emptyOptions
+		local done = false
+
+		local parent = self:CreateObject(guid):SetSize(1, 1)
+		local spinner = alloc_spinner(parent)
+
+		local size = radius * 2.3 -- To match DrawCircle radius
+		spinner:SetTexture("Interface\\AddOns\\FS_Core\\media\\ring512")
+		spinner:SetSize(size, size)
+		spinner:SetBlendMode("BLEND")
+		spinner:SetVertexColor(1, 1, 1, 0.9)
+
+		spinner:SetClockwise(get_opt(opts, "clockwise", true))
+		spinner:SetReverse(get_opt(opts, "reverse", true))
+
+		local isAuraTracker = (type(duration) == "string" or duration < 0)
+
+		if not duration then
+			function parent:Progress()
+				return 0
+			end
+		elseif isAuraTracker then
+			parent.Progress = setup_aura_tracking(guid, duration, get_opt(opts, "buff", false))
+		else
+			local start = GetTime()
+
+			function parent:Progress()
+				if not duration then return 0 end
+				local dt = GetTime() - start
+				return dt < duration and dt / duration or 1
+			end
+
+			function parent:Reset(d)
+				start = GetTime()
+				duration = d
+				done = false
+				return self
+			end
 		end
 
-		function timer:Reset(d)
-			start = GetTime()
-			duration = d
-			done = false
+		-- Hook the Update() function directly to let the OnUpdate() hook available for user code
+		function parent:Update(dt)
+			local pct = self:Progress()
+			if pct < 0 then pct = 0 end
+			if pct > 1 then pct = 1 end
+			spinner:SetValue(pct)
+			if pct == 1 and not done then
+				done = true
+				if self.OnDone then self:OnDone() end
+			end
+		end
+
+		if isAuraTracker then
+			function parent:OnDone()
+				self:Remove()
+			end
+		end
+
+		function parent:CleanupHook()
+			free_spinner(spinner)
+		end
+
+		function parent:SetRadius(radius)
+			local size = radius * 2.3 -- To match DrawCircle radius
+			spinner:SetSize(size, size)
 			return self
 		end
-	end
 
-	-- Hook the Update() function directly to let the OnUpdate() hook available for user code
-	local circle_update = timer.Update
-	function timer:Update(dt)
-		local pct = self:Progress()
-		if pct < 0 then pct = 0 end
-		if pct > 1 then pct = 1 end
-		self.spinner:SetValue(pct)
-		if pct == 1 and not done then
-			done = true
-			if self.OnDone then self:OnDone() end
+		function parent:SetColor(r, g, b, a, ...)
+			if r > 1 then r = r / 255 end
+			if g > 1 then g = g / 255 end
+			if b > 1 then b = b / 255 end
+			if a and a > 1 then a = a / 255 end
+			spinner:SetVertexColor(r, g, b, a, ...)
+			return self
 		end
-		circle_update(timer)
-	end
 
-	function timer:OnDone()
-		self:OnRemove()
-	end
-
-	function timer:OnRemove()
-		if self.spinner then
-			self.Update = circle_update
-			self.spinner:Hide()
-			self.spinner = nil
-			timer.OnRemove = nil
+		function parent:SetBlendMode(...)
+			--spinner:SetBlendMode(...)
+			return self
 		end
+
+		function parent:SetClockwise(...)
+			spinner:SetClockwise(...)
+			return self
+		end
+
+		function parent:SetReverse(...)
+			spinner:SetReverse(...)
+			return self
+		end
+
+		return parent
 	end
-	return timer
 end

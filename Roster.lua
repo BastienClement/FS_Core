@@ -160,6 +160,9 @@ end
 --------------------------------------------------------------------------------
 
 function Roster:GetUnit(guid)
+	if UnitExists(guid) then
+		return guid
+	end
 	local unit = LGIST:GuidToUnit(guid)
 	if unit then return unit end
 	for unit in self:Iterate() do
