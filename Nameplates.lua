@@ -553,7 +553,7 @@ function Nameplates:DrawTimer(guid, radius, duration, buff)
 	local done = false
 	local rotate = 0
 
-	local isAuraTracker = (type(duration) == "string" or duration < 0)
+	local isAuraTracker = duration and (type(duration) == "string" or duration < 0)
 
 	if not duration then
 		function timer:Progress()
@@ -704,6 +704,7 @@ do
 
 		local parent = self:CreateObject(guid):SetSize(1, 1)
 		local spinner = alloc_spinner(parent)
+		local smoothing = get_opt(opts, "smooth", false)
 
 		local size = radius * 2.3 -- To match DrawCircle radius
 		spinner:SetTexture("Interface\\AddOns\\FS_Core\\media\\ring512")
@@ -714,7 +715,7 @@ do
 		spinner:SetClockwise(get_opt(opts, "clockwise", true))
 		spinner:SetReverse(get_opt(opts, "reverse", true))
 
-		local isAuraTracker = (type(duration) == "string" or duration < 0)
+		local isAuraTracker = duration and (type(duration) == "string" or duration < 0)
 
 		if not duration then
 			function parent:Progress()
@@ -740,11 +741,18 @@ do
 		end
 
 		-- Hook the Update() function directly to let the OnUpdate() hook available for user code
+		local target, current = 0, 0
 		function parent:Update(dt)
 			local pct = self:Progress()
 			if pct < 0 then pct = 0 end
 			if pct > 1 then pct = 1 end
-			spinner:SetValue(pct)
+			target = pct
+			if smoothing then
+				current = current + (target - current) / 3
+			else
+				current = target
+			end
+			spinner:SetValue(current)
 			if pct == 1 and not done then
 				done = true
 				if self.OnDone then self:OnDone() end
@@ -759,6 +767,11 @@ do
 
 		function parent:CleanupHook()
 			free_spinner(spinner)
+		end
+
+		function parent:SetSmooth(smooth)
+			smoothing = smooth
+			return self
 		end
 
 		function parent:SetRadius(radius)
