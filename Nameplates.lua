@@ -674,9 +674,9 @@ do
 		else
 			spinner = FS.Util.Spinner.Create()
 		end
-		spinner:SetParent(anchor.frame)
-		spinner:SetPoint("CENTER", anchor.frame, "CENTER")
-		spinner:Show()
+		spinner.frame:SetParent(anchor.frame)
+		spinner.frame:SetPoint("CENTER", anchor.frame, "CENTER")
+		spinner.frame:Show()
 		return spinner
 	end
 
@@ -706,7 +706,7 @@ do
 		spinner:SetTexture("Interface\\AddOns\\FS_Core\\media\\ring512")
 		spinner:SetSize(size, size)
 		spinner:SetBlendMode("BLEND")
-		spinner:SetVertexColor(1, 1, 1, 0.9)
+		spinner:Color(1, 1, 1, 0.8)
 
 		spinner:SetClockwise(get_opt(opts, "clockwise", true))
 		spinner:SetReverse(get_opt(opts, "reverse", true))
@@ -777,12 +777,12 @@ do
 			if g > 1 then g = g / 255 end
 			if b > 1 then b = b / 255 end
 			if a and a > 1 then a = a / 255 end
-			spinner:SetVertexColor(r, g, b, a, ...)
+			spinner:Color(r, g, b, a, ...)
 			return self
 		end
 
 		function parent:SetBlendMode(...)
-			--spinner:SetBlendMode(...)
+			spinner:SetBlendMode(...)
 			return self
 		end
 
@@ -791,8 +791,8 @@ do
 			return self
 		end
 
-		function parent:SetReverse(...)
-			spinner:SetReverse(...)
+		function parent:SetFill(fill)
+			spinner:SetReverse(not fill)
 			return self
 		end
 

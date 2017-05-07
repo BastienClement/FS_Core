@@ -2,206 +2,365 @@ local _, FS = ...
 
 FS.Util.Spinner = {}
 
--- Usage:
--- spinner = CreateSpinner(parent)
--- spinner:SetTexture('texturePath')
--- spinner:SetBlendMode('blendMode')
--- spinner:SetVertexColor(r, g, b)
--- spinner:SetClockwise(boolean) -- true to fill clockwise, false to fill counterclockwise
--- spinner:SetReverse(boolean) -- true to empty the bar instead of filling it
--- spinner:SetValue(percent) -- value between 0 and 1 to fill the bar to
+local spinnerFunctions = {};
 
--- Some math stuff
-local cos, sin, pi2, halfpi = math.cos, math.sin, math.rad(360), math.rad(90)
-local function Transform(tx, x, y, angle, aspect) -- Translates texture to x, y and rotates about its center
-	local c, s = cos(angle), sin(angle)
-	local y, oy = y / aspect, 0.5 / aspect
-	local ULx, ULy = 0.5 + (x - 0.5) * c - (y - oy) * s, (oy + (y - oy) * c + (x - 0.5) * s) * aspect
-	local LLx, LLy = 0.5 + (x - 0.5) * c - (y + oy) * s, (oy + (y + oy) * c + (x - 0.5) * s) * aspect
-	local URx, URy = 0.5 + (x + 0.5) * c - (y - oy) * s, (oy + (y - oy) * c + (x + 0.5) * s) * aspect
-	local LRx, LRy = 0.5 + (x + 0.5) * c - (y + oy) * s, (oy + (y + oy) * c + (x + 0.5) * s) * aspect
-	tx:SetTexCoord(ULx, ULy, LLx, LLy, URx, URy, LRx, LRy)
+function spinnerFunctions.SetTexture(self, texture)
+	for i = 1, 3 do
+		self.textures[i]:SetTexture(texture)
+	end
 end
 
--- Permanently pause our rotation animation after it starts playing
-local function OnPlayUpdate(self)
-	self:SetScript('OnUpdate', nil)
-	self:Pause()
+function spinnerFunctions.SetDesaturated(self, desaturate)
+	for i = 1, 3 do
+		self.textures[i]:SetDesaturated(desaturate)
+	end
 end
 
-local function OnPlay(self)
-	self:SetScript('OnUpdate', OnPlayUpdate)
+function spinnerFunctions.SetBlendMode(self, blendMode)
+	for i = 1, 3 do
+		self.textures[i]:SetBlendMode(blendMode)
+	end
 end
 
-local function SetValue(self, value)
-	-- Correct invalid ranges, preferably just don't feed it invalid numbers
-	if value > 1 then value = 1
-	elseif value < 0 then value = 0
+function spinnerFunctions.Show(self)
+	for i = 1, 3 do
+		self.textures[i]:Show()
+	end
+end
+
+function spinnerFunctions.Hide(self)
+	for i = 1, 3 do
+		self.textures[i]:Hide()
+	end
+end
+
+function spinnerFunctions.Color(self, r, g, b, a)
+	for i = 1, 3 do
+		self.textures[i]:SetVertexColor(r, g, b, a)
+	end
+end
+
+function spinnerFunctions.SetProgress(self, region, angle1, angle2)
+	local scalex = 1
+	local scaley = 1
+	local rotation = 0
+	local mirror_h = false
+	local mirror_v = false
+
+	if (angle2 - angle1 >= 360) then
+		-- SHOW everything
+		self.coords[1]:SetFull()
+		self.coords[1]:Transform(scalex, scaley, rotation, mirror_h, mirror_v)
+		self.coords[1]:Show()
+
+		self.coords[2]:Hide()
+		self.coords[3]:Hide()
+		return
+	end
+	if (angle1 == angle2) then
+		self.coords[1]:Hide()
+		self.coords[2]:Hide()
+		self.coords[3]:Hide()
+		return
 	end
 
-	-- Reverse our normal behavior
-	if self._reverse then
-		value = 1 - value
-	end
+	local index1 = floor((angle1 + 45) / 90)
+	local index2 = floor((angle2 + 45) / 90)
 
-	-- Determine which quadrant we're in
-	local q, quadrant = self._clockwise and (1 - value) or value -- 4 - floor(value / 0.25)
-	if q >= 0.75 then
-		quadrant = 1
-	elseif q >= 0.5 then
-		quadrant = 2
-	elseif q >= 0.25 then
-		quadrant = 3
+	if (index1 + 1 >= index2) then
+		self.coords[1]:SetAngle(angle1, angle2);
+		self.coords[1]:Transform(scalex, scaley, rotation, mirror_h, mirror_v)
+		self.coords[1]:Show()
+		self.coords[2]:Hide()
+		self.coords[3]:Hide()
+	elseif (index1 + 3 >= index2) then
+		local firstEndAngle = (index1 + 1) * 90 + 45
+		self.coords[1]:SetAngle(angle1, firstEndAngle)
+		self.coords[1]:Transform(scalex, scaley, rotation, mirror_h, mirror_v)
+		self.coords[1]:Show()
+
+		self.coords[2]:SetAngle(firstEndAngle, angle2)
+		self.coords[2]:Transform(scalex, scaley, rotation, mirror_h, mirror_v)
+		self.coords[2]:Show()
+
+		self.coords[3]:Hide()
 	else
-		quadrant = 4
+		local firstEndAngle = (index1 + 1) * 90 + 45
+		local secondEndAngle = firstEndAngle + 180
+
+		self.coords[1]:SetAngle(angle1, firstEndAngle)
+		self.coords[1]:Transform(scalex, scaley, rotation, mirror_h, mirror_v)
+		self.coords[1]:Show()
+
+		self.coords[2]:SetAngle(firstEndAngle, secondEndAngle)
+		self.coords[2]:Transform(scalex, scaley, rotation, mirror_h, mirror_v)
+		self.coords[2]:Show()
+
+		self.coords[3]:SetAngle(secondEndAngle, angle2)
+		self.coords[3]:Transform(scalex, scaley, rotation, mirror_h, mirror_v)
+		self.coords[3]:Show()
+	end
+end
+
+function spinnerFunctions.SetBackgroundOffset(self, region, offset)
+	for i = 1, 3 do
+		self.textures[i]:SetPoint('TOPRIGHT', region, offset, offset)
+		self.textures[i]:SetPoint('BOTTOMRIGHT', region, offset, -offset)
+		self.textures[i]:SetPoint('BOTTOMLEFT', region, -offset, -offset)
+		self.textures[i]:SetPoint('TOPLEFT', region, -offset, offset)
+	end
+end
+
+function spinnerFunctions:SetSize(width, height)
+	self.frame:SetSize(width, height)
+	for i = 1, 3 do
+		self.textures[i]:SetHeight(height)
+	end
+	for i = 1, 3 do
+		self.textures[i]:SetWidth(width)
+	end
+end
+
+local defaultTexCoord = {
+	ULx = 0,
+	ULy = 0,
+	LLx = 0,
+	LLy = 1,
+	URx = 1,
+	URy = 0,
+	LRx = 1,
+	LRy = 1,
+};
+
+local function createTexCoord(texture)
+	local coord = {
+		ULx = 0,
+		ULy = 0,
+		LLx = 0,
+		LLy = 1,
+		URx = 1,
+		URy = 0,
+		LRx = 1,
+		LRy = 1,
+		ULvx = 0,
+		ULvy = 0,
+		LLvx = 0,
+		LLvy = 0,
+		URvx = 0,
+		URvy = 0,
+		LRvx = 0,
+		LRvy = 0,
+		texture = texture
+	}
+
+	function coord:MoveCorner(corner, x, y)
+		local width, height = self.texture:GetSize()
+		local rx = defaultTexCoord[corner .. "x"] - x
+		local ry = defaultTexCoord[corner .. "y"] - y
+		coord[corner .. "vx"] = -rx * width
+		coord[corner .. "vy"] = ry * height
+
+		coord[corner .. "x"] = x
+		coord[corner .. "y"] = y
 	end
 
-	if self._quadrant ~= quadrant then
-		self._quadrant = quadrant
-		-- Show/hide necessary textures if we need to
-		if self._clockwise then
-			for i = 1, 4 do
-				self._textures[i]:SetShown(i < quadrant)
-			end
+	function coord:Hide()
+		coord.texture:Hide()
+	end
+
+	function coord:Show()
+		coord:Apply()
+		coord.texture:Show()
+	end
+
+	function coord:SetFull()
+		coord.ULx = 0
+		coord.ULy = 0
+		coord.LLx = 0
+		coord.LLy = 1
+		coord.URx = 1
+		coord.URy = 0
+		coord.LRx = 1
+		coord.LRy = 1
+
+		coord.ULvx = 0
+		coord.ULvy = 0
+		coord.LLvx = 0
+		coord.LLvy = 0
+		coord.URvx = 0
+		coord.URvy = 0
+		coord.LRvx = 0
+		coord.LRvy = 0
+	end
+
+	function coord:Apply()
+		coord.texture:SetVertexOffset(UPPER_RIGHT_VERTEX, coord.URvx, coord.URvy)
+		coord.texture:SetVertexOffset(UPPER_LEFT_VERTEX, coord.ULvx, coord.ULvy)
+		coord.texture:SetVertexOffset(LOWER_RIGHT_VERTEX, coord.LRvx, coord.LRvy)
+		coord.texture:SetVertexOffset(LOWER_LEFT_VERTEX, coord.LLvx, coord.LLvy)
+
+		coord.texture:SetTexCoord(coord.ULx, coord.ULy, coord.LLx, coord.LLy, coord.URx, coord.URy, coord.LRx, coord.LRy)
+	end
+
+	local exactAngles = {
+		{ 0.5, 0 }, -- 0°
+		{ 1, 0 }, -- 45°
+		{ 1, 0.5 }, -- 90°
+		{ 1, 1 }, -- 135°
+		{ 0.5, 1 }, -- 180°
+		{ 0, 1 }, -- 225°
+		{ 0, 0.5 }, -- 270°
+		{ 0, 0 } -- 315°
+	}
+
+	local function angleToCoord(angle)
+		angle = angle % 360
+
+		if (angle % 45 == 0) then
+			local index = floor(angle / 45) + 1
+			return exactAngles[index][1], exactAngles[index][2]
+		end
+
+		if (angle < 45) then
+			return 0.5 + tan(angle) / 2, 0
+		elseif (angle < 135) then
+			return 1, 0.5 + tan(angle - 90) / 2
+		elseif (angle < 225) then
+			return 0.5 - tan(angle) / 2, 1
+		elseif (angle < 315) then
+			return 0, 0.5 - tan(angle - 90) / 2
+		elseif (angle < 360) then
+			return 0.5 + tan(angle) / 2, 0
+		end
+	end
+
+	local pointOrder = { "LL", "UL", "UR", "LR", "LL", "UL", "UR", "LR", "LL", "UL", "UR", "LR" }
+
+	function coord:SetAngle(angle1, angle2)
+		local index = floor((angle1 + 45) / 90)
+
+		local middleCorner = pointOrder[index + 1]
+		local startCorner = pointOrder[index + 2]
+		local endCorner1 = pointOrder[index + 3]
+		local endCorner2 = pointOrder[index + 4]
+
+		-- LL => 32, 32
+		-- UL => 32, -32
+		self:MoveCorner(middleCorner, 0.5, 0.5)
+		self:MoveCorner(startCorner, angleToCoord(angle1))
+
+		local edge1 = floor((angle1 - 45) / 90)
+		local edge2 = floor((angle2 - 45) / 90)
+
+		if (edge1 == edge2) then
+			self:MoveCorner(endCorner1, angleToCoord(angle2))
 		else
-			for i = 1, 4 do
-				self._textures[i]:SetShown(i > quadrant)
-			end
+			self:MoveCorner(endCorner1, defaultTexCoord[endCorner1 .. "x"], defaultTexCoord[endCorner1 .. "y"])
 		end
-		-- Move scrollframe/wedge to the proper quadrant
-		self._scrollframe:Hide();
-		self._scrollframe:SetAllPoints(self._textures[quadrant])
-		self._scrollframe:Show();
+
+		self:MoveCorner(endCorner2, angleToCoord(angle2))
 	end
 
-	-- Rotate the things
-	local rads = value * pi2
-	if not self._clockwise then rads = -rads + halfpi end
-	Transform(self._wedge, -0.5, -0.5, rads, self._aspect)
-	self._rotation:SetDuration(0.000001)
-	self._rotation:SetEndDelay(2147483647)
-	self._rotation:SetOrigin('BOTTOMRIGHT', 0, 0)
-	self._rotation:SetRadians(-rads);
-	self._group:Play();
-end
+	local function TransformPoint(x, y, scalex, scaley, rotation, mirror_h, mirror_v)
+		-- 1) Translate texture-coords to user-defined center
+		x = x - 0.5
+		y = y - 0.5
 
-local function SetClockwise(self, clockwise)
-	self._clockwise = clockwise
-end
+		-- 2) Shrink texture by 1/sqrt(2)
+		--x = x * 1.4142
+		--y = y * 1.4142
 
-local function SetReverse(self, reverse)
-	self._reverse = reverse
-end
+		-- Not yet supported for circular progress
+		-- 3) Scale texture by user-defined amount
+		x = x / scalex
+		y = y / scaley
 
-local function OnSizeChanged(self, width, height)
-	self._wedge:SetSize(width, height) -- it's important to keep this texture sized correctly
-	self._aspect = width / height -- required to calculate the texture coordinates
-end
-
--- Creates a function that calls a method on all textures at once
-local function CreateTextureFunction(func, self, ...)
-	return function(self, ...)
-		for i = 1, 4 do
-			local tx = self._textures[i]
-			tx[func](tx, ...)
+		-- 4) Apply mirroring if defined
+		if mirror_h then
+			x = -x
 		end
-		self._wedge[func](self._wedge, ...)
-	end
-end
+		if mirror_v then
+			y = -y
+		end
 
-local function Show(self)
-	for i = 1, 4 do
-		self._textures[i]:Show();
-	end
-	self._wedge:Show();
-	if self._refresh then
-		self._refresh:Show()
-	end
-end
+		local cos_rotation = cos(rotation)
+		local sin_rotation = sin(rotation)
 
-local function Hide(self)
-	for i = 1, 4 do
-		self._textures[i]:Hide();
-	end
-	self._wedge:Hide();
-	if self._refresh then
-		self._refresh:Hide()
-	end
-end
+		-- 5) Rotate texture by user-defined value
+		x, y = cos_rotation * x - sin_rotation * y, sin_rotation * x + cos_rotation * y
 
--- Pass calls to these functions on our frame to its textures
-local TextureFunctions = {
-	SetTexture = CreateTextureFunction('SetTexture'),
-	SetBlendMode = CreateTextureFunction('SetBlendMode'),
-	SetVertexColor = CreateTextureFunction('SetVertexColor'),
-}
+		-- 6) Translate texture-coords back to (0,0)
+		x = x + 0.5
+		y = y + 0.5
+
+		return x, y
+	end
+
+	function coord:Transform(scalex, scaley, rotation, mirror_h, mirror_v)
+		coord.ULx, coord.ULy = TransformPoint(coord.ULx, coord.ULy, scalex, scaley, rotation, mirror_h, mirror_v)
+		coord.LLx, coord.LLy = TransformPoint(coord.LLx, coord.LLy, scalex, scaley, rotation, mirror_h, mirror_v)
+		coord.URx, coord.URy = TransformPoint(coord.URx, coord.URy, scalex, scaley, rotation, mirror_h, mirror_v)
+		coord.LRx, coord.LRy = TransformPoint(coord.LRx, coord.LRy, scalex, scaley, rotation, mirror_h, mirror_v)
+	end
+
+	return coord
+end
 
 function FS.Util.Spinner.Create()
-	local spinner = CreateFrame('Frame', nil)
+	local spinner = {}
+	spinner.frame = CreateFrame("Frame", nil)
 
-	-- ScrollFrame clips the actively animating portion of the spinner
-	local scrollframe = CreateFrame('ScrollFrame', nil, spinner)
-	scrollframe:SetPoint('BOTTOMLEFT', spinner, 'CENTER')
-	scrollframe:SetPoint('TOPRIGHT')
-	spinner._scrollframe = scrollframe
+	local clockwise = true
+	local reverse = true
 
-	local scrollchild = CreateFrame('frame', nil, scrollframe)
-	scrollframe:SetScrollChild(scrollchild)
-	scrollchild:SetAllPoints(scrollframe)
+	spinner.textures = {}
+	spinner.coords = {}
 
-	-- Wedge thing
-	local wedge = scrollchild:CreateTexture()
-	wedge:SetPoint('BOTTOMRIGHT', spinner, 'CENTER')
-	spinner._wedge = wedge
+	for i = 1, 3 do
+		local texture = spinner.frame:CreateTexture(nil, "ARTWORK")
+		texture:SetAllPoints(spinner.frame)
+		spinner.textures[i] = texture
 
-	-- Top Right
-	local trTexture = spinner:CreateTexture()
-	trTexture:SetPoint('BOTTOMLEFT', spinner, 'CENTER')
-	trTexture:SetPoint('TOPRIGHT')
-	trTexture:SetTexCoord(0.5, 1, 0, 0.5)
-
-	-- Bottom Right
-	local brTexture = spinner:CreateTexture()
-	brTexture:SetPoint('TOPLEFT', spinner, 'CENTER')
-	brTexture:SetPoint('BOTTOMRIGHT')
-	brTexture:SetTexCoord(0.5, 1, 0.5, 1)
-
-	-- Bottom Left
-	local blTexture = spinner:CreateTexture()
-	blTexture:SetPoint('TOPRIGHT', spinner, 'CENTER')
-	blTexture:SetPoint('BOTTOMLEFT')
-	blTexture:SetTexCoord(0, 0.5, 0.5, 1)
-
-	-- Top Left
-	local tlTexture = spinner:CreateTexture()
-	tlTexture:SetPoint('BOTTOMRIGHT', spinner, 'CENTER')
-	tlTexture:SetPoint('TOPLEFT')
-	tlTexture:SetTexCoord(0, 0.5, 0, 0.5)
-
-	-- /4|1\ -- Clockwise texture arrangement
-	-- \3|2/ --
-
-	spinner._textures = { trTexture, brTexture, blTexture, tlTexture }
-	spinner._quadrant = nil -- Current active quadrant
-	spinner._clockwise = true -- fill clockwise
-	spinner._reverse = false -- Treat the provided value as its inverse, eg. 75% will display as 25%
-	spinner._aspect = 1 -- aspect ratio, width / height of spinner frame
-	spinner:HookScript('OnSizeChanged', OnSizeChanged)
-
-	for method, func in pairs(TextureFunctions) do
-		spinner[method] = func
+		spinner.coords[i] = createTexCoord(texture)
 	end
 
-	spinner.SetClockwise = SetClockwise
-	spinner.SetReverse = SetReverse
-	spinner.SetValue = SetValue
-	spinner.Show = Show
-	spinner.Hide = Hide
+	for k, v in pairs(spinnerFunctions) do
+		spinner[k] = v
+	end
 
-	local group = wedge:CreateAnimationGroup()
-	group:SetScript('OnFinished', function() group:Play() end);
-	local rotation = group:CreateAnimation('Rotation')
-	spinner._rotation = rotation
-	spinner._group = group;
+	function spinner:SetClockwise(cw)
+		clockwise = cw
+	end
+
+	function spinner:SetReverse(rev)
+		reverse = rev
+	end
+
+	function spinner:SetValue(progress)
+		progress = progress or 0
+		if reverse then progress = 1 - progress end
+		spinner.progress = progress
+
+		if (progress < 0) then
+			progress = 0
+		end
+
+		if (progress > 1) then
+			progress = 1
+		end
+
+		if (not clockwise) then
+			progress = 1 - progress
+		end
+
+		local pAngle = 360 * progress
+
+		if (clockwise) then
+			spinner:SetProgress(spinner, 0, pAngle)
+		else
+			spinner:SetProgress(spinner, pAngle, 360)
+		end
+	end
+
 	return spinner
 end
