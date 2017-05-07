@@ -553,13 +553,11 @@ function Nameplates:DrawTimer(guid, radius, duration, buff)
 	local done = false
 	local rotate = 0
 
-	local isAuraTracker = duration and (type(duration) == "string" or duration < 0)
-
 	if not duration then
 		function timer:Progress()
 			return 0
 		end
-	elseif isAuraTracker then
+	elseif type(duration) == "string" or duration < 0 or duration > 10000 then
 		timer.Progress = setup_aura_tracking(guid, duration, buff)
 	else
 		local start = GetTime()
@@ -592,10 +590,8 @@ function Nameplates:DrawTimer(guid, radius, duration, buff)
 		circle_update(timer)
 	end
 
-	if isAuraTracker then
-		function timer:OnDone()
-			self:Remove()
-		end
+	function timer:OnDone()
+		self:Remove()
 	end
 
 	function timer:Rotate()
@@ -667,7 +663,7 @@ function Nameplates:DrawText(owner, label, size)
 	return obj
 end
 
-
+-- Spinner
 do
 	local spinner_pool = {}
 
@@ -715,13 +711,11 @@ do
 		spinner:SetClockwise(get_opt(opts, "clockwise", true))
 		spinner:SetReverse(get_opt(opts, "reverse", true))
 
-		local isAuraTracker = duration and (type(duration) == "string" or duration < 0)
-
 		if not duration then
 			function parent:Progress()
 				return 0
 			end
-		elseif isAuraTracker then
+		elseif type(duration) == "string" or duration < 0 or duration > 10000 then
 			parent.Progress = setup_aura_tracking(guid, duration, get_opt(opts, "buff", false))
 		else
 			local start = GetTime()
@@ -759,10 +753,8 @@ do
 			end
 		end
 
-		if isAuraTracker then
-			function parent:OnDone()
-				self:Remove()
-			end
+		function parent:OnDone()
+			self:Remove()
 		end
 
 		function parent:CleanupHook()
