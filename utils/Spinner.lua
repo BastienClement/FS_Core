@@ -311,7 +311,6 @@ function FS.Util.Spinner.Create()
 	spinner.frame = CreateFrame("Frame", nil)
 
 	local clockwise = true
-	local reverse = true
 
 	spinner.textures = {}
 	spinner.coords = {}
@@ -332,13 +331,8 @@ function FS.Util.Spinner.Create()
 		clockwise = cw
 	end
 
-	function spinner:SetReverse(rev)
-		reverse = rev
-	end
-
 	function spinner:SetValue(progress)
-		progress = progress or 0
-		if reverse then progress = 1 - progress end
+		progress = 1 - (progress or 0)
 		spinner.progress = progress
 
 		if (progress < 0) then
