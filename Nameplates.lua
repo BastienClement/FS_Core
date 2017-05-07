@@ -705,8 +705,8 @@ do
 		local size = radius * 2.3 -- To match DrawCircle radius
 		spinner:SetTexture("Interface\\AddOns\\FS_Core\\media\\ring512")
 		spinner:SetSize(size, size)
-		spinner:SetBlendMode("BLEND")
-		spinner:Color(1, 1, 1, 0.8)
+		spinner:SetBlendMode("ADD")
+		spinner:Color(0.8, 0.8, 0.8, 0.8)
 
 		spinner:SetClockwise(get_opt(opts, "clockwise", true))
 		spinner:SetReverse(get_opt(opts, "reverse", true))
