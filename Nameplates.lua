@@ -3,6 +3,7 @@ local Nameplates = FS:RegisterModule("Nameplates", "AceTimer-3.0")
 FS.Hud = Nameplates
 
 local pi2, pi_2 = math.pi * 2, math.pi / 2
+local inf = math.huge
 
 local hud = CreateFrame("Frame", "FSNameplateHUD", UIParent)
 hud:SetFrameStrata("BACKGROUND")
@@ -261,6 +262,24 @@ do
 end
 
 -------------------------------------------------------------------------------
+-- Aura tracking
+-------------------------------------------------------------------------------
+
+local function setup_aura_tracking(guid, aura, buff)
+	local unit = UnitExists(guid) and guid or FS.Roster:GetUnit(guid)
+	if not unit then
+		error("Cannot find unit " .. guid .. " for aura-tracking HUD object")
+	end
+	local spell = type(aura) == "string" and duration or GetSpellInfo(aura < 0 and -aura or aura)
+	local auraType = buff and UnitBuff or UnitDebuff
+	return function(self)
+		local _, _, _, _, _, duration, expires = auraType(guid, spell)
+		if not duration then return 1 end
+		return 1 - (expires - GetTime()) / duration
+	end
+end
+
+-------------------------------------------------------------------------------
 -- Object API
 -------------------------------------------------------------------------------
 
@@ -356,6 +375,9 @@ function NameplateObject:SetColor(r, g, b, a, ...)
 	if self.frame.text then
 		self.frame.text:SetTextColor(r, g, b, a, ...)
 	end
+	if self.spinner then
+		self.spinner:SetVertexColor(r, g, b, a, ...)
+	end
 	return self
 end
 
@@ -390,6 +412,7 @@ function NameplateObject:Remove()
 	if not next(objects) then
 		Nameplates.objects[self.owner] = nil
 	end
+	if self.CleanupHook then self:CleanupHook() end
 	if self.OnRemove then self:OnRemove() end
 	free_frame(self.frame)
 end
@@ -481,6 +504,7 @@ end
 -- Generic circle
 function Nameplates:DrawCircle(guid, radius, tex_path)
 	local circle = self:CreateObject(guid, { radius = radius })
+	local smoothing = false
 
 	local tex = circle:UseTexture(tex_path)
 	tex:SetBlendMode("ADD")
@@ -491,13 +515,25 @@ function Nameplates:DrawCircle(guid, radius, tex_path)
 		return self
 	end
 
+	local target, current = 0, inf
 	function circle:Update()
 		local size = self.radius * 2
 		if self.Rotate then
 			size = size * (2 ^ 0.5)
-			tex:SetRotation(self:Rotate() % pi2)
+			target = self:Rotate()
+			if smoothing and current ~= inf then
+				current = current + (target - current) / 3
+			else
+				current = target
+			end
+			tex:SetRotation(current % pi2)
 		end
 		self.frame:SetSize(size, size)
+	end
+
+	function circle:SetSmooth(smooth)
+		smoothing = smooth
+		return self
 	end
 
 	circle:Update()
@@ -523,35 +559,30 @@ function Nameplates:DrawTarget(guid, radius)
 	return target
 end
 
--- Timer
-function Nameplates:DrawTimer(guid, radius, duration)
-	local timer = self:DrawCircle(guid, radius, "Interface\\AddOns\\FS_Core\\media\\timer")
+-- Clock
+function Nameplates:DrawClock(guid, radius, duration, buff)
+	local clock = self:DrawCircle(guid, radius, "Interface\\AddOns\\FS_Core\\media\\timer")
 
 	-- Timer informations
 	local done = false
 	local rotate = 0
 
 	if not duration then
-		function timer:Progress()
+		function clock:Progress()
 			return 0
 		end
-	elseif (type(duration) == "string" or duration < 0) and UnitExists(guid) then
-		local spell = type(duration) == "string" and duration or GetSpellInfo(-duration)
-		function timer:Progress()
-			local _, _, _, _, _, duration, expires = UnitAura(guid, spell)
-			if not duration then return 0 end
-			return 1 - (expires - GetTime()) / duration
-		end
+	elseif type(duration) == "string" or duration < 0 or duration > 10000 then
+		clock.Progress = setup_aura_tracking(guid, duration, buff)
 	else
 		local start = GetTime()
 
-		function timer:Progress()
+		function clock:Progress()
 			if not duration then return 0 end
 			local dt = GetTime() - start
-			return dt < duration and dt / duration or 0
+			return dt < duration and dt / duration or 1
 		end
 
-		function timer:Reset(d)
+		function clock:Reset(d)
 			start = GetTime()
 			duration = d
 			done = false
@@ -560,24 +591,28 @@ function Nameplates:DrawTimer(guid, radius, duration)
 	end
 
 	-- Hook the Update() function directly to let the OnUpdate() hook available for user code
-	local circle_update = timer.Update
-	function timer:Update()
+	local circle_update = clock.Update
+	function clock:Update()
 		local pct = self:Progress()
 		if pct < 0 then pct = 0 end
 		if pct > 1 then pct = 1 end
+		rotate = pi2 * pct
 		if pct == 1 and not done then
 			done = true
 			if self.OnDone then self:OnDone() end
 		end
-		rotate = pi2 * pct
-		circle_update(timer)
+		circle_update(clock)
 	end
 
-	function timer:Rotate()
+	function clock:OnDone()
+		self:Remove()
+	end
+
+	function clock:Rotate()
 		return rotate
 	end
 
-	return timer
+	return clock
 end
 
 -- Line
@@ -640,4 +675,158 @@ function Nameplates:DrawText(owner, label, size)
 	end
 
 	return obj
+end
+
+-- Spinner
+do
+	local spinner_pool = {}
+
+	local function alloc_spinner(anchor)
+		local spinner
+		if #spinner_pool > 0 then
+			spinner = table.remove(spinner_pool)
+		else
+			spinner = FS.Util.Spinner.Create()
+		end
+		spinner.frame:SetParent(anchor.frame)
+		spinner.frame:SetPoint("CENTER", anchor.frame, "CENTER")
+		spinner.frame:Show()
+		return spinner
+	end
+
+	local function free_spinner(spinner)
+		spinner:Hide()
+		table.insert(spinner_pool, spinner)
+	end
+
+	function Nameplates:DrawSpinner(guid, radius, duration, buff)
+		local done = false
+
+		local parent = self:CreateObject(guid):SetSize(1, 1)
+		local spinner = alloc_spinner(parent)
+		local smoothing = false
+
+		local size = radius * 2.3 -- To match DrawCircle radius
+		spinner:SetTexture("Interface\\AddOns\\FS_Core\\media\\ring512")
+		spinner:SetSize(size, size)
+		spinner:SetBlendMode("ADD")
+		spinner:Color(0.8, 0.8, 0.8, 0.8)
+
+		spinner:SetClockwise(true)
+
+		if not duration then
+			function parent:Progress()
+				return 0
+			end
+		elseif type(duration) == "string" or duration < 0 or duration > 10000 then
+			parent.Progress = setup_aura_tracking(guid, duration, buff)
+		else
+			local start = GetTime()
+
+			function parent:Progress()
+				if not duration then return 0 end
+				local dt = GetTime() - start
+				return dt < duration and dt / duration or 1
+			end
+
+			function parent:Reset(d)
+				start = GetTime()
+				duration = d
+				done = false
+				return self
+			end
+		end
+
+		-- Hook the Update() function directly to let the OnUpdate() hook available for user code
+		local target, current = 0, inf
+		function parent:Update(dt)
+			local pct = self:Progress()
+			if pct < 0 then pct = 0 end
+			if pct > 1 then pct = 1 end
+			target = pct
+			if smoothing and current ~= inf then
+				current = current + (target - current) / 3
+			else
+				current = target
+			end
+			spinner:SetValue(current)
+			if pct == 1 and not done then
+				done = true
+				if self.OnDone then self:OnDone() end
+			end
+		end
+
+		function parent:OnDone()
+			self:Remove()
+		end
+
+		function parent:CleanupHook()
+			free_spinner(spinner)
+		end
+
+		function parent:SetSmooth(smooth)
+			smoothing = smooth
+			return self
+		end
+
+		function parent:SetRadius(radius)
+			local size = radius * 2.3 -- To match DrawCircle radius
+			spinner:SetSize(size, size)
+			return self
+		end
+
+		function parent:SetColor(r, g, b, a, ...)
+			if r > 1 then r = r / 255 end
+			if g > 1 then g = g / 255 end
+			if b > 1 then b = b / 255 end
+			if a and a > 1 then a = a / 255 end
+			spinner:Color(r, g, b, a, ...)
+			return self
+		end
+
+		function parent:SetBlendMode(...)
+			spinner:SetBlendMode(...)
+			return self
+		end
+
+		function parent:SetClockwise(...)
+			spinner:SetClockwise(...)
+			return self
+		end
+
+		return parent
+	end
+end
+
+do
+	local timer_mt = {
+		__index = function(self, key)
+			local clock_fn = self.clock[key]
+			local spinner_fn = self.spinner[key]
+			local clock_is_fn = type(clock_fn) == "function"
+			local spinner_is_fn = type(spinner_fn) == "function"
+			if clock_is_fn or spinner_is_fn then
+				return function(_, ...)
+					if clock_is_fn then
+						clock_fn(self.clock, ...)
+					end
+					if spinner_is_fn then
+						spinner_fn(self.spinner, ...)
+					end
+					return self
+				end
+			end
+		end,
+		__newindex = function(self, key, value)
+			self.clock[key] = value
+			self.spinner[key] = value
+		end
+	}
+
+	function Nameplates:DrawTimer(guid, radius, duration, buff)
+		local obj = {}
+		obj.clock = self:DrawClock(guid, radius, duration, buff)
+		obj.spinner = self:DrawSpinner(guid, radius, duration, buff)
+		return setmetatable(obj, timer_mt)
+	end
 end

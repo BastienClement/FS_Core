@@ -36,6 +36,8 @@ libs\LibArtifactData-1.0.lua
 
 Core.lua
 
+utils\Spinner.lua
+
 Config.lua
 Debug.lua
 
