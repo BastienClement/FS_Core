@@ -265,17 +265,22 @@ end
 -- Aura tracking
 -------------------------------------------------------------------------------
 
-local function setup_aura_tracking(guid, aura, buff)
+local function setup_aura_tracking(self, guid, aura, buff)
 	local unit = UnitExists(guid) and guid or FS.Roster:GetUnit(guid)
 	if not unit then
 		error("Cannot find unit " .. guid .. " for aura-tracking HUD object")
 	end
 	local spell = type(aura) == "string" and duration or GetSpellInfo(aura < 0 and -aura or aura)
+	if buff == nil then buff = not not UnitBuff(unit, spell) end
 	local auraType = buff and UnitBuff or UnitDebuff
-	return function(self)
-		local _, _, _, _, _, duration, expires = auraType(guid, spell)
-		if not duration then return 1 end
-		return 1 - (expires - GetTime()) / duration
+	function self:TimeLeft()
+		local _, _, _, _, _, duration, expires = auraType(unit, spell)
+		local left = duration and expires - GetTime() or 0
+		return left, duration or 1
+	end
+	function self:Progress()
+		local left, total = self:TimeLeft()
+		return 1 - left / total
 	end
 end
 
@@ -472,7 +477,6 @@ function Nameplates:DrawTexture(guid, width, height, tex_path)
 	end
 
 	function texture:Update()
-		if self.OnUpdate then self:OnUpdate() end
 		local width, height = self.width, self.height
 		if self.Rotate then
 			-- Rotation require a multiplier on size
@@ -571,8 +575,8 @@ function Nameplates:DrawClock(guid, radius, duration, buff)
 		function clock:Progress()
 			return 0
 		end
-	elseif type(duration) == "string" or duration < 0 or duration > 10000 then
-		clock.Progress = setup_aura_tracking(guid, duration, buff)
+	elseif type(duration) == "string" or duration < 0 or duration > 1000 then
+		setup_aura_tracking(clock, guid, duration, buff)
 	else
 		local start = GetTime()
 
@@ -718,8 +722,8 @@ do
 			function parent:Progress()
 				return 0
 			end
-		elseif type(duration) == "string" or duration < 0 or duration > 10000 then
-			parent.Progress = setup_aura_tracking(guid, duration, buff)
+		elseif type(duration) == "string" or duration < 0 or duration > 1000 then
+			setup_aura_tracking(parent, guid, duration, buff)
 		else
 			local start = GetTime()
 
@@ -823,10 +827,10 @@ do
 		end
 	}
 
-	function Nameplates:DrawTimer(guid, radius, duration, buff)
+	function Nameplates:DrawTimer(...)
 		local obj = {}
-		obj.clock = self:DrawClock(guid, radius, duration, buff)
-		obj.spinner = self:DrawSpinner(guid, radius, duration, buff)
+		obj.clock = self:DrawClock(...)
+		obj.spinner = self:DrawSpinner(...)
 		return setmetatable(obj, timer_mt)
 	end
 end
