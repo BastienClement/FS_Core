@@ -9,6 +9,9 @@ LibStub("AceConsole-3.0"):Embed(FS)
 
 FS:SetDefaultModuleLibraries("AceEvent-3.0", "AceConsole-3.0")
 
+local LSM = LibStub("LibSharedMedia-3.0")
+LSM:Register("font", "Fira Mono Medium", "Interface\\Addons\\FS_Core\\media\\FiraMono-Medium.ttf")
+
 -- Version
 do
 	local version_str = "@project-version@"

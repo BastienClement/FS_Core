@@ -2,6 +2,8 @@ local _, FS = ...
 local Nameplates = FS:RegisterModule("Nameplates", "AceTimer-3.0")
 FS.Hud = Nameplates
 
+local LSM = LibStub("LibSharedMedia-3.0")
+
 local pi2, pi_2 = math.pi * 2, math.pi / 2
 local inf = math.huge
 
@@ -667,7 +669,7 @@ function Nameplates:DrawText(owner, label, size)
 
 	function obj:SetFont(s, f, o)
 		size = s or size
-		font = f or font
+		font = (f and LSM:Fetch("font", f, true) or f) or font
 		outline = o or outline
 		text:SetFont(font, size, outline)
 		return self
