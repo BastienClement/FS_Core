@@ -1,4 +1,4 @@
-## Interface: 70100
+## Interface: 70200
 ## Title: |cff64b4ffFrom Scratch|r Core
 ## Notes: A framework to build powerful addons, WeakAuras and enhancing boss mods for high-end raiding
 ## SavedVariables: FSDB, PACMAN_DB
