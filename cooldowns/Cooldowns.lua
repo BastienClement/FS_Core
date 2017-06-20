@@ -624,55 +624,57 @@ do
 		local fails = 0
 
 		for id, cd in unit:IterateCooldowns() do
-			local name = GetSpellInfo(id)
-			local known = IsSpellKnown(id)
-			if not known and cd.spell.alias then
-				for _, alias in ipairs(cd.spell.alias) do
-					if IsSpellKnown(alias) then
-						known = true
-						break
-					end
-				end
-			end
-			if not known then
-				fails = fails + print_once("|cffffff00Spell %s is not known by the player", name)
-			elseif not cd.spell.nocheck then
-				do -- Cooldown
-					local def_cd = cd.spell.cooldown
-					FsCooldownsTooltip:ClearLines()
-					FsCooldownsTooltip:SetSpellByID(id)
-
-					local found = false
-					for i = 2, FsCooldownsTooltip:NumLines() do
-						local text = _G["FsCooldownsTooltipTextRight" .. i]
-						text = text and text:GetText()
-						if text and (text:find("cooldown") or text:find("recharge")) then
-							local value, unit = text:match("^([%d\.]+) (%a+)")
-							value = tonumber(value)
-							if value and unit then
-								if not unit_multiplier[unit] then
-									fails = fails + print_once("|cffffff00Invalid cooldown unit for spell %s: '%s'", name, unit)
-								else
-									found = true
-									value = value * unit_multiplier[unit]
-									if math.abs(math.floor(value) - math.floor(def_cd)) > 2 then
-										fails = fails + print_once("|cffffff00%s cooldown discrepancy: %d (actual %d)", name, def_cd, value)
-									end
-								end
-							end
+			if not cd.spell.encounter then
+				local name = GetSpellInfo(id)
+				local known = IsSpellKnown(id)
+				if not known and cd.spell.alias then
+					for _, alias in ipairs(cd.spell.alias) do
+						if IsSpellKnown(alias) then
+							known = true
 							break
 						end
 					end
-
-					if not found then
-						fails = fails + print_once("|cffffff00Unable to check %s actual cooldown", name)
-					end
 				end
-				do -- Charges
-					local charges = cd.spell.charges or 1
-					local actual = GetSpellCharges(id) or 1
-					if charges ~= actual then
-						fails = fails + print_once("|cffffff00%s charges discrepancy: %d (actual %d)", name, charges, actual)
+				if not known then
+					fails = fails + print_once("|cffffff00Spell %s is not known by the player", name)
+				elseif not cd.spell.nocheck then
+					do -- Cooldown
+						local def_cd = cd.spell.cooldown
+						FsCooldownsTooltip:ClearLines()
+						FsCooldownsTooltip:SetSpellByID(id)
+
+						local found = false
+						for i = 2, FsCooldownsTooltip:NumLines() do
+							local text = _G["FsCooldownsTooltipTextRight" .. i]
+							text = text and text:GetText()
+							if text and (text:find("cooldown") or text:find("recharge")) then
+								local value, unit = text:match("^([%d\.]+) (%a+)")
+								value = tonumber(value)
+								if value and unit then
+									if not unit_multiplier[unit] then
+										fails = fails + print_once("|cffffff00Invalid cooldown unit for spell %s: '%s'", name, unit)
+									else
+										found = true
+										value = value * unit_multiplier[unit]
+										if math.abs(math.floor(value) - math.floor(def_cd)) > 2 then
+											fails = fails + print_once("|cffffff00%s cooldown discrepancy: %d (actual %d)", name, def_cd, value)
+										end
+									end
+								end
+								break
+							end
+						end
+
+						if not found then
+							fails = fails + print_once("|cffffff00Unable to check %s actual cooldown", name)
+						end
+					end
+					do -- Charges
+						local charges = cd.spell.charges or 1
+						local actual = GetSpellCharges(id) or 1
+						if charges ~= actual then
+							fails = fails + print_once("|cffffff00%s charges discrepancy: %d (actual %d)", name, charges, actual)
+						end
 					end
 				end
 			end
