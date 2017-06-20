@@ -631,6 +631,7 @@ do
 					for _, alias in ipairs(cd.spell.alias) do
 						if IsSpellKnown(alias) then
 							known = true
+							id = alias
 							break
 						end
 					end
