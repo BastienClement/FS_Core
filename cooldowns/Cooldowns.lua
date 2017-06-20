@@ -608,6 +608,9 @@ do
 		if not printed[msg] then
 			printed[msg] = true
 			Cooldowns:Print(msg)
+			return 1
+		else
+			return 0
 		end
 	end
 
@@ -632,7 +635,7 @@ do
 				end
 			end
 			if not known then
-				print_once("|cffffff00Spell %s is not known by the player", name)
+				fails = fails + print_once("|cffffff00Spell %s is not known by the player", name)
 			elseif not cd.spell.nocheck then
 				do -- Cooldown
 					local def_cd = cd.spell.cooldown
@@ -648,13 +651,12 @@ do
 							value = tonumber(value)
 							if value and unit then
 								if not unit_multiplier[unit] then
-									print_once("|cffffff00Invalid cooldown unit for spell %s: '%s'", name, unit)
+									fails = fails + print_once("|cffffff00Invalid cooldown unit for spell %s: '%s'", name, unit)
 								else
 									found = true
 									value = value * unit_multiplier[unit]
-									if value ~= def_cd then
-										fails = fails + 1
-										print_once("|cffffff00%s cooldown discrepancy: %d (actual %d)", name, def_cd, value)
+									if math.abs(math.floor(value) - math.floor(def_cd)) > 2 then
+										fails = fails + print_once("|cffffff00%s cooldown discrepancy: %d (actual %d)", name, def_cd, value)
 									end
 								end
 							end
@@ -663,22 +665,21 @@ do
 					end
 
 					if not found then
-						print_once("|cffffff00Unable to check %s actual cooldown", name)
-						fails = fails + 1
+						fails = fails + print_once("|cffffff00Unable to check %s actual cooldown", name)
 					end
 				end
 				do -- Charges
 					local charges = cd.spell.charges or 1
 					local actual = GetSpellCharges(id) or 1
 					if charges ~= actual then
-						fails = fails + 1
-						print_once("|cffffff00%s charges discrepancy: %d (actual %d)", name, charges, actual)
+						fails = fails + print_once("|cffffff00%s charges discrepancy: %d (actual %d)", name, charges, actual)
 					end
 				end
 			end
 		end
 
 		if fails > 0 then
+			Cooldowns:Printf("*** Please report this! ***")
 			--Cooldowns:Printf("You can disable %s from the module config panel", fails > 1 and "these messages" or "this message")
 		end
 	end
@@ -763,14 +764,16 @@ do
 			end
 		end
 
-		--[[
-		if guid == UnitGUID("player") and not pending_player_check and not self.settings.disable_check then
+		if guid == UnitGUID("player") and not pending_player_check --[[and not self.settings.disable_check]] then
 			pending_player_check = true
-			C_Timer.After(0.5, function()
+			C_Timer.After(5, function()
 				check_player(unit)
 			end)
 		end
-		]]
+	end
+
+	function Cooldowns:CheckPlayerCooldowns()
+		check_player(self.units[UnitGUID("player")])
 	end
 end
 

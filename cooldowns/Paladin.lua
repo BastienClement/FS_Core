@@ -5,30 +5,27 @@ local SPEC_HOLY = 65
 local SPEC_PROTECTION = 66
 local SPEC_RETRIBUTION  = 70
 
-local function UnbreakableSpirit(unit) return unit:HasTalent(17575) and 0.7 or 1 end
+local function UnbreakableSpirit(unit) return unit:HasTalentSpell(114154) and 0.7 or 1 end
+local function DivineIntervention(unit) return unit:HasTalentSpell(213313) and 0.8 or 1 end
 
 local function BlessingsOfTheSilverHand(unit) return 1 - unit:GetArtifactSpellRank(200298) * 0.05 end
 local function ProtectionOfTheLight(unit) return unit:GetArtifactSpellRank(200407) * 4 end
 local function TemplarOfTheLight(unit) return unit:GetArtifactSpellRank(200311) * 2 end
-local function FocusedHealing(unit) return 1 - unit:GetArtifactSpellRank(200326) * 0.1 end
+local function FocusedHealing(unit) return 1 + unit:GetArtifactSpellRank(200326) * 0.1 end
 local function SacrificeOfTheJust(unit) return unit:GetArtifactSpellRank(209285) * 60 end
 local function UnflinchingDefense(unit) return unit:GetArtifactSpellRank(209220) * 10 end
 local function ProtectorOfTheAshenBlade(unit) return 1 - unit:GetArtifactSpellRank(186944) * 0.1 end
 
 Cooldowns:RegisterSpells("PALADIN", {
-	[498] = { -- Divine Protection
-		cooldown = function(unit) return 60 * UnbreakableSpirit(unit) end,
-		duration = function(unit) return 8 + ProtectionOfTheLight(unit) end,
-		icon = 524353,
-		spec = { SPEC_HOLY, SPEC_RETRIBUTION }
-	},
 	[642] = { -- Divine Shield
-		cooldown = function(unit) return 300 * UnbreakableSpirit(unit) end,
+		cooldown = function(unit) return 300 * UnbreakableSpirit(unit) * DivineIntervention(unit) end,
 		duration = 8
 		-- Prot Artifact makes it rechage faster with Forbearance
 	},
 	[633] = { -- Lay on Hands
-		cooldown = function(unit) return 600 * UnbreakableSpirit(unit) * FocusedHealing(unit) end
+		cooldown = function(unit)
+			return 600 * UnbreakableSpirit(unit) / FocusedHealing(unit)
+		end
 		-- Prot Artifact makes it rechage faster with Forbearance
 	},
 	[1044] = { -- Blessing of Freedom
@@ -45,7 +42,7 @@ Cooldowns:RegisterSpells("PALADIN", {
 		-- Prot Artifact makes it rechage faster with Forbearance
 	},
 	[6940] = { -- Blessing of Sacrifice
-		cooldown = function(unit) return (120 - SacrificeOfTheJust(unit)) * BlessingsOfTheSilverHand(unit) end,
+		cooldown = function(unit) return (150 - SacrificeOfTheJust(unit)) * BlessingsOfTheSilverHand(unit) end,
 		duration = 12,
 		spec = { SPEC_HOLY, SPEC_PROTECTION }
 	},
@@ -59,6 +56,13 @@ Cooldowns:RegisterSpells("PALADIN", {
 	[31821] = { -- Aura Mastery
 		cooldown = 180,
 		duration = function(unit) return 6 + TemplarOfTheLight(unit) end,
+		spec = SPEC_HOLY
+	},
+	[498] = {
+		-- Divine Protection
+		cooldown = function(unit) return 60 * UnbreakableSpirit(unit) end,
+		duration = function(unit) return 8 + ProtectionOfTheLight(unit) end,
+		icon = 524353,
 		spec = SPEC_HOLY
 	},
 
