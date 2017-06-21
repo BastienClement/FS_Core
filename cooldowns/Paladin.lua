@@ -16,6 +16,15 @@ local function SacrificeOfTheJust(unit) return unit:GetArtifactSpellRank(209285)
 local function UnflinchingDefense(unit) return unit:GetArtifactSpellRank(209220) * 10 end
 local function ProtectorOfTheAshenBlade(unit) return 1 - unit:GetArtifactSpellRank(186944) * 0.1 end
 
+local function UthersGuard(unit) return unit:HasLegendary(137105) and 1.5 or 1 end
+local function TyrsHandOfFaith(unit) return unit:HasLegendary(137059) and 0.3 or 1 end
+
+local function HandDuration(base)
+	return function(unit)
+		return base * UthersGuard(unit)
+	end
+end
+
 Cooldowns:RegisterSpells("PALADIN", {
 	[642] = { -- Divine Shield
 		cooldown = function(unit) return 300 * UnbreakableSpirit(unit) * DivineIntervention(unit) end,
@@ -24,7 +33,7 @@ Cooldowns:RegisterSpells("PALADIN", {
 	},
 	[633] = { -- Lay on Hands
 		cooldown = function(unit)
-			return 600 * UnbreakableSpirit(unit) / FocusedHealing(unit)
+			return 600 * UnbreakableSpirit(unit) / FocusedHealing(unit) * TyrsHandOfFaith(unit)
 		end
 		-- Prot Artifact makes it rechage faster with Forbearance
 	},
@@ -32,18 +41,18 @@ Cooldowns:RegisterSpells("PALADIN", {
 		cooldown = function(unit)
 			return 25 * BlessingsOfTheSilverHand(unit)
 		end,
-		duration = 8
+		duration = HandDuration(8)
 	},
 	[1022] = { -- Blessing of Protection
 		cooldown = function(unit) return 300 * BlessingsOfTheSilverHand(unit) * ProtectorOfTheAshenBlade(unit) end,
-		duration = 10,
+		duration = HandDuration(10),
 		icon = 135964,
 		available = function(unit) return not unit:HasTalent(22433) end
 		-- Prot Artifact makes it rechage faster with Forbearance
 	},
 	[6940] = { -- Blessing of Sacrifice
 		cooldown = function(unit) return (150 - SacrificeOfTheJust(unit)) * BlessingsOfTheSilverHand(unit) end,
-		duration = 12,
+		duration = HandDuration(12),
 		spec = { SPEC_HOLY, SPEC_PROTECTION }
 	},
 

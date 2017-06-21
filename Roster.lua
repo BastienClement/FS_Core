@@ -4,6 +4,12 @@ local Roster = FS:RegisterModule("Roster", "AceTimer-3.0")
 local LGIST = LibStub:GetLibrary("LibGroupInSpecT-1.1")
 local LAD = LibStub:GetLibrary("LibArtifactData-1.0")
 
+local inventoryTracker = CreateFrame("Frame")
+inventoryTracker:RegisterUnitEvent("UNIT_INVENTORY_CHANGED", "player")
+inventoryTracker:SetScript("OnEvent", function(self, event, ...)
+	Roster:ScheduleLegendariesRebuild()
+end)
+
 -------------------------------------------------------------------------------
 -- Roster config
 --------------------------------------------------------------------------------
@@ -47,6 +53,7 @@ function Roster:OnInitialize()
 	self.infos = {}
 	self.artifacts = {}
 	self.playerArtifact = nil
+	self.legendaries = {}
 
 	LGIST.RegisterCallback(self, "GroupInSpecT_Update", "RosterUpdate")
 	LGIST.RegisterCallback(self, "GroupInSpecT_Remove", "RosterRemove")
@@ -58,14 +65,63 @@ function Roster:OnInitialize()
 	LAD.RegisterCallback(self, "ARTIFACT_RELIC_CHANGED", "ArtifactUpdate")
 	LAD.RegisterCallback(self, "ARTIFACT_TRAITS_CHANGED", "ArtifactUpdate")
 
-	self:RegisterMessage("FS_MSG_ROSTER_ARTIFACT")
-	self:RegisterEvent("GROUP_ROSTER_UPDATE", "ScheduleArtifactBroadcast")
+	self:RegisterMessage("FS_MSG_ROSTER_BROADCAST")
+	self:RegisterMessage("FS_MSG_ROSTER_REQUEST", "ScheduleBroadcast")
+	self:RegisterEvent("GROUP_ROSTER_UPDATE", "ScheduleBroadcast")
+	self:RegisterEvent("PLAYER_ENTERING_WORLD", "ScheduleLegendariesRebuild")
 end
 
 function Roster:OnEnable()
 end
 
 function Roster:OnDisable()
+end
+
+--------------------------------------------------------------------------------
+
+function Roster:PLAYER_ENTERING_WORLD()
+	if IsInGroup() then
+		FS:Send("ROSTER_REQUEST", true)
+	end
+	self:ScheduleLegendariesRebuild()
+end
+
+--------------------------------------------------------------------------------
+
+do
+	local function broadcast()
+		if IsInGroup() then
+			local guid = UnitGUID("player")
+			FS:Send("ROSTER_BROADCAST", { guid, Roster.artifacts[guid], Roster.legendaries[guid] })
+		end
+	end
+
+	local pending = false
+	local last_update = 0
+
+	function Roster:ScheduleBroadcast()
+		if not pending then
+			pending = true
+			local delta = GetTime() - last_update
+			C_Timer.After((delta < 30) and 30 or 5, function()
+				broadcast()
+				pending = false
+				last_update = GetTime()
+			end)
+		end
+	end
+
+	function Roster:FS_MSG_ROSTER_BROADCAST(_, data)
+		local guid = data[1]
+		local artifact = data[2]
+		local legendaries = data[3]
+
+		if guid == UnitGUID("player") then return end
+
+		Roster.artifacts[guid] = artifact
+		Roster.legendaries[guid] = legendaries
+		Roster:SendMessage("FS_ROSTER_UPDATE", guid, Roster:GetUnit(guid), Roster:GetInfo(guid))
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -157,6 +213,8 @@ do
 	end
 end
 
+
+
 --------------------------------------------------------------------------------
 
 function Roster:GetUnit(guid)
@@ -176,6 +234,7 @@ function Roster:GetInfo(guid)
 	local info = self.infos[guid]
 	if not info then return end
 	info.artifact = self.artifacts[guid]
+	info.legendaries = self.legendaries[guid]
 	return info
 end
 
@@ -190,26 +249,6 @@ end
 --------------------------------------------------------------------------------
 
 do
-	local function broadcast()
-		local guid = UnitGUID("player")
-		FS:Send("ROSTER_ARTIFACT", { guid, Roster.artifacts[guid] })
-	end
-
-	local pending = false
-	local last_update = 0
-
-	function Roster:ScheduleArtifactBroadcast()
-		if not pending and IsInGroup() then
-			pending = true
-			local delta = GetTime() - last_update
-			C_Timer.After((delta < 30) and 30 or 5, function()
-				broadcast()
-				pending = false
-				last_update = GetTime()
-			end)
-		end
-	end
-
 	local function rebuild()
 		local guid = UnitGUID("player")
 
@@ -235,7 +274,7 @@ do
 
 		Roster.artifacts[guid] = data
 		Roster:SendMessage("FS_ROSTER_UPDATE", guid, "player", Roster:GetInfo(guid))
-		Roster:ScheduleArtifactBroadcast()
+		Roster:ScheduleBroadcast()
 		Roster:SendMessage("FS_ROSTER_ARTIFACT_REBUILT")
 	end
 
@@ -255,15 +294,41 @@ do
 		self:SendMessage("FS_ROSTER_" .. tpe, ...)
 		self:ScheduleArtifactRebuild()
 	end
+end
 
-	function Roster:FS_MSG_ROSTER_ARTIFACT(_, data)
-		local guid = data[1]
-		local info = data[2]
+--------------------------------------------------------------------------------
 
-		if guid == UnitGUID("player") then return end
+do
+	local function rebuild()
+		local guid = UnitGUID("player")
 
-		Roster.artifacts[guid] = info
-		Roster:SendMessage("FS_ROSTER_UPDATE", guid, Roster:GetUnit(guid), Roster:GetInfo(guid))
+		local data = {}
+		for slot = INVSLOT_FIRST_EQUIPPED, INVSLOT_LAST_EQUIPPED do
+			local item = GetInventoryItemID("player", slot)
+			if item then
+				local _, _, quality = GetItemInfo(item)
+				if quality == 5 then
+					data[item] = true
+				end
+			end
+		end
+
+		Roster.legendaries[guid] = data
+		Roster:SendMessage("FS_ROSTER_UPDATE", guid, "player", Roster:GetInfo(guid))
+		Roster:ScheduleBroadcast()
+		Roster:SendMessage("FS_ROSTER_LEGENDARIES_REBUILT")
+	end
+
+	local rebuild_pending = false
+
+	function Roster:ScheduleLegendariesRebuild()
+		if not rebuild_pending then
+			rebuild_pending = true
+			C_Timer.After(0.5, function()
+				rebuild()
+				rebuild_pending = false
+			end)
+		end
 	end
 end
 

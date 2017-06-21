@@ -298,6 +298,10 @@ function Unit:GetArtifactSpellEffect(spellID, zero, ...)
 	return select(rank, ...)
 end
 
+function Unit:HasLegendary(id)
+	return self.info.legendaries[id] ~= nil
+end
+
 -- Returns the cooldown object for a given spell
 -- If tag is given, the function will try to find the most appropriate
 -- spell with the tag that is ready. If there is no spell with the tag
@@ -628,7 +632,8 @@ do
 				local name = GetSpellInfo(id)
 				local known = IsSpellKnown(id)
 				if not known and cd.spell.alias then
-					for _, alias in ipairs(cd.spell.alias) do
+					local aliases = (type(cd.spell.alias) == "table") and cd.spell.alias or { cd.spell.alias }
+					for _, alias in ipairs(aliases) do
 						if IsSpellKnown(alias) then
 							known = true
 							id = alias
@@ -767,10 +772,11 @@ do
 			end
 		end
 
-		if guid == UnitGUID("player") and not pending_player_check --[[and not self.settings.disable_check]] then
+		if guid == UnitGUID("player") and not pending_player_check --[[and not self.settings.disable_check]]
+		and unit.info.talents and unit.info.artifact then
 			pending_player_check = true
 			C_Timer.After(5, function()
-				check_player(unit)
+				check_player(self.units[guid])
 			end)
 		end
 	end
