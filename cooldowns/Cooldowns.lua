@@ -773,7 +773,7 @@ do
 		end
 
 		if guid == UnitGUID("player") and not pending_player_check --[[and not self.settings.disable_check]]
-		and unit.info.talents and unit.info.artifact then
+		and unit.info.talents and unit.info.artifact and unit.info.legendaries then
 			pending_player_check = true
 			C_Timer.After(5, function()
 				check_player(self.units[guid])

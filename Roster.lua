@@ -4,12 +4,6 @@ local Roster = FS:RegisterModule("Roster", "AceTimer-3.0")
 local LGIST = LibStub:GetLibrary("LibGroupInSpecT-1.1")
 local LAD = LibStub:GetLibrary("LibArtifactData-1.0")
 
-local inventoryTracker = CreateFrame("Frame")
-inventoryTracker:RegisterUnitEvent("UNIT_INVENTORY_CHANGED", "player")
-inventoryTracker:SetScript("OnEvent", function(self, event, ...)
-	Roster:ScheduleLegendariesRebuild()
-end)
-
 -------------------------------------------------------------------------------
 -- Roster config
 --------------------------------------------------------------------------------
@@ -67,7 +61,9 @@ function Roster:OnInitialize()
 
 	self:RegisterMessage("FS_MSG_ROSTER_BROADCAST")
 	self:RegisterMessage("FS_MSG_ROSTER_REQUEST", "ScheduleBroadcast")
+
 	self:RegisterEvent("GROUP_ROSTER_UPDATE", "ScheduleBroadcast")
+	self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED", "ScheduleLegendariesRebuild")
 	self:RegisterEvent("PLAYER_ENTERING_WORLD", "ScheduleLegendariesRebuild")
 end
 
@@ -324,7 +320,7 @@ do
 	function Roster:ScheduleLegendariesRebuild()
 		if not rebuild_pending then
 			rebuild_pending = true
-			C_Timer.After(0.5, function()
+			C_Timer.After(1, function()
 				rebuild()
 				rebuild_pending = false
 			end)
