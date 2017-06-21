@@ -66,7 +66,7 @@ Cooldowns:RegisterSpells("DEMONHUNTER", {
 		talent = true
 	},
 	[196555] = { -- Netherwalk
-		cooldown = 90,
+		cooldown = 120,
 		duration = 5,
 		talent = true
 	},
