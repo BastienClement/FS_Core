@@ -16,6 +16,9 @@ local function LightOfTheSun(unit) return unit:GetArtifactSpellRank(202918) * 15
 local function PerpetualSpring(unit) return 1 - unit:GetArtifactSpellRank(200402) * 0.03 end
 local function UrsocsEndurance(unit) return unit:GetArtifactSpellRank(200399) * 0.5 end
 
+local function DualDeterminationCharges(unit) return unit:HasLegendary(137041) and 1 or 0 end
+local function DualDeterminationCooldown(unit) return unit:HasLegendary(137041) and 1.15 or 1 end
+
 Cooldowns:RegisterSpells("DRUID", {
 	[77764] = { -- Stampeding Roar
 		cooldown = function(unit) return 120 * GutturalRoars(unit) end,
@@ -44,9 +47,9 @@ Cooldowns:RegisterSpells("DRUID", {
 		spec = SPEC_GUARDIAN
 	},
 	[61336] = { -- Survival Instinct
-		cooldown = function(unit) return 240 * SurvivalOfTheFittest(unit) end,
+		cooldown = function(unit) return 240 * SurvivalOfTheFittest(unit) / DualDeterminationCooldown(unit) end,
 		duration = function(unit) return 6 + HonedInstincts(unit) end,
-		charges = 2,
+		charges = function(unit) return 2 + DualDeterminationCharges(unit) end,
 		spec = SPEC_GUARDIAN
 	},
 

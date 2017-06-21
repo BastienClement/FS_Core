@@ -5,6 +5,8 @@ local SPEC_BREWMASTER = 268
 local SPEC_WINDWALKER = 269
 local SPEC_MISTWEAVER = 270
 
+local function FundamentalObservation(unit) return unit:HasLegendary(137063) and 0.5 or 1.0 end
+
 Cooldowns:RegisterSpells("MONK", {
 	[119996] = { -- Transcendence: Transert
 		cooldown = 25
@@ -12,7 +14,7 @@ Cooldowns:RegisterSpells("MONK", {
 
 	-- Brewmaster
 	[115176] = { -- Zen Meditation
-		cooldown = 300,
+		cooldown = function(unit) return 300 * FundamentalObservation(unit) end,
 		duration = 8,
 		spec = SPEC_BREWMASTER
 	},
