@@ -299,7 +299,7 @@ function Unit:GetArtifactSpellEffect(spellID, zero, ...)
 end
 
 function Unit:HasLegendary(id)
-	return self.info.legendaries[id] ~= nil
+	return self.info.legendaries and self.info.legendaries[id] ~= nil
 end
 
 -- Returns the cooldown object for a given spell
