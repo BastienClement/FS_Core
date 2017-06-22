@@ -630,11 +630,11 @@ do
 		for id, cd in unit:IterateCooldowns() do
 			if not cd.spell.encounter then
 				local name = GetSpellInfo(id)
-				local known = IsSpellKnown(id)
+				local known = IsSpellKnown(id) or FindSpellBookSlotBySpellID(id)
 				if not known and cd.spell.alias then
 					local aliases = (type(cd.spell.alias) == "table") and cd.spell.alias or { cd.spell.alias }
 					for _, alias in ipairs(aliases) do
-						if IsSpellKnown(alias) then
+						if IsSpellKnown(alias) or FindSpellBookSlotBySpellID(alias) then
 							known = true
 							id = alias
 							break
