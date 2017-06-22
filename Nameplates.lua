@@ -190,10 +190,20 @@ function Nameplates:RegisterObject(obj, name, remove)
 	self.registry[obj] = name
 end
 
-function Nameplates:RemoveObject(name)
-	for obj, key in pairs(self.registry) do
-		if key == name then
-			obj:Remove()
+do
+	local removed = {}
+	function Nameplates:RemoveObject(name)
+		wipe(removed)
+		for obj, key in pairs(self.registry) do
+			if key == name then
+				obj:Remove(true)
+				removed[#removed + 1] = obj
+			end
+		end
+		if #removed > 0 then
+			for _, obj in ipairs(removed) do
+				self.registry[obj] = nil
+			end
 		end
 	end
 end
@@ -410,10 +420,12 @@ function NameplateObject:Register(name, remove)
 	return self
 end
 
-function NameplateObject:Remove()
+function NameplateObject:Remove(soft)
 	if self.__removed then return end
 	self.__removed = true
-	Nameplates.registry[self] = nil
+	if not soft then
+		Nameplates.registry[self] = nil
+	end
 	local objects = Nameplates.objects[self.owner]
 	objects[self] = nil
 	if not next(objects) then
