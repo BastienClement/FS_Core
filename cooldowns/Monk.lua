@@ -46,7 +46,7 @@ Cooldowns:RegisterSpells("MONK", {
 
 	-- Talents
 	[122783] = { -- Diffuse Magic
-		cooldown = 120,
+		cooldown = 90,
 		duration = 6,
 		talent = true
 	},
