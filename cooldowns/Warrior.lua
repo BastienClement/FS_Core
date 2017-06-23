@@ -41,7 +41,7 @@ Cooldowns:RegisterSpells("WARRIOR", {
 
 	-- Arms
 	[118038] = { -- Die by the Sword
-		cooldown = 120,
+		cooldown = 180,
 		duration = 8,
 		spec = SPEC_ARMS
 	},
