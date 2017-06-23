@@ -845,6 +845,11 @@ do
 		local obj = {}
 		obj.clock = self:DrawClock(...)
 		obj.spinner = self:DrawSpinner(...)
+		function obj:Register(key, remove)
+			obj.clock:Register(key, remove)
+			obj.spinner:Register(key)
+			return obj
+		end
 		return setmetatable(obj, timer_mt)
 	end
 end
