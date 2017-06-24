@@ -274,7 +274,7 @@ do
 end
 
 -------------------------------------------------------------------------------
--- Aura tracking
+-- Spinner API & Aura tracking
 -------------------------------------------------------------------------------
 
 local function setup_aura_tracking(self, guid, aura, buff)
@@ -594,6 +594,10 @@ function Nameplates:DrawClock(guid, radius, duration, buff)
 	else
 		local start = GetTime()
 
+		function clock:TimeLeft()
+			return start + duration - GetTime(), duration
+		end
+
 		function clock:Progress()
 			if not duration then return 0 end
 			local dt = GetTime() - start
@@ -717,7 +721,7 @@ do
 		table.insert(spinner_pool, spinner)
 	end
 
-	function Nameplates:DrawSpinner(guid, radius, duration, buff)
+	function Nameplates:DrawSpinner(guid, radius, duration, buff, clock)
 		local done = false
 
 		local parent = self:CreateObject(guid):SetSize(1, 1)
@@ -740,6 +744,10 @@ do
 			setup_aura_tracking(parent, guid, duration, buff)
 		else
 			local start = GetTime()
+
+			function parent:TimeLeft()
+				return start + duration - GetTime(), duration
+			end
 
 			function parent:Progress()
 				if not duration then return 0 end
@@ -817,6 +825,12 @@ do
 end
 
 do
+	local function pack_and_count(...)
+		return { ... }, select("#", ...)
+	end
+
+	local nothing = {}
+
 	local timer_mt = {
 		__index = function(self, key)
 			local clock_fn = self.clock[key]
@@ -825,19 +839,49 @@ do
 			local spinner_is_fn = type(spinner_fn) == "function"
 			if clock_is_fn or spinner_is_fn then
 				return function(_, ...)
+					local clock_ret, clock_ret_count = nothing, 0
 					if clock_is_fn then
-						clock_fn(self.clock, ...)
+						clock_ret, clock_ret_count = pack_and_count(clock_fn(self.clock, ...))
 					end
+
+					local spinner_ret, spinner_ret_count = nothing, 0
 					if spinner_is_fn then
-						spinner_fn(self.spinner, ...)
+						spinner_ret, spinner_ret_count = pack_and_count(spinner_fn(self.spinner, ...))
 					end
-					return self
+
+					if (clock_ret_count == 0 or clock_ret[1] == self.clock)
+						and (spinner_ret_count == 0 or spinner_ret[1] == self.spinner)
+						and (clock_ret_count > 0 or spinner_ret_count > 0) then
+						return self
+					elseif (clock_ret_count > 0 and spinner_ret_count == 0) then
+						return unpack(clock_ret)
+					elseif (spinner_ret_count > 0 and clock_ret_count == 0) then
+						return unpack(spinner_ret)
+					elseif clock_ret_count == spinner_ret_count then
+						for i = 1, clock_ret_count do
+							if clock_ret[i] ~= spinner_ret[i] then
+								error("Inconsistant return value '" .. i .. "' for method '" .. tostring(key) .. "' on a Timer object")
+							end
+						end
+						return unpack(clock_ret)
+					else
+						error("Inconsistant return value count for method '" .. tostring(key) .. "' on a Timer object")
+					end
 				end
+			else
+				error("Accessing non-function key '" .. tostring(key) .. "' from a Timer object")
 			end
 		end,
 		__newindex = function(self, key, value)
-			self.clock[key] = value
-			self.spinner[key] = value
+			if type(key) == "string" and key:find("^On") then
+				-- Assign handlers only to the clock object, but invoke the
+				-- method with the full timer as self argument
+				self.clock[key] = function(_, ...)
+					value(self, ...)
+				end
+			else
+				error("Assigning non-handler key '" .. tostring(key) .. "' to a Timer object")
+			end
 		end
 	}
 
@@ -845,11 +889,19 @@ do
 		local obj = {}
 		obj.clock = self:DrawClock(...)
 		obj.spinner = self:DrawSpinner(...)
+
+		-- Special handling for Register to ignore the `remove` argument for the Spinner
 		function obj:Register(key, remove)
 			obj.clock:Register(key, remove)
 			obj.spinner:Register(key)
 			return obj
 		end
+
+		-- Spinner's OnDone is Clock OnRemove with the Spinner as `self` argument
+		function obj.spinner:OnDone(...)
+			obj.clock.OnDone(self, ...)
+		end
+
 		return setmetatable(obj, timer_mt)
 	end
 end
