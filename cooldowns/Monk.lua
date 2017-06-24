@@ -5,6 +5,8 @@ local SPEC_BREWMASTER = 268
 local SPEC_WINDWALKER = 269
 local SPEC_MISTWEAVER = 270
 
+local function TendrilsOfRevival(unit) return unit:GetArtifactSpellRank(238058) * 10 end
+
 local function FundamentalObservation(unit) return unit:HasLegendary(137063) and 0.5 or 1.0 end
 
 Cooldowns:RegisterSpells("MONK", {
@@ -28,7 +30,7 @@ Cooldowns:RegisterSpells("MONK", {
 
 	-- Mistsweaver
 	[115310] = { -- Revival
-		cooldown = 180,
+		cooldown = function(unit) return 180 - TendrilsOfRevival(unit) end,
 		spec = SPEC_MISTWEAVER
 	},
 	[116849] = { -- Life Cocoon
