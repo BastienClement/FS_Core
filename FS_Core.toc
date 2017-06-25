@@ -5,6 +5,7 @@
 ## Dependencies: Blizzard_ArtifactUI
 ## OptionalDeps: LibStub, CallbackHandler-1.0, Ace3, LibGroupInSpecT-1.1, LibSharedMedia-3.0
 ## OptionalDeps: BigWigs, LibStrataFix, LibCompress, LibDualSpec-1.0, AceGUI-3.0-SharedMediaWidgets
+## X-FS-Addon: 1
 
 #@no-lib-strip@
 libs\Ace3\LibStub\LibStub.lua
