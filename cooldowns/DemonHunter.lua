@@ -42,7 +42,7 @@ Cooldowns:RegisterSpells("DEMONHUNTER", {
 
 	-- Vengeance
 	[202138] = { -- Sigil of Chains
-		cooldown = function(unit) return 120 * QuickenedSigils(unit) end,
+		cooldown = function(unit) return 90 * QuickenedSigils(unit) end,
 		spec = SPEC_VENGEANCE
 	},
 	[202137] = { -- Sigil of Silence
