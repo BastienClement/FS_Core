@@ -1,6 +1,6 @@
 ## Interface: 70200
 ## Title: |cff64b4ffFrom Scratch|r Core
-## Notes: A framework to build powerful addons, WeakAuras and enhancing boss mods for high-end raiding
+## Notes: A framework to build powerful addons and enhancing boss mods for high-end raiding
 ## SavedVariables: FSDB, PACMAN_DB
 ## Dependencies: Blizzard_ArtifactUI
 ## OptionalDeps: LibStub, CallbackHandler-1.0, Ace3, LibGroupInSpecT-1.1, LibSharedMedia-3.0
