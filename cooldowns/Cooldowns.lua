@@ -605,6 +605,7 @@ end
 
 do
 	local pending_player_check = false
+	local invalidate_player_check = false
 	local printed = {}
 
 	local function print_once(msg, ...)
@@ -772,14 +773,28 @@ do
 			end
 		end
 
-		if guid == UnitGUID("player") and not pending_player_check --[[and not self.settings.disable_check]]
-		and unit.info.talents and unit.info.artifact and unit.info.legendaries then
+		if guid == UnitGUID("player") and unit.info.talents and unit.info.artifact and unit.info.legendaries then
+			self:ScheduleCheck()
+		end
+	end
+
+	function Cooldowns:ScheduleCheck()
+		if pending_player_check then
+			invalidate_player_check = true
+		else
 			pending_player_check = true
-			C_Timer.After(5, function()
-				check_player(self.units[guid])
+			C_Timer.After(60, function()
+				pending_player_check = false
+				if invalidate_player_check then
+					invalidate_player_check = false
+					self:ScheduleCheck()
+				else
+					self:CheckPlayerCooldowns()
+				end
 			end)
 		end
 	end
+
 
 	function Cooldowns:CheckPlayerCooldowns()
 		check_player(self.units[UnitGUID("player")])
