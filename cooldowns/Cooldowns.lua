@@ -678,7 +678,7 @@ do
 					end
 					do -- Charges
 						local charges = cd.spell.charges or 1
-						local actual = GetSpellCharges(id) or 1
+						local actual = select(2, GetSpellCharges(id)) or 1
 						if charges ~= actual then
 							fails = fails + print_once("|cffffff00%s charges discrepancy: %d (actual %d)", name, charges, actual)
 						end
